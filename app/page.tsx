@@ -15,13 +15,13 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 const POSITIONS = [
-  { id: 1, title: "Sub Bagian Keuangan", filled: 2, quota: 5, status: "Dibuka" },
-  { id: 2, title: "Sub Bagian Kepegawaian", filled: 3, quota: 4, status: "Terbatas" },
+  { id: 1, title: "Sub Bagian Keuangan", filled: 0, quota: 3, status: "Dibuka" },
+  { id: 2, title: "Sub Bagian Kepegawaian", filled: 2, quota: 3, status: "Terbatas" },
   { id: 3, title: "Sub Bagian Umum", filled: 3, quota: 3, status: "Penuh" },
-  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 6, status: "Dibuka" },
-  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 4, quota: 5, status: "Terbatas" },
-  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 4, status: "Dibuka" },
-  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 5, quota: 5, status: "Penuh" },
+  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 3, status: "Dibuka" },
+  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 2, quota: 3, status: "Terbatas" },
+  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 3, status: "Dibuka" },
+  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 3, quota: 3, status: "Penuh" },
 ];
 
 //RESET SAAT SCROLL
@@ -82,11 +82,11 @@ export default function Home() {
       `}</style>
 
       {/* --- NAVBAR --- */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm border-slate-200">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/25 backdrop-blur-sm border-slate-200">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
             <Building2 className="h-5 w-5 text-blue-700" />
-            <span>Magang Dikpora</span>
+            <span>Magang Disdikpora</span>
           </div>
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
             <Link 
@@ -165,7 +165,7 @@ export default function Home() {
               </div>
             </FadeInSection>
             
-            <div className="absolute top-135 left-1/2 -translate-x-1/2 animate-bounce text-slate-400">
+            <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400">
               <ChevronDown className="h-6 w-6" />
             </div>
           </div>
