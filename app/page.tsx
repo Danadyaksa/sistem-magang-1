@@ -9,23 +9,78 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, FileText, HelpCircle, GraduationCap, ChevronDown } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Building2,
+  FileText,
+  HelpCircle,
+  GraduationCap,
+  ChevronDown,
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 const POSITIONS = [
-  { id: 1, title: "Sub Bagian Keuangan", filled: 0, quota: 3, status: "Dibuka" },
-  { id: 2, title: "Sub Bagian Kepegawaian", filled: 2, quota: 3, status: "Terbatas" },
+  {
+    id: 1,
+    title: "Sub Bagian Keuangan",
+    filled: 0,
+    quota: 3,
+    status: "Dibuka",
+  },
+  {
+    id: 2,
+    title: "Sub Bagian Kepegawaian",
+    filled: 2,
+    quota: 3,
+    status: "Terbatas",
+  },
   { id: 3, title: "Sub Bagian Umum", filled: 3, quota: 3, status: "Penuh" },
-  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 3, status: "Dibuka" },
-  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 2, quota: 3, status: "Terbatas" },
-  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 3, status: "Dibuka" },
-  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 3, quota: 3, status: "Penuh" },
+  {
+    id: 4,
+    title:
+      "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga",
+    filled: 1,
+    quota: 3,
+    status: "Dibuka",
+  },
+  {
+    id: 5,
+    title: "Bidang Pembinaan Sekolah Menengah Atas",
+    filled: 2,
+    quota: 3,
+    status: "Terbatas",
+  },
+  {
+    id: 6,
+    title: "Bidang Pembinaan Sekolah Menengah Kejuruan",
+    filled: 0,
+    quota: 3,
+    status: "Dibuka",
+  },
+  {
+    id: 7,
+    title: "Bidang Pendidikan dan Layanan Khusus",
+    filled: 3,
+    quota: 3,
+    status: "Penuh",
+  },
 ];
 
 //RESET SAAT SCROLL
-function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function FadeInSection({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
   const [isVisible, setIsVisible] = useState(false);
   const domRef = useRef<HTMLDivElement>(null);
 
@@ -61,10 +116,14 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 }
 
 export default function Home() {
-  const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link";
+  const GOOGLE_FORM_URL =
+    "https://docs.google.com/forms/d/e/1FAIpQLSeWUPrZZ212c3kVENk6JpUomMa20ZKPv6Nd1SI4lkrcDM2W7g/viewform";
 
   //FUNGSI SCROLL HALUS
-  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, id: string) => {
+  const handleScroll = (
+    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
+    id: string
+  ) => {
     e.preventDefault();
     const element = document.getElementById(id);
     if (element) {
@@ -74,7 +133,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 text-sm">
-      
       <style jsx global>{`
         html {
           scroll-behavior: smooth;
@@ -89,56 +147,69 @@ export default function Home() {
             <span>Magang Disdikpora</span>
           </div>
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
-            <Link 
-              href="#tentang" 
+            <Link
+              href="#tentang"
               onClick={(e) => handleScroll(e, "tentang")}
               className="hover:text-blue-700 transition-colors"
             >
               Tentang
             </Link>
-            <Link 
-              href="#alur" 
+            <Link
+              href="#alur"
               onClick={(e) => handleScroll(e, "alur")}
               className="hover:text-blue-700 transition-colors"
             >
               Alur
             </Link>
-            <Link 
-              href="#kuota" 
+            <Link
+              href="#kuota"
               onClick={(e) => handleScroll(e, "kuota")}
               className="hover:text-blue-700 transition-colors"
             >
               Kuota
             </Link>
-            <Link 
-              href="#faq" 
+            <Link
+              href="#faq"
               onClick={(e) => handleScroll(e, "faq")}
               className="hover:text-blue-700 transition-colors"
             >
               FAQ
             </Link>
           </nav>
-          <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
-            <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
+          <Button
+            asChild
+            size="sm"
+            className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm"
+          >
+            <Link href={GOOGLE_FORM_URL} target="_blank">
+              Daftar Sekarang
+            </Link>
           </Button>
         </div>
       </header>
 
       <main>
         {/* HERO SECTION */}
-        <section id="tentang" className="relative py-24 md:py-32 text-center container mx-auto px-4 overflow-hidden bg-slate-50 border-b border-slate-200">
-          <div className="absolute inset-0 z-0 opacity-[0.8]" 
-               style={{ 
-                 backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', 
-                 backgroundSize: '24px 24px' 
-               }}>
-          </div>
+        <section
+          id="tentang"
+          className="relative py-24 md:py-32 text-center container mx-auto px-4 overflow-hidden bg-slate-50 border-b border-slate-200"
+        >
+          <div
+            className="absolute inset-0 z-0 opacity-[0.8]"
+            style={{
+              backgroundImage: "radial-gradient(#94a3b8 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          ></div>
           <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent via-slate-50/50 to-slate-50"></div>
 
           <div className="relative z-10">
             <FadeInSection>
               <div className="space-y-6">
-                <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4">
+                <Badge
+                  variant="outline"
+                  className="px-4 py-1.5 text-xs font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4"
+                >
                   <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2 animate-pulse"></span>
                   Pendaftaran Magang Periode 2026 Telah Dibuka
                 </Badge>
@@ -147,24 +218,36 @@ export default function Home() {
                   Sistem Informasi Magang <br />
                   <span className="text-blue-700">Dinas Dikpora DIY</span>
                 </h1>
-                
+
                 <p className="text-base md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-                  Bergabunglah dalam program magang Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta. 
+                  Bergabunglah dalam program magang Dinas Pendidikan, Pemuda,
+                  dan Olahraga Daerah Istimewa Yogyakarta.
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
-                  <Button size="lg" className="h-12 px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
+                  <Button
+                    size="lg"
+                    className="h-12 px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all"
+                    asChild
+                  >
                     <Link href={GOOGLE_FORM_URL} target="_blank">
                       Isi Formulir Pendaftaran
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="h-12 px-8 text-base rounded-full hover:bg-slate-100 bg-white" asChild>
-                    <Link href="#faq" onClick={(e) => handleScroll(e, "faq")}>Pelajari Dulu</Link>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-12 px-8 text-base rounded-full hover:bg-slate-100 bg-white"
+                    asChild
+                  >
+                    <Link href="#faq" onClick={(e) => handleScroll(e, "faq")}>
+                      Pelajari Dulu
+                    </Link>
                   </Button>
                 </div>
               </div>
             </FadeInSection>
-            
+
             <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400">
               <ChevronDown className="h-6 w-6" />
             </div>
@@ -172,7 +255,10 @@ export default function Home() {
         </section>
 
         {/* ALUR PENDAFTARAN */}
-        <section id="alur" className="py-20 bg-white border-y border-slate-100 scroll-mt-20">
+        <section
+          id="alur"
+          className="py-20 bg-white border-y border-slate-100 scroll-mt-20"
+        >
           <div className="container mx-auto px-4">
             <FadeInSection>
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800">
@@ -189,7 +275,8 @@ export default function Home() {
                     </div>
                     <CardTitle className="text-lg">1. Siapkan Berkas</CardTitle>
                     <CardDescription className="text-sm">
-                      Scan surat pengantar resmi dari sekolah/kampus dan proposal kegiatan magang dalam format PDF.
+                      Scan surat pengantar resmi dari sekolah/kampus dan
+                      proposal kegiatan magang dalam format PDF.
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -203,7 +290,8 @@ export default function Home() {
                     </div>
                     <CardTitle className="text-lg">2. Isi Formulir</CardTitle>
                     <CardDescription className="text-sm">
-                      Lengkapi data diri, durasi magang, dan upload berkas persyaratan melalui link Google Form yang tersedia.
+                      Lengkapi data diri, durasi magang, dan upload berkas
+                      persyaratan melalui link Google Form yang tersedia.
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -215,9 +303,12 @@ export default function Home() {
                     <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
                       <HelpCircle className="h-6 w-6 text-blue-700" />
                     </div>
-                    <CardTitle className="text-lg">3. Tunggu Konfirmasi</CardTitle>
+                    <CardTitle className="text-lg">
+                      3. Tunggu Konfirmasi
+                    </CardTitle>
                     <CardDescription className="text-sm">
-                      Tim kami akan memverifikasi berkas Anda. Konfirmasi penerimaan akan dikirim melalui WhatsApp/Email.
+                      Tim kami akan memverifikasi berkas Anda. Konfirmasi
+                      penerimaan akan dikirim melalui WhatsApp/Email.
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -227,7 +318,10 @@ export default function Home() {
         </section>
 
         {/* KUOTA MAGANG */}
-        <section id="kuota" className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20">
+        <section
+          id="kuota"
+          className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20"
+        >
           <div className="container mx-auto px-4">
             <FadeInSection>
               <div className="text-center mb-10">
@@ -235,7 +329,8 @@ export default function Home() {
                   Kuota Magang
                 </h2>
                 <p className="text-slate-600 max-w-2xl mx-auto text-sm md:text-base">
-                  Cek ketersediaan kuota magang di setiap divisi Dinas Pendidikan, Pemuda, dan Olahraga DIY update terbaru hari ini.
+                  Cek ketersediaan kuota magang di setiap divisi Dinas
+                  Pendidikan, Pemuda, dan Olahraga DIY update terbaru hari ini.
                 </p>
               </div>
             </FadeInSection>
@@ -243,7 +338,11 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
               {POSITIONS.map((pos, index) => (
                 <FadeInSection key={pos.id} delay={index * 50}>
-                  <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
+                  <Card
+                    className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${
+                      pos.filled >= pos.quota ? "opacity-70 bg-slate-50" : ""
+                    }`}
+                  >
                     <CardHeader className="py-4">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex-1">
@@ -251,7 +350,10 @@ export default function Home() {
                             {pos.title}
                           </CardTitle>
                         </div>
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border border-slate-200 shrink-0 text-xs">
+                        <Badge
+                          variant="secondary"
+                          className="bg-slate-100 text-slate-600 border border-slate-200 shrink-0 text-xs"
+                        >
                           {pos.status}
                         </Badge>
                       </div>
@@ -260,11 +362,16 @@ export default function Home() {
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm text-slate-600">
                           <span>Terisi: {pos.filled} orang</span>
-                          <span className="font-medium">Kuota: {pos.quota}</span>
+                          <span className="font-medium">
+                            Kuota: {pos.quota}
+                          </span>
                         </div>
-                        <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100" />
+                        <Progress
+                          value={(pos.filled / pos.quota) * 100}
+                          className="h-2.5 bg-slate-100"
+                        />
                         <div className="text-[10px] text-slate-400 mt-1">
-                           *Update Real-time
+                          *Update Real-time
                         </div>
                       </div>
                     </CardContent>
@@ -272,10 +379,9 @@ export default function Home() {
                 </FadeInSection>
               ))}
             </div>
-            
           </div>
         </section>
-        
+
         {/* FAQ SECTION */}
         <section id="faq" className="py-20 bg-white scroll-mt-20">
           <div className="container mx-auto px-4 max-w-3xl">
@@ -284,7 +390,7 @@ export default function Home() {
                 Pertanyaan Umum (FAQ)
               </h2>
             </FadeInSection>
-            
+
             <FadeInSection delay={200}>
               <Card className="border-none shadow-sm bg-slate-50">
                 <CardContent className="pt-6">
@@ -294,7 +400,9 @@ export default function Home() {
                         Berapa lama durasi minimal magang?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
-                        Durasi magang menyesuaikan dengan kebijakan kampus/sekolah, namun umumnya minimal 1 bulan dan maksimal 6 bulan.
+                        Durasi magang menyesuaikan dengan kebijakan
+                        kampus/sekolah, namun umumnya minimal 1 bulan dan
+                        maksimal 6 bulan.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-2">
@@ -302,7 +410,9 @@ export default function Home() {
                         Apakah magang ini berbayar/digaji?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
-                        Magang di Disdikpora DIY bersifat <strong>unpaid</strong> (tidak digaji). Program ini difokuskan untuk memberikan pengalaman kerja nyata.
+                        Magang di Disdikpora DIY bersifat{" "}
+                        <strong>unpaid</strong> (tidak digaji). Program ini
+                        difokuskan untuk memberikan pengalaman kerja nyata.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-3">
@@ -310,7 +420,9 @@ export default function Home() {
                         Dokumen apa saja yang wajib diupload?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
-                        Anda wajib menyertakan <strong>Surat Pengantar Resmi</strong> dari Sekolah/Kampus dan <strong>Proposal Kegiatan</strong>.
+                        Anda wajib menyertakan{" "}
+                        <strong>Surat Pengantar Resmi</strong> dari
+                        Sekolah/Kampus dan <strong>Proposal Kegiatan</strong>.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-4">
@@ -318,7 +430,8 @@ export default function Home() {
                         Kapan saya dapat kepastian diterima?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
-                        Proses verifikasi berkas biasanya memakan waktu 3-7 hari kerja tergantung antrian pendaftar.
+                        Proses verifikasi berkas biasanya memakan waktu 3-7 hari
+                        kerja tergantung antrian pendaftar.
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -338,7 +451,8 @@ export default function Home() {
                 <span>Disdikpora DIY</span>
               </div>
               <p className="leading-relaxed text-slate-400">
-                Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta.
+                Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa
+                Yogyakarta.
               </p>
             </div>
 
@@ -353,7 +467,10 @@ export default function Home() {
           </div>
 
           <div className="border-t border-slate-800 pt-8 text-center text-slate-500">
-            <p>© {new Date().getFullYear()} Dinas Pendidikan, Pemuda, dan Olahraga DIY.</p>
+            <p>
+              © {new Date().getFullYear()} Dinas Pendidikan, Pemuda, dan
+              Olahraga DIY.
+            </p>
           </div>
         </div>
       </footer>
