@@ -15,13 +15,13 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 const POSITIONS = [
-  { id: 1, title: "Sub Bagian Keuangan", filled: 0, quota: 3, status: "Dibuka" },
-  { id: 2, title: "Sub Bagian Kepegawaian", filled: 2, quota: 3, status: "Terbatas" },
+  { id: 1, title: "Sub Bagian Keuangan", filled: 2, quota: 5, status: "Dibuka" },
+  { id: 2, title: "Sub Bagian Kepegawaian", filled: 3, quota: 4, status: "Terbatas" },
   { id: 3, title: "Sub Bagian Umum", filled: 3, quota: 3, status: "Penuh" },
-  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 3, status: "Dibuka" },
-  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 2, quota: 3, status: "Terbatas" },
-  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 3, status: "Dibuka" },
-  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 3, quota: 3, status: "Penuh" },
+  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 6, status: "Dibuka" },
+  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 4, quota: 5, status: "Terbatas" },
+  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 4, status: "Dibuka" },
+  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 5, quota: 5, status: "Penuh" },
 ];
 
 //RESET SAAT SCROLL
@@ -33,10 +33,11 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
+          
           setIsVisible(entry.isIntersecting);
         });
       },
-      { threshold: 0.15 }
+      { threshold: 0.15 } // Muncul saat 15% elemen terlihat
     );
 
     const { current } = domRef;
@@ -63,70 +64,29 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 export default function Home() {
   const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link";
 
-  //FUNGSI SCROLL HALUS
-  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, id: string) => {
-    e.preventDefault();
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 text-sm">
-      
-      <style jsx global>{`
-        html {
-          scroll-behavior: smooth;
-        }
-      `}</style>
-
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       {/* --- NAVBAR --- */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/25 backdrop-blur-sm border-slate-200">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm border-slate-200">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
-            <Building2 className="h-5 w-5 text-blue-700" />
-            <span>Magang Disdikpora</span>
+          <div className="flex items-center gap-2 font-bold text-xl text-slate-800">
+            <Building2 className="h-6 w-6 text-blue-700" />
+            <span>Magang Dikpora</span>
           </div>
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
-            <Link 
-              href="#tentang" 
-              onClick={(e) => handleScroll(e, "tentang")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              Tentang
-            </Link>
-            <Link 
-              href="#alur" 
-              onClick={(e) => handleScroll(e, "alur")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              Alur
-            </Link>
-            <Link 
-              href="#kuota" 
-              onClick={(e) => handleScroll(e, "kuota")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              Kuota
-            </Link>
-            <Link 
-              href="#faq" 
-              onClick={(e) => handleScroll(e, "faq")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              FAQ
-            </Link>
+            <Link href="#tentang" className="hover:text-blue-700 transition-colors">Tentang</Link>
+            <Link href="#alur" className="hover:text-blue-700 transition-colors">Alur</Link>
+            <Link href="#faq" className="hover:text-blue-700 transition-colors">FAQ</Link>
           </nav>
-          <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
+          <Button asChild className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
             <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
           </Button>
         </div>
       </header>
 
       <main>
-        {/* HERO SECTION */}
-        <section id="tentang" className="relative py-24 md:py-32 text-center container mx-auto px-4 overflow-hidden bg-slate-50 border-b border-slate-200">
+        {/*HERO SECTION*/}
+        <section className="relative py-24 md:py-30 text-center container mx-auto px-4 overflow-hidden bg-slate-50 border-b border-slate-200">
           <div className="absolute inset-0 z-0 opacity-[0.8]" 
                style={{ 
                  backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', 
@@ -138,57 +98,58 @@ export default function Home() {
           <div className="relative z-10">
             <FadeInSection>
               <div className="space-y-6">
-                <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4">
+                <Badge variant="outline" className="px-4 py-1.5 text-sm font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4">
                   <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2 animate-pulse"></span>
                   Pendaftaran Magang Periode 2026 Telah Dibuka
                 </Badge>
 
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-slate-900 leading-tight">
                   Sistem Informasi Magang <br />
                   <span className="text-blue-700">Dinas Dikpora DIY</span>
                 </h1>
                 
-                <p className="text-base md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                <p className="text-lg md:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
                   Bergabunglah dalam program magang Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta. 
+                 
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
-                  <Button size="lg" className="h-12 px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
+                  <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
                     <Link href={GOOGLE_FORM_URL} target="_blank">
                       Isi Formulir Pendaftaran
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="h-12 px-8 text-base rounded-full hover:bg-slate-100 bg-white" asChild>
-                    <Link href="#faq" onClick={(e) => handleScroll(e, "faq")}>Pelajari Dulu</Link>
+                  <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full hover:bg-slate-100 bg-white" asChild>
+                    <Link href="#faq">Pelajari Dulu</Link>
                   </Button>
                 </div>
               </div>
             </FadeInSection>
             
-            <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400">
-              <ChevronDown className="h-6 w-6" />
+            <div className="absolute top-135 left-1/2 -translate-x-1/2 animate-bounce text-slate-400">
+              <ChevronDown className="h-8 w-8" />
             </div>
           </div>
         </section>
 
-        {/* ALUR PENDAFTARAN */}
-        <section id="alur" className="py-20 bg-white border-y border-slate-100 scroll-mt-20">
+        {/* --- ALUR PENDAFTARAN --- */}
+        <section id="alur" className="py-24 bg-white border-y border-slate-100">
           <div className="container mx-auto px-4">
             <FadeInSection>
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800">
+              <h2 className="text-3xl md:text-5xl font-bold text-center mb-16 text-slate-800">
                 Alur Pendaftaran
               </h2>
             </FadeInSection>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-8">
               <FadeInSection delay={100}>
                 <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <FileText className="h-6 w-6 text-blue-700" />
+                    <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
+                      <FileText className="h-7 w-7 text-blue-700" />
                     </div>
-                    <CardTitle className="text-lg">1. Siapkan Berkas</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardTitle className="text-xl">1. Siapkan Berkas</CardTitle>
+                    <CardDescription className="text-base">
                       Scan surat pengantar resmi dari sekolah/kampus dan proposal kegiatan magang dalam format PDF.
                     </CardDescription>
                   </CardHeader>
@@ -198,11 +159,11 @@ export default function Home() {
               <FadeInSection delay={200}>
                 <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <GraduationCap className="h-6 w-6 text-blue-700" />
+                    <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
+                      <GraduationCap className="h-7 w-7 text-blue-700" />
                     </div>
-                    <CardTitle className="text-lg">2. Isi Formulir</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardTitle className="text-xl">2. Isi Formulir</CardTitle>
+                    <CardDescription className="text-base">
                       Lengkapi data diri, durasi magang, dan upload berkas persyaratan melalui link Google Form yang tersedia.
                     </CardDescription>
                   </CardHeader>
@@ -212,11 +173,11 @@ export default function Home() {
               <FadeInSection delay={300}>
                 <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <HelpCircle className="h-6 w-6 text-blue-700" />
+                    <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
+                      <HelpCircle className="h-7 w-7 text-blue-700" />
                     </div>
-                    <CardTitle className="text-lg">3. Tunggu Konfirmasi</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardTitle className="text-xl">3. Tunggu Konfirmasi</CardTitle>
+                    <CardDescription className="text-base">
                       Tim kami akan memverifikasi berkas Anda. Konfirmasi penerimaan akan dikirim melalui WhatsApp/Email.
                     </CardDescription>
                   </CardHeader>
@@ -226,44 +187,57 @@ export default function Home() {
           </div>
         </section>
 
-        {/* KUOTA MAGANG */}
-        <section id="kuota" className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20">
+        {/* --- POSISI TERSEDIA (3 KOLOM & FONT BESAR) --- */}
+        <section className="py-24 bg-slate-50 border-y border-slate-200">
           <div className="container mx-auto px-4">
             <FadeInSection>
-              <div className="text-center mb-10">
-                <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-800 mb-4">
                   Kuota Magang
                 </h2>
-                <p className="text-slate-600 max-w-2xl mx-auto text-sm md:text-base">
+                <p className="text-slate-600 max-w-2xl mx-auto">
                   Cek ketersediaan kuota magang di setiap divisi Dinas Pendidikan, Pemuda, dan Olahraga DIY update terbaru hari ini.
                 </p>
               </div>
             </FadeInSection>
 
-            <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
+            {/* GRID DIBUAT 3 KOLOM (lg:grid-cols-3) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {POSITIONS.map((pos, index) => (
                 <FadeInSection key={pos.id} delay={index * 50}>
-                  <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
-                    <CardHeader className="py-4">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div className="flex-1">
-                          <CardTitle className="text-base md:text-lg font-bold text-slate-800">
+                  {/* Kartu Tanpa Border Warna, tapi Font Besar */}
+                  <Card className={`h-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
+                    
+                    {/* Padding Normal (bukan compact) */}
+                    <CardHeader>
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          {/* Font Size XL (Besar) */}
+                          <CardTitle className="text-xl font-bold text-slate-800">
                             {pos.title}
                           </CardTitle>
+                          {/* Deskripsi Normal */}
+                          <CardDescription className="text-sm mt-1 text-slate-500">
+                            {pos.desc}
+                          </CardDescription>
                         </div>
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border border-slate-200 shrink-0 text-xs">
+                        {/* Badge Netral */}
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border border-slate-200">
                           {pos.status}
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="pb-4 pt-0">
-                      <div className="space-y-3">
+
+                    <CardContent>
+                      <div className="space-y-4">
                         <div className="flex justify-between text-sm text-slate-600">
                           <span>Terisi: {pos.filled} orang</span>
                           <span className="font-medium">Kuota: {pos.quota}</span>
                         </div>
-                        <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100" />
-                        <div className="text-[10px] text-slate-400 mt-1">
+                        
+                        <Progress value={(pos.filled / pos.quota) * 100} className="h-3 bg-slate-100" />
+                        
+                        <div className="text-xs text-slate-400 mt-2">
                            *Update Real-time
                         </div>
                       </div>
@@ -276,11 +250,11 @@ export default function Home() {
           </div>
         </section>
         
-        {/* FAQ SECTION */}
-        <section id="faq" className="py-20 bg-white scroll-mt-20">
-          <div className="container mx-auto px-4 max-w-3xl">
+        {/* --- FAQ SECTION --- */}
+        <section id="faq" className="py-24 bg-white">
+          <div className="container mx-auto px-4 max-w-4xl">
             <FadeInSection>
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 text-slate-800">
+              <h2 className="text-3xl md:text-5xl font-bold text-center mb-12 text-slate-800">
                 Pertanyaan Umum (FAQ)
               </h2>
             </FadeInSection>
@@ -290,34 +264,34 @@ export default function Home() {
                 <CardContent className="pt-6">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-lg font-medium text-slate-700">
                         Berapa lama durasi minimal magang?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600">
                         Durasi magang menyesuaikan dengan kebijakan kampus/sekolah, namun umumnya minimal 1 bulan dan maksimal 6 bulan.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-2">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-lg font-medium text-slate-700">
                         Apakah magang ini berbayar/digaji?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600">
                         Magang di Disdikpora DIY bersifat <strong>unpaid</strong> (tidak digaji). Program ini difokuskan untuk memberikan pengalaman kerja nyata.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-3">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-lg font-medium text-slate-700">
                         Dokumen apa saja yang wajib diupload?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600">
                         Anda wajib menyertakan <strong>Surat Pengantar Resmi</strong> dari Sekolah/Kampus dan <strong>Proposal Kegiatan</strong>.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-4">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-lg font-medium text-slate-700">
                         Kapan saya dapat kepastian diterima?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600">
                         Proses verifikasi berkas biasanya memakan waktu 3-7 hari kerja tergantung antrian pendaftar.
                       </AccordionContent>
                     </AccordionItem>
@@ -329,22 +303,22 @@ export default function Home() {
         </section>
       </main>
 
-      {/* FOOTER */}
-      <footer className="py-10 bg-slate-900 text-slate-300 border-t border-slate-800 text-xs md:text-sm">
+      {/* --- FOOTER --- */}
+      <footer className="py-12 bg-slate-900 text-slate-300 border-t border-slate-800 text-sm">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-8 mb-8">
             <div className="text-center md:text-left max-w-sm">
-              <div className="flex items-center justify-center md:justify-start gap-2 font-bold text-white text-base mb-4">
+              <div className="flex items-center justify-center md:justify-start gap-2 font-bold text-white text-lg mb-4">
                 <span>Disdikpora DIY</span>
               </div>
-              <p className="leading-relaxed text-slate-400">
+              <p className="leading-relaxed">
                 Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta.
               </p>
             </div>
 
             <div className="text-center md:text-right max-w-sm">
-              <h4 className="font-bold text-white mb-4 text-sm">Kontak Kami</h4>
-              <div className="space-y-2 text-slate-400">
+              <h4 className="font-bold text-white mb-4 text-base">Kontak Kami</h4>
+              <div className="space-y-2">
                 <p>Jl. Cendana No.9, Semaki, Yogyakarta 55166</p>
                 <p>(0274) 513132</p>
                 <p className="text-blue-400">disdikpora@jogjaprov.go.id</p>
