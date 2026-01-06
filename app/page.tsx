@@ -15,18 +15,16 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 const POSITIONS = [
-  { id: 1, title: "Sub Bagian Umum", desc: "Administrasi & Persuratan", filled: 2, quota: 5, status: "Dibuka" },
-  { id: 2, title: "Sub Bagian Perencanaan", desc: "Keuangan & Aset", filled: 3, quota: 4, status: "Terbatas" },
-  { id: 3, title: "TIK / Data Center", desc: "Teknisi & Programmer", filled: 3, quota: 3, status: "Penuh" },
-  { id: 4, title: "Bidang GTK", desc: "Data Guru & Tendik", filled: 1, quota: 6, status: "Dibuka" },
-  { id: 5, title: "Bidang Dikmen", desc: "Kurikulum SMA/K", filled: 4, quota: 5, status: "Terbatas" },
-  { id: 6, title: "Bidang Dikdas", desc: "Manajemen SD/SMP", filled: 0, quota: 4, status: "Dibuka" },
-  { id: 7, title: "Bidang PO", desc: "Pemuda & Olahraga", filled: 5, quota: 5, status: "Penuh" },
-  { id: 8, title: "Perpustakaan", desc: "Pustakawan & Arsip", filled: 1, quota: 2, status: "Dibuka" },
-  { id: 9, title: "Humas & Protokol", desc: "Media & Informasi", filled: 2, quota: 3, status: "Terbatas" },
+  { id: 1, title: "Sub Bagian Keuangan", filled: 2, quota: 5, status: "Dibuka" },
+  { id: 2, title: "Sub Bagian Kepegawaian", filled: 3, quota: 4, status: "Terbatas" },
+  { id: 3, title: "Sub Bagian Umum", filled: 3, quota: 3, status: "Penuh" },
+  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 6, status: "Dibuka" },
+  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 4, quota: 5, status: "Terbatas" },
+  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 4, status: "Dibuka" },
+  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 5, quota: 5, status: "Penuh" },
 ];
 
-// --- KOMPONEN ANIMASI (RESET SAAT SCROLL) ---
+//RESET SAAT SCROLL
 function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [isVisible, setIsVisible] = useState(false);
   const domRef = useRef<HTMLDivElement>(null);
@@ -35,7 +33,6 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          
           setIsVisible(entry.isIntersecting);
         });
       },
@@ -87,7 +84,7 @@ export default function Home() {
       </header>
 
       <main>
-        {/* --- HERO SECTION --- */}
+        {/*HERO SECTION*/}
         <section className="relative py-24 md:py-30 text-center container mx-auto px-4 overflow-hidden bg-slate-50 border-b border-slate-200">
           <div className="absolute inset-0 z-0 opacity-[0.8]" 
                style={{ 
@@ -112,7 +109,6 @@ export default function Home() {
                 
                 <p className="text-lg md:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
                   Bergabunglah dalam program magang Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta. 
-                 
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
@@ -189,7 +185,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- POSISI TERSEDIA (3 KOLOM & FONT BESAR) --- */}
+        {/* --- POSISI TERSEDIA (LIST VIEW / KEBAWAH) --- */}
         <section className="py-24 bg-slate-50 border-y border-slate-200">
           <div className="container mx-auto px-4">
             <FadeInSection>
@@ -203,28 +199,21 @@ export default function Home() {
               </div>
             </FadeInSection>
 
-            {/* GRID DIBUAT 3 KOLOM (lg:grid-cols-3) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* UBAH DISINI: grid-cols-1 dan max-w-3xl agar centered & rapi ke bawah */}
+            <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
               {POSITIONS.map((pos, index) => (
                 <FadeInSection key={pos.id} delay={index * 50}>
                   {/* Kartu Tanpa Border Warna, tapi Font Besar */}
-                  <Card className={`h-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
+                  <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
                     
-                    {/* Padding Normal (bukan compact) */}
                     <CardHeader>
-                      <div className="flex justify-between items-start gap-2">
-                        <div>
-                          {/* Font Size XL (Besar) */}
-                          <CardTitle className="text-xl font-bold text-slate-800">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg md:text-xl font-bold text-slate-800">
                             {pos.title}
                           </CardTitle>
-                          {/* Deskripsi Normal */}
-                          <CardDescription className="text-sm mt-1 text-slate-500">
-                            {pos.desc}
-                          </CardDescription>
                         </div>
-                        {/* Badge Netral */}
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border border-slate-200">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
                           {pos.status}
                         </Badge>
                       </div>
