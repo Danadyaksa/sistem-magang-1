@@ -1,0 +1,84 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") 
+}
+
+// Enum buat Role biar rapi
+enum Role {
+  MAHASISWA
+  KEPALA_DIVISI
+  ADMIN
+}
+
+// Enum buat Status Lamaran
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Inget di-hash ya passwordnya
+  name      String?
+  role      Role     @default(MAHASISWA)
+  createdAt DateTime @default(now())
+
+  // Relasi
+  managedDivision Division?      // Kalo dia Kepala Divisi, dia megang divisi apa?
+  applications    Application[]  // Kalo dia Mahasiswa, dia daftar kemana aja?
+}
+
+model Division {
+  id          String   @id @default(cuid())
+  name        String   // Misal: "Kominfo", "Humas"
+  quota       Int      @default(0) // Kuota sisa
+  description String?  // Deskripsi tugas divisi (opsional tapi bagus ada)
+
+  // Relasi ke Kepala Divisi (1 Divisi dipegang 1 User)
+  headOfDivisionId String? @unique
+  headOfDivision   User?   @relation(fields: [headOfDivisionId], references: [id])
+
+  // Relasi ke Pendaftar
+  applications Application[]
+}
+
+model Application {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Data diri lengkap sesuai request
+  nim                 String
+  asalSekolahKampus   String // Bisa Sekolah atau Universitas
+  fakultas            String? // Opsional kalo anak SMA
+  jurusan             String
+  lamaMagang          String // Misal: "3 Bulan"
+  startDate           DateTime // Rentang waktu mulai
+  endDate             DateTime // Rentang waktu selesai
+  nomorSuratIzin      String
+  tanggalSuratIzin    DateTime
+  nomorTelepon        String
+  
+  // Link File (Simpen URL dari Supabase Storage disini)
+  cvUrl               String
+  suratPengantarUrl   String
+
+  // Status Penerimaan
+  status    ApplicationStatus @default(PENDING)
+
+  // Relasi
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  
+  divisionId String
+  division   Division @relation(fields: [divisionId], references: [id])
+}
