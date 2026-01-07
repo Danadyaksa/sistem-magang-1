@@ -81,7 +81,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* --- NAVBAR --- */}
+      {/*NAVBAR*/}
       <header className="sticky top-0 z-50 w-full border-b bg-white/25 backdrop-blur-sm border-slate-200">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
@@ -330,8 +330,8 @@ export default function Home() {
       </main>
 
       {/* FOOTER */}
-      <footer className="py-10 bg-slate-900 text-slate-300 border-t border-slate-800 text-xs md:text-sm">
-        <div className="container mx-auto px-4">
+      <footer className="py-5 bg-slate-900 text-slate-300 border-t border-slate-800 text-xs md:text-sm">
+        <div className="container mx-auto px-10">
           <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-8 mb-8">
             <div className="text-center md:text-left max-w-sm">
               <div className="flex items-center justify-center md:justify-start gap-2 font-bold text-white text-base mb-4">
@@ -345,15 +345,20 @@ export default function Home() {
             <div className="text-center md:text-right max-w-sm">
               <h4 className="font-bold text-white mb-4 text-sm">Kontak Kami</h4>
               <div className="space-y-2 text-slate-400">
-                <p>Jl. Cendana No.9, Semaki, Yogyakarta 55166</p>
+                <p>Jl. Cendana No.9, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166</p>
                 <p>(0274) 513132</p>
-                <p className="text-blue-400">disdikpora@jogjaprov.go.id</p>
+                <a
+                href="mailto:disdikpora@jogjaprov.go.id"
+                className="text-blue-400 hover:underline"
+              >
+                disdikpora@jogjaprov.go.id
+              </a>
               </div>
             </div>
           </div>
 
           <div className="border-t border-slate-800 pt-8 text-center text-slate-500">
-            <p>© {new Date().getFullYear()} Dinas Pendidikan, Pemuda, dan Olahraga DIY.</p>
+            <p>© {new Date().getFullYear()} Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta.</p>
           </div>
         </div>
       </footer>
