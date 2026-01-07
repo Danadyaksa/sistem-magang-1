@@ -1,0 +1,30 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Model untuk Admin Login (Sederhana aja dulu)
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Nanti passwordnya di-hash ya
+  createdAt DateTime @default(now())
+}
+
+// Model untuk Posisi Magang (Yang tampil di Dashboard & Landing Page)
+model Position {
+  id          Int      @id @default(autoincrement())
+  title       String   // Nama Bidang, misal: "Sub Bagian Umum"
+  quota       Int      // Total Kuota, misal: 5
+  filled      Int      @default(0) // Yang sudah terisi, misal: 2
+  description String?  // Optional: Penjelasan singkat tugas bidang tsb
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

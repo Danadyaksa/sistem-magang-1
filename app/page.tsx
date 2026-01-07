@@ -9,20 +9,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, FileText, HelpCircle, GraduationCap, ChevronDown, Menu, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Building2, FileText, HelpCircle, GraduationCap, ChevronDown, Menu, X, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
-const POSITIONS = [
-  { id: 1, title: "Sub Bagian Keuangan", filled: 0, quota: 3, status: "Dibuka" },
-  { id: 2, title: "Sub Bagian Kepegawaian", filled: 2, quota: 3, status: "Terbatas" },
-  { id: 3, title: "Sub Bagian Umum", filled: 3, quota: 3, status: "Penuh" },
-  { id: 4, title: "Bidang Perencanaan dan Pengembangan Mutu Pendidikan, Pemuda, dan Olahraga", filled: 1, quota: 3, status: "Dibuka" },
-  { id: 5, title: "Bidang Pembinaan Sekolah Menengah Atas", filled: 2, quota: 3, status: "Terbatas" },
-  { id: 6, title: "Bidang Pembinaan Sekolah Menengah Kejuruan", filled: 0, quota: 3, status: "Dibuka" },
-  { id: 7, title: "Bidang Pendidikan dan Layanan Khusus", filled: 3, quota: 3, status: "Penuh" },
-];
+// TIPE DATA DARI DATABASE
+type Position = {
+  id: number;
+  title: string;
+  filled: number;
+  quota: number;
+  // Status bisa dihitung di frontend atau backend, di sini kita hitung di frontend
+};
 
 //RESET SAAT SCROLL
 function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -33,7 +32,11 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          setIsVisible(entry.isIntersecting);
+          if (entry.isIntersecting) { // Optional: only trigger once or keep watching
+             setIsVisible(true);
+          } else {
+             setIsVisible(false); // Reset if you want it to fade out when scrolling up
+          }
         });
       },
       { threshold: 0.15 }
@@ -61,12 +64,34 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 }
 
 export default function Home() {
-  const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link";
+  const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link"; // Ganti dengan link form asli kamu
 
   // State untuk Mobile Menu
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  //FUNGSI SCROLL HALUS
+  // State untuk Data Posisi Magang
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // FETCH DATA DARI API SAAT PAGE LOAD
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const res = await fetch('/api/positions'); // Panggil API yang sudah kamu buat
+        if (!res.ok) throw new Error("Gagal mengambil data");
+        const data = await res.json();
+        setPositions(data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPositions();
+  }, []);
+
+  // FUNGSI SCROLL HALUS
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, id: string) => {
     e.preventDefault();
     const element = document.getElementById(id);
@@ -74,6 +99,13 @@ export default function Home() {
       element.scrollIntoView({ behavior: "smooth" });
       setIsMobileMenuOpen(false); // Tutup menu mobile setelah klik
     }
+  };
+
+  // Helper untuk menentukan status badge
+  const getStatus = (filled: number, quota: number) => {
+    if (filled >= quota) return "Penuh";
+    if (quota - filled <= 1) return "Terbatas"; // Misal sisa 1 atau 0 (tapi belum penuh logicnya bisa disesuaikan)
+    return "Dibuka";
   };
 
   return (
@@ -85,14 +117,15 @@ export default function Home() {
         }
       `}</style>
 
-      {/*NAVBAR*/}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/25 backdrop-blur-sm border-slate-200">
+      {/* NAVBAR */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm border-slate-200">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
             <Building2 className="h-5 w-5 text-blue-700" />
             <span>Magang Disdikpora</span>
           </div>
-          {/* Desktop Navigation (Hidden di Mobile) */}
+          
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
             {["tentang", "alur", "kuota", "faq"].map((item) => (
               <Link 
@@ -113,7 +146,7 @@ export default function Home() {
             </Button>
           </div>
 
-          {/* Mobile Menu Button (Hamburger) */}
+          {/* Mobile Menu Button */}
           <button 
             className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-md"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -158,7 +191,7 @@ export default function Home() {
           <div className="relative z-10">
             <FadeInSection>
               <div className="space-y-6">
-                <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4">
+                <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4 inline-flex">
                   <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2 animate-pulse"></span>
                   Pendaftaran Magang Periode 2026 Telah Dibuka
                 </Badge>
@@ -172,13 +205,13 @@ export default function Home() {
                   Bergabunglah dalam program magang Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta. 
                 </p>
 
-                <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
-                  <Button size="lg" className="h-12 px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
+                <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 w-full max-w-md mx-auto sm:max-w-none">
+                  <Button size="lg" className="h-12 w-full sm:w-auto px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
                     <Link href={GOOGLE_FORM_URL} target="_blank">
                       Isi Formulir Pendaftaran
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="h-12 px-8 text-base rounded-full hover:bg-slate-100 bg-white" asChild>
+                  <Button size="lg" variant="outline" className="h-12 w-full sm:w-auto px-8 text-base rounded-full hover:bg-slate-100 bg-white" asChild>
                     <Link href="#faq" onClick={(e) => handleScroll(e, "faq")}>Pelajari Dulu</Link>
                   </Button>
                 </div>
@@ -246,7 +279,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* KUOTA MAGANG */}
+        {/* KUOTA MAGANG (DYNAMIC DATA) */}
         <section id="kuota" className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20">
           <div className="container mx-auto px-4">
             <FadeInSection>
@@ -261,34 +294,59 @@ export default function Home() {
             </FadeInSection>
 
             <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
-              {POSITIONS.map((pos, index) => (
-                <FadeInSection key={pos.id} delay={index * 50}>
-                  <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
-                    <CardHeader className="py-2">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <div className="flex-1">
-                          <CardTitle className="text-base md:text-lg font-bold text-slate-800">
-                            {pos.title}
-                          </CardTitle>
-                        </div>
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border border-slate-200 shrink-0 text-xs">
-                          {pos.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-4 pt-0">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-slate-600">
-                          <span>Terisi: {pos.filled} orang</span>
-                          <span className="font-medium">Kuota: {pos.quota}</span>
-                        </div>
-                        <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100" />
-                        
-                      </div>
-                    </CardContent>
-                  </Card>
-                </FadeInSection>
-              ))}
+              {isLoading ? (
+                <div className="text-center py-10">
+                  <div className="inline-flex items-center justify-center gap-2 text-slate-500">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Memuat data kuota...</span>
+                  </div>
+                </div>
+              ) : positions.length > 0 ? (
+                positions.map((pos, index) => {
+                  const status = getStatus(pos.filled, pos.quota);
+                  return (
+                    <FadeInSection key={pos.id} delay={index * 50}>
+                      <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
+                        <CardHeader className="py-2 px-3 sm:px-4">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div className="flex-1">
+                              <CardTitle className="text-base md:text-lg font-bold text-slate-800">
+                                {pos.title}
+                              </CardTitle>
+                            </div>
+                            <Badge variant="secondary" 
+                              className={`
+                                border shrink-0 text-xs 
+                                ${status === 'Dibuka' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                                ${status === 'Terbatas' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
+                                ${status === 'Penuh' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                              `}
+                            >
+                              {status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pb-4 pt-0 px-3 sm:px-4">
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm text-slate-600">
+                              <span>Terisi: {pos.filled} orang</span>
+                              <span className="font-medium">Kuota: {pos.quota}</span>
+                            </div>
+                            <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100" />
+                            <div className="text-[10px] text-slate-400 mt-1">
+                               *Update Real-time
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </FadeInSection>
+                  );
+                })
+              ) : (
+                <div className="text-center py-10 text-slate-500 bg-white border border-slate-200 rounded-lg">
+                  Belum ada data posisi magang yang tersedia saat ini.
+                </div>
+              )}
             </div>
             
           </div>
@@ -308,7 +366,7 @@ export default function Home() {
                 <CardContent className="pt-6">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
                         Berapa lama durasi minimal magang?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
@@ -316,7 +374,7 @@ export default function Home() {
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-2">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
                         Apakah magang ini berbayar/digaji?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
@@ -324,7 +382,7 @@ export default function Home() {
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-3">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
                         Dokumen apa saja yang wajib diupload?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
@@ -332,7 +390,7 @@ export default function Home() {
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="item-4">
-                      <AccordionTrigger className="text-base font-medium text-slate-700">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
                         Kapan saya dapat kepastian diterima?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 text-sm">
@@ -366,11 +424,11 @@ export default function Home() {
                 <p>Jl. Cendana No.9, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166</p>
                 <p>(0274) 513132</p>
                 <a
-                href="mailto:disdikpora@jogjaprov.go.id"
-                className="text-blue-400 hover:underline"
-              >
-                disdikpora@jogjaprov.go.id
-              </a>
+                  href="mailto:disdikpora@jogjaprov.go.id"
+                  className="text-blue-400 hover:underline"
+                >
+                  disdikpora@jogjaprov.go.id
+                </a>
               </div>
             </div>
           </div>
