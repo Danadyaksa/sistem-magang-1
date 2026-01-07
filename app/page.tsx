@@ -10,7 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, FileText, HelpCircle, GraduationCap, ChevronDown } from "lucide-react";
+import { Building2, FileText, HelpCircle, GraduationCap, ChevronDown, Menu, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
@@ -63,12 +63,16 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 export default function Home() {
   const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link";
 
+  // State untuk Mobile Menu
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   //FUNGSI SCROLL HALUS
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, id: string) => {
     e.preventDefault();
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
+      setIsMobileMenuOpen(false); // Tutup menu mobile setelah klik
     }
   };
 
@@ -88,40 +92,56 @@ export default function Home() {
             <Building2 className="h-5 w-5 text-blue-700" />
             <span>Magang Disdikpora</span>
           </div>
+          {/* Desktop Navigation (Hidden di Mobile) */}
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
-            <Link 
-              href="#tentang" 
-              onClick={(e) => handleScroll(e, "tentang")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              Tentang
-            </Link>
-            <Link 
-              href="#alur" 
-              onClick={(e) => handleScroll(e, "alur")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              Alur
-            </Link>
-            <Link 
-              href="#kuota" 
-              onClick={(e) => handleScroll(e, "kuota")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              Kuota
-            </Link>
-            <Link 
-              href="#faq" 
-              onClick={(e) => handleScroll(e, "faq")}
-              className="hover:text-blue-700 transition-colors"
-            >
-              FAQ
-            </Link>
+            {["tentang", "alur", "kuota", "faq"].map((item) => (
+              <Link 
+                key={item}
+                href={`#${item}`} 
+                onClick={(e) => handleScroll(e, item)}
+                className="hover:text-blue-700 transition-colors capitalize"
+              >
+                {item}
+              </Link>
+            ))}
           </nav>
-          <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
-            <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
-          </Button>
+
+          {/* Desktop Button */}
+          <div className="hidden md:block">
+            <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
+              <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
+            </Button>
+          </div>
+
+          {/* Mobile Menu Button (Hamburger) */}
+          <button 
+            className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-md"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
+
+        {/* Mobile Navigation Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-100 bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-5 duration-200">
+            <div className="flex flex-col p-4 space-y-4 font-medium text-slate-600">
+              {["tentang", "alur", "kuota", "faq"].map((item) => (
+                <Link 
+                  key={item}
+                  href={`#${item}`} 
+                  onClick={(e) => handleScroll(e, item)}
+                  className="hover:text-blue-700 hover:bg-slate-50 p-2 rounded-md transition-colors capitalize"
+                >
+                  {item}
+                </Link>
+              ))}
+              <Button asChild className="w-full bg-blue-700 hover:bg-blue-800 rounded-full">
+                <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
+              </Button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main>
@@ -244,8 +264,8 @@ export default function Home() {
               {POSITIONS.map((pos, index) => (
                 <FadeInSection key={pos.id} delay={index * 50}>
                   <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
-                    <CardHeader className="py-4">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <CardHeader className="py-2">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <div className="flex-1">
                           <CardTitle className="text-base md:text-lg font-bold text-slate-800">
                             {pos.title}
@@ -257,15 +277,13 @@ export default function Home() {
                       </div>
                     </CardHeader>
                     <CardContent className="pb-4 pt-0">
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex justify-between text-sm text-slate-600">
                           <span>Terisi: {pos.filled} orang</span>
                           <span className="font-medium">Kuota: {pos.quota}</span>
                         </div>
                         <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100" />
-                        <div className="text-[10px] text-slate-400 mt-1">
-                           *Update Real-time
-                        </div>
+                        
                       </div>
                     </CardContent>
                   </Card>
