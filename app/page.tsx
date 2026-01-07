@@ -75,18 +75,34 @@ export default function Home() {
 
   // FETCH DATA DARI API SAAT PAGE LOAD
   useEffect(() => {
-    const fetchPositions = async () => {
-      try {
-        const res = await fetch('/api/positions'); // Panggil API yang sudah kamu buat
-        if (!res.ok) throw new Error("Gagal mengambil data");
-        const data = await res.json();
-        setPositions(data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
+    // ... kode lainnya ...
+
+  const fetchPositions = async () => {
+    try {
+      // Tambahkan { cache: 'no-store' } untuk memastikan browser ambil data baru
+      const res = await fetch('/api/positions', { cache: 'no-store' });
+      
+      const data = await res.json();
+
+      // --- PENGAMAN ANTI CRASH ---
+      // Cek apakah data yang diterima bentuknya Array?
+      if (Array.isArray(data)) {
+        setPositions(data); // Kalau Array, simpan.
+      } else {
+        // Kalau bukan Array (berarti error object), set kosong & log error
+        console.error("API Error:", data); 
+        setPositions([]); 
       }
-    };
+
+    } catch (error) {
+      console.error("Network Error:", error);
+      setPositions([]); // Kalau koneksi putus, set kosong
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ... kode lainnya ...
 
     fetchPositions();
   }, []);

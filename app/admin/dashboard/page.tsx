@@ -63,17 +63,34 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({ title: "", quota: 3, filled: 0 });
 
   // --- 1. AMBIL DATA DARI DATABASE (FETCH) ---
+  // ... kode lainnya ...
+
   const fetchPositions = async () => {
     try {
-      const res = await fetch('/api/positions'); // Panggil API
+      // Tambahkan { cache: 'no-store' } untuk memastikan browser ambil data baru
+      const res = await fetch('/api/positions', { cache: 'no-store' });
+      
       const data = await res.json();
-      setPositions(data);
+
+      // --- PENGAMAN ANTI CRASH ---
+      // Cek apakah data yang diterima bentuknya Array?
+      if (Array.isArray(data)) {
+        setPositions(data); // Kalau Array, simpan.
+      } else {
+        // Kalau bukan Array (berarti error object), set kosong & log error
+        console.error("API Error:", data); 
+        setPositions([]); 
+      }
+
     } catch (error) {
-      console.error("Gagal mengambil data", error);
+      console.error("Network Error:", error);
+      setPositions([]); // Kalau koneksi putus, set kosong
     } finally {
       setIsLoading(false);
     }
   };
+
+  // ... kode lainnya ...
 
   useEffect(() => {
     fetchPositions();
@@ -163,15 +180,16 @@ export default function AdminDashboard() {
           </button>
         </div>
         <nav className="p-4 space-y-2">
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800">
+          
+          <Button variant="ghost" className="w-full justify-start text-white bg-slate-800">
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800">
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+          onClick={() => router.push("/admin/users")} // <--- TAMBAHKAN INI
+          >
             <Users className="mr-3 h-5 w-5" /> Admin Users
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-white bg-slate-800">
-            <Briefcase className="mr-3 h-5 w-5" /> Posisi Magang
-          </Button>
+          
           <div className="pt-8 mt-8 border-t border-slate-800">
             <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={handleLogout}>
               <LogOut className="mr-3 h-5 w-5" /> Keluar

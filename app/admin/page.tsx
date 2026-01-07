@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // Import Link
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Lock, User, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react"; // Tambah ArrowLeft
+import { Building2, Lock, User, AlertCircle, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function AdminLoginPage() {
@@ -23,22 +23,34 @@ export default function AdminLoginPage() {
     setIsLoading(true);
     setError("");
 
-    // --- SIMULASI LOGIN SEDERHANA ---
-    // (Nanti diganti dengan API Auth Backend kamu)
-    setTimeout(() => {
-      if (username === "admin" && password === "admin123") {
-        router.push("/admin/dashboard");
-      } else {
-        setError("Username atau password salah.");
-        setIsLoading(false);
+    try {
+      // --- PANGGIL API LOGIN KE DATABASE ---
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Jika password salah / user tidak ada
+        throw new Error(data.error || "Login gagal");
       }
-    }, 1000);
+
+      // Jika Sukses -> Masuk Dashboard
+      router.push("/admin/dashboard");
+
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 relative">
       
-      {/* --- TOMBOL KEMBALI (POJOK KIRI ATAS) --- */}
+      {/* Tombol Kembali */}
       <div className="absolute top-4 left-4 md:top-8 md:left-8 z-50">
         <Button asChild variant="ghost" className="text-slate-600 hover:text-slate-900 hover:bg-white/50">
           <Link href="/">
@@ -48,7 +60,6 @@ export default function AdminLoginPage() {
         </Button>
       </div>
 
-      {/* Background Decoration */}
       <div className="absolute inset-0 z-0 opacity-[0.4]" 
            style={{ 
              backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', 
@@ -56,7 +67,6 @@ export default function AdminLoginPage() {
            }}>
       </div>
 
-      {/* Card Login */}
       <Card className="w-full max-w-md shadow-xl border-slate-200 relative z-10 bg-white/90 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center pb-8">
           <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-2">
@@ -123,7 +133,11 @@ export default function AdminLoginPage() {
               className="w-full bg-blue-700 hover:bg-blue-800 transition-all" 
               disabled={isLoading}
             >
-              {isLoading ? "Memproses..." : "Masuk ke Dashboard"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memeriksa...
+                </>
+              ) : "Masuk ke Dashboard"}
             </Button>
             
             <div className="mt-4 text-center text-xs text-slate-400">
