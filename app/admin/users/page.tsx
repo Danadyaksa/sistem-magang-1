@@ -86,7 +86,7 @@ export default function AdminUsersPage() {
 
   // --- 2. LOGIC CRUD ---
   
-  const handleLogout = () => router.push("/admin");
+  const handleLogout = () => router.push("/");
 
   const handleSave = async () => {
     setFormError("");

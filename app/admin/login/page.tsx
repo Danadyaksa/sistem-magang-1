@@ -2,19 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Lock, User, AlertCircle, Eye, EyeOff } from "lucide-react";
+// Tambahkan CheckCircle disini
+import { Building2, Lock, User, AlertCircle, Eye, EyeOff, ArrowLeft, Loader2, CheckCircle } from "lucide-react"; 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import Image from "next/image"
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  
+  // State untuk Loading dan Sukses
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false); // <--- State Baru
+  
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,25 +29,48 @@ export default function AdminLoginPage() {
     setIsLoading(true);
     setError("");
 
-    // --- SIMULASI LOGIN (GANTI DENGAN API KAMU NANTI) ---
-    // Di sini kamu nanti panggil API backend untuk cek database
-    // Contoh simulasi sederhana:
-    setTimeout(() => {
-      if (username === "admin" && password === "admin123") {
-        // Login Sukses
-        router.push("/admin/dashboard"); // Redirect ke dashboard admin
-      } else {
-        // Login Gagal
-        setError("Username atau password salah.");
-        setIsLoading(false);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Login gagal");
       }
-    }, 1000);
+
+      // --- LOGIKA BARU: EFEK VISUAL SUKSES ---
+      setIsLoading(false); // Stop loading spinner
+      setIsSuccess(true);  // Aktifkan mode sukses (tombol jadi hijau)
+
+      // Tunggu 1.5 detik sebelum pindah halaman
+      setTimeout(() => {
+        router.push("/admin/dashboard");
+        router.refresh();
+      }, 1000);
+
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoading(false);
+      setIsSuccess(false);
+    }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 relative">
       
-      {/* Background Decoration (Optional) */}
+      <div className="absolute top-4 left-4 md:top-8 md:left-8 z-50">
+        <Button asChild variant="ghost" className="text-slate-600 hover:text-slate-900 hover:bg-white/50">
+          <Link href="/">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Kembali ke Beranda
+          </Link>
+        </Button>
+      </div>
+
       <div className="absolute inset-0 z-0 opacity-[0.4]" 
            style={{ 
              backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', 
@@ -49,9 +79,15 @@ export default function AdminLoginPage() {
       </div>
 
       <Card className="w-full max-w-md shadow-xl border-slate-200 relative z-10 bg-white/90 backdrop-blur-sm">
-        <CardHeader className="space-y-1 text-center pb-8">
-          <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-2">
-            <Building2 className="h-8 w-8 text-blue-700" />
+        <CardHeader className="space-y-1 text-center pb-6">
+          <div className="mx-auto">
+            <Image
+              src="/logo-disdikpora.png"
+              alt="Logo Disdikpora DIY"
+              width={52}
+              height={52}
+              className="object-contain"
+            />
           </div>
           <CardTitle className="text-2xl font-bold text-slate-800">Admin Portal</CardTitle>
           <CardDescription>
@@ -61,9 +97,8 @@ export default function AdminLoginPage() {
         
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            {/* Error Alert */}
             {error && (
-              <Alert variant="destructive" className="bg-red-50 text-red-600 border-red-200">
+              <Alert variant="destructive" className="bg-red-50 text-red-600 border-red-200 animate-in fade-in slide-in-from-top-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
@@ -81,6 +116,7 @@ export default function AdminLoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  disabled={isLoading || isSuccess} // Kunci input saat loading/sukses
                 />
               </div>
             </div>
@@ -97,17 +133,15 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading || isSuccess} // Kunci input saat loading/sukses
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  disabled={isLoading || isSuccess}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -116,10 +150,26 @@ export default function AdminLoginPage() {
           <CardFooter className="flex flex-col pt-4">
             <Button 
               type="submit" 
-              className="w-full bg-blue-700 hover:bg-blue-800 transition-all" 
-              disabled={isLoading}
+              // Ubah warna tombol jadi hijau (emerald) jika sukses, biru jika normal
+              className={`w-full transition-all duration-300 ${
+                isSuccess 
+                  ? "bg-emerald-600 hover:bg-emerald-700" 
+                  : "bg-blue-700 hover:bg-blue-800"
+              }`}
+              disabled={isLoading || isSuccess}
             >
-              {isLoading ? "Memproses..." : "Masuk ke Dashboard"}
+              {/* Logika Tampilan Tombol */}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memeriksa...
+                </>
+              ) : isSuccess ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4 animate-bounce" /> Login Berhasil!
+                </>
+              ) : (
+                "Masuk ke Dashboard"
+              )}
             </Button>
             
             <div className="mt-4 text-center text-xs text-slate-400">

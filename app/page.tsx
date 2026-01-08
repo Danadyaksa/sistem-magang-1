@@ -72,7 +72,6 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 }
 
 export default function Home() {
-  const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link"; 
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -185,7 +184,7 @@ export default function Home() {
 
           <div className="hidden md:block">
             <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
-              <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
+              <Link href="/daftar">Daftar Sekarang</Link>
             </Button>
           </div>
 
@@ -211,7 +210,7 @@ export default function Home() {
                 </Link>
               ))}
               <Button asChild className="w-full bg-blue-700 hover:bg-blue-800 rounded-full">
-                <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
+                <Link href="/daftar">Daftar Sekarang</Link>
               </Button>
             </div>
           </div>
@@ -248,7 +247,7 @@ export default function Home() {
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 w-full max-w-md mx-auto sm:max-w-none">
                   <Button size="lg" className="h-12 w-full sm:w-auto px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
-                    <Link href={GOOGLE_FORM_URL} target="_blank">
+                    <Link href="/daftar">
                       Isi Formulir Pendaftaran
                     </Link>
                   </Button>

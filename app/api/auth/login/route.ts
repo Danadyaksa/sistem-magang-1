@@ -1,34 +1,43 @@
+// app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { username, password } = body;
 
-    // 1. Cari admin berdasarkan username
-    const admin = await prisma.admin.findUnique({
-      where: { username }
-    });
-
-    // 2. Cek apakah admin ada?
-    if (!admin) {
-      return NextResponse.json({ error: "Username tidak ditemukan." }, { status: 401 });
+    // Validasi input
+    if (!username || !password) {
+      return NextResponse.json({ error: "Isi username dan password" }, { status: 400 });
     }
 
-    // 3. Cek Password (Manual / Tanpa Bcrypt sesuai requestmu)
-    if (admin.password !== password) {
-      return NextResponse.json({ error: "Password salah." }, { status: 401 });
+    // --- LOGIKA CEK USERNAME & PASSWORD ---
+    // (Ganti bagian ini dengan cek database beneran nanti)
+    if (username !== "admin" || password !== "admin123") {
+      return NextResponse.json({ error: "Username atau password salah!" }, { status: 401 });
     }
 
-    // 4. Login Sukses
-    return NextResponse.json({ 
-      success: true, 
-      user: { id: admin.id, username: admin.username } 
+    // Buat response sukses
+    const response = NextResponse.json(
+      { success: true, message: "Login berhasil" },
+      { status: 200 }
+    );
+
+    // --- BAGIAN PENTING: SET COOKIE ---
+    // Nama cookie DI SINI harus sama dengan DI MIDDLEWARE
+    // Middleware kamu cari: 'admin_session'
+    response.cookies.set({
+      name: "admin_session", // <--- SUDAH DISAMAKAN
+      value: "token-rahasia-admin-disdikpora", 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      path: "/", 
+      maxAge: 60 * 60 * 24, // 1 hari
     });
+
+    return response;
 
   } catch (error) {
-    console.error("Login Error:", error);
-    return NextResponse.json({ error: "Terjadi kesalahan server." }, { status: 500 });
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }

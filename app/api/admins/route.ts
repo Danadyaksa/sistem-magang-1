@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcrypt"; // <--- Import bcrypt
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function GET() {
         id: true,
         username: true,
         createdAt: true,
-        // Password kita sembunyikan dari response biar ga muncul di tabel
+        // Password disembunyikan
       }
     });
     return NextResponse.json(admins);
@@ -21,7 +22,7 @@ export async function GET() {
   }
 }
 
-// POST: Tambah admin baru (TANPA HASHING)
+// POST: Tambah admin baru (DENGAN HASHING)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -36,11 +37,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Username sudah dipakai!" }, { status: 400 });
     }
 
-    // Simpan data (Password Polos)
+    // --- ENKRIPSI PASSWORD ---
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Simpan data (Password Hash)
     const newAdmin = await prisma.admin.create({
       data: {
         username,
-        password, // Langsung simpan apa adanya
+        password: hashedPassword, // Simpan hasil hash
       },
     });
 

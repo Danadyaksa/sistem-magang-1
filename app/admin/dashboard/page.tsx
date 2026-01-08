@@ -52,10 +52,10 @@ export default function AdminDashboard() {
   
   // State
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [positions, setPositions] = useState<Position[]>([]); // Data Kosong Awal
+  const [positions, setPositions] = useState<Position[]>([]); 
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true); // Loading State
-  const [isSubmitting, setIsSubmitting] = useState(false); // Loading saat Simpan
+  const [isLoading, setIsLoading] = useState(true); 
+  const [isSubmitting, setIsSubmitting] = useState(false); 
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,41 +63,31 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({ title: "", quota: 3, filled: 0 });
 
   // --- 1. AMBIL DATA DARI DATABASE (FETCH) ---
-  // ... kode lainnya ...
-
   const fetchPositions = async () => {
     try {
-      // Tambahkan { cache: 'no-store' } untuk memastikan browser ambil data baru
       const res = await fetch('/api/positions', { cache: 'no-store' });
-      
       const data = await res.json();
 
-      // --- PENGAMAN ANTI CRASH ---
-      // Cek apakah data yang diterima bentuknya Array?
       if (Array.isArray(data)) {
-        setPositions(data); // Kalau Array, simpan.
+        setPositions(data);
       } else {
-        // Kalau bukan Array (berarti error object), set kosong & log error
         console.error("API Error:", data); 
         setPositions([]); 
       }
 
     } catch (error) {
       console.error("Network Error:", error);
-      setPositions([]); // Kalau koneksi putus, set kosong
+      setPositions([]); 
     } finally {
       setIsLoading(false);
     }
   };
-
-  // ... kode lainnya ...
 
   useEffect(() => {
     fetchPositions();
   }, []);
 
   // --- 2. FUNGSI SIMPAN & HAPUS ---
-  
   const handleSave = async () => {
     setIsSubmitting(true);
     const payload = {
@@ -120,7 +110,7 @@ export default function AdminDashboard() {
           body: JSON.stringify(payload)
         });
       }
-      await fetchPositions(); // Refresh Tabel
+      await fetchPositions(); 
       setIsDialogOpen(false);
       resetForm();
     } catch (error) {
@@ -141,9 +131,25 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- HELPER ---
-  const handleLogout = () => router.push("/admin");
+  // --- 3. FITUR LOGOUT (UPDATED) ---
+  const handleLogout = async () => {
+    try {
+      // Panggil API Logout untuk hapus cookie
+      await fetch("/api/auth/logout", { method: "POST" });
+      
+      // Redirect ke halaman Login Admin
+      router.push("/admin/login");
+      
+      // Refresh router agar middleware mengecek ulang (penting!)
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error", error);
+      // Fallback jika API gagal
+      router.push("/admin/login");
+    }
+  };
   
+  // --- HELPER LAIN ---
   const getStatus = (filled: number, quota: number) => {
     if (filled >= quota) return "Penuh";
     if (quota - filled <= 1) return "Terbatas";
@@ -185,13 +191,17 @@ export default function AdminDashboard() {
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
           <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
-          onClick={() => router.push("/admin/users")} // <--- TAMBAHKAN INI
+          onClick={() => router.push("/admin/users")}
           >
             <Users className="mr-3 h-5 w-5" /> Admin Users
           </Button>
           
           <div className="pt-8 mt-8 border-t border-slate-800">
-            <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={handleLogout}>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20" 
+              onClick={handleLogout} // <--- Tombol ini sekarang memanggil fungsi async di atas
+            >
               <LogOut className="mr-3 h-5 w-5" /> Keluar
             </Button>
           </div>
