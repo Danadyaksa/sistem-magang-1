@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -10,9 +11,17 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Building2, FileText, HelpCircle, GraduationCap, ChevronDown, Menu, X, Loader2 } from "lucide-react";
+import { SquarePen, FileText, CalendarCheck, ChevronDown, Menu, X, Loader2, Search, Filter, Square } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // TIPE DATA DARI DATABASE
 type Position = {
@@ -20,10 +29,9 @@ type Position = {
   title: string;
   filled: number;
   quota: number;
-  // Status bisa dihitung di frontend atau backend, di sini kita hitung di frontend
 };
 
-//RESET SAAT SCROLL
+// RESET SAAT SCROLL
 function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [isVisible, setIsVisible] = useState(false);
   const domRef = useRef<HTMLDivElement>(null);
@@ -32,10 +40,10 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) { // Optional: only trigger once or keep watching
+          if (entry.isIntersecting) {
              setIsVisible(true);
           } else {
-             setIsVisible(false); // Reset if you want it to fade out when scrolling up
+             setIsVisible(false);
           }
         });
       },
@@ -64,45 +72,35 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 }
 
 export default function Home() {
-  const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link"; // Ganti dengan link form asli kamu
+  const GOOGLE_FORM_URL = "https://forms.google.com/your-form-link"; 
 
-  // State untuk Mobile Menu
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // State untuk Data Posisi Magang
   const [positions, setPositions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // FETCH DATA DARI API SAAT PAGE LOAD
+  // STATE UNTUK FILTER & SORT 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("default");
+
   useEffect(() => {
-    // ... kode lainnya ...
+    const fetchPositions = async () => {
+      try {
+        const res = await fetch('/api/positions', { cache: 'no-store' });
+        const data = await res.json();
 
-  const fetchPositions = async () => {
-    try {
-      // Tambahkan { cache: 'no-store' } untuk memastikan browser ambil data baru
-      const res = await fetch('/api/positions', { cache: 'no-store' });
-      
-      const data = await res.json();
-
-      // --- PENGAMAN ANTI CRASH ---
-      // Cek apakah data yang diterima bentuknya Array?
-      if (Array.isArray(data)) {
-        setPositions(data); // Kalau Array, simpan.
-      } else {
-        // Kalau bukan Array (berarti error object), set kosong & log error
-        console.error("API Error:", data); 
+        if (Array.isArray(data)) {
+          setPositions(data);
+        } else {
+          console.error("API Error:", data); 
+          setPositions([]); 
+        }
+      } catch (error) {
+        console.error("Network Error:", error);
         setPositions([]); 
+      } finally {
+        setIsLoading(false);
       }
-
-    } catch (error) {
-      console.error("Network Error:", error);
-      setPositions([]); // Kalau koneksi putus, set kosong
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ... kode lainnya ...
+    };
 
     fetchPositions();
   }, []);
@@ -113,16 +111,35 @@ export default function Home() {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
-      setIsMobileMenuOpen(false); // Tutup menu mobile setelah klik
+      setIsMobileMenuOpen(false);
     }
   };
 
-  // Helper untuk menentukan status badge
+  // Helper status badge
   const getStatus = (filled: number, quota: number) => {
     if (filled >= quota) return "Penuh";
-    if (quota - filled <= 1) return "Terbatas"; // Misal sisa 1 atau 0 (tapi belum penuh logicnya bisa disesuaikan)
+    if (quota - filled <= 1) return "Terbatas"; 
     return "Dibuka";
   };
+
+  // LOGIC FILTERING & SORTING
+  const filteredPositions = positions
+    .filter((pos) => 
+      pos.title.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      const remainingA = a.quota - a.filled;
+      const remainingB = b.quota - b.filled;
+
+      switch (sortBy) {
+        case "quota-high":
+          return remainingB - remainingA; 
+        case "quota-low":
+          return remainingA - remainingB; 
+        default:
+          return 0; 
+      }
+    });
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 text-sm">
@@ -137,11 +154,16 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm border-slate-200">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
-            <Building2 className="h-5 w-5 text-blue-700" />
+            <Image
+              src="/logo-disdikpora.png"
+              alt="Logo Disdikpora DIY"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
             <span>Magang Disdikpora</span>
           </div>
           
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
             {["tentang", "alur", "kuota", "faq"].map((item) => (
               <Link 
@@ -155,14 +177,12 @@ export default function Home() {
             ))}
           </nav>
 
-          {/* Desktop Button */}
           <div className="hidden md:block">
             <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
               <Link href={GOOGLE_FORM_URL} target="_blank">Daftar Sekarang</Link>
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button 
             className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-md"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -171,7 +191,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-slate-100 bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-5 duration-200">
             <div className="flex flex-col p-4 space-y-4 font-medium text-slate-600">
@@ -228,7 +247,7 @@ export default function Home() {
                     </Link>
                   </Button>
                   <Button size="lg" variant="outline" className="h-12 w-full sm:w-auto px-8 text-base rounded-full hover:bg-slate-100 bg-white" asChild>
-                    <Link href="#faq" onClick={(e) => handleScroll(e, "faq")}>Pelajari Dulu</Link>
+                    <Link href="#alur" onClick={(e) => handleScroll(e, "alur")}>Pelajari Dulu</Link>
                   </Button>
                 </div>
               </div>
@@ -268,7 +287,7 @@ export default function Home() {
                 <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
                   <CardHeader>
                     <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <GraduationCap className="h-6 w-6 text-blue-700" />
+                      <SquarePen className="h-6 w-6 text-blue-700" />
                     </div>
                     <CardTitle className="text-lg">2. Isi Formulir</CardTitle>
                     <CardDescription className="text-sm">
@@ -282,7 +301,7 @@ export default function Home() {
                 <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
                   <CardHeader>
                     <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <HelpCircle className="h-6 w-6 text-blue-700" />
+                      <CalendarCheck className="h-6 w-6 text-blue-700" />
                     </div>
                     <CardTitle className="text-lg">3. Tunggu Konfirmasi</CardTitle>
                     <CardDescription className="text-sm">
@@ -295,11 +314,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* KUOTA MAGANG (DYNAMIC DATA) */}
+        {/* KUOTA MAGANG (DYNAMIC & FILTERABLE) */}
         <section id="kuota" className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20">
           <div className="container mx-auto px-4">
             <FadeInSection>
-              <div className="text-center mb-10">
+              <div className="text-center mb-8">
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
                   Kuota Magang
                 </h2>
@@ -309,6 +328,54 @@ export default function Home() {
               </div>
             </FadeInSection>
 
+            {/* FILTER & SEARCH */}
+            <div className="max-w-3xl mx-auto mb-6">
+              <FadeInSection delay={50}>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Cari nama bidang..." 
+                      className="pl-9 bg-white" 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-full sm:w-[200px] bg-white border-slate-200 text-slate-700 shadow-sm">
+                      <Filter className="w-4 h-4 mr-0 text-slate-500" />
+                      <SelectValue placeholder="Urutkan" />
+                    </SelectTrigger>
+                    
+                    <SelectContent className="bg-white border-slate-200 text-slate-900">
+                      {/* Timpa hijau default */}
+                      <SelectItem 
+                        value="default" 
+                        className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 data-[state=checked]:bg-slate-100 data-[state=checked]:text-slate-900"
+                      >
+                        Default
+                      </SelectItem>
+                      
+                      <SelectItem 
+                        value="quota-high" 
+                        className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 data-[state=checked]:bg-slate-100 data-[state=checked]:text-slate-900"
+                      >
+                        Sisa Kuota Terbanyak
+                      </SelectItem>
+                      <SelectItem 
+                        value="quota-low" 
+                        className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 data-[state=checked]:bg-slate-100 data-[state=checked]:text-slate-900"
+                      >
+                        Sisa Kuota Sedikit
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </FadeInSection>
+            </div>
+
+            {/*GRID DATA*/}
             <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
               {isLoading ? (
                 <div className="text-center py-10">
@@ -317,8 +384,8 @@ export default function Home() {
                     <span>Memuat data kuota...</span>
                   </div>
                 </div>
-              ) : positions.length > 0 ? (
-                positions.map((pos, index) => {
+              ) : filteredPositions.length > 0 ? (
+                filteredPositions.map((pos, index) => {
                   const status = getStatus(pos.filled, pos.quota);
                   return (
                     <FadeInSection key={pos.id} delay={index * 50}>
@@ -360,7 +427,7 @@ export default function Home() {
                 })
               ) : (
                 <div className="text-center py-10 text-slate-500 bg-white border border-slate-200 rounded-lg">
-                  Belum ada data posisi magang yang tersedia saat ini.
+                  {searchTerm ? "Tidak ditemukan bidang dengan nama tersebut." : "Belum ada data posisi magang."}
                 </div>
               )}
             </div>
@@ -429,15 +496,33 @@ export default function Home() {
               <div className="flex items-center justify-center md:justify-start gap-2 font-bold text-white text-base mb-4">
                 <span>Disdikpora DIY</span>
               </div>
-              <p className="leading-relaxed text-slate-400">
-                Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta.
-              </p>
+              <div className="space-y-2 text-slate-400">
+                <p>
+                  Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta.
+                </p>
+                <a
+                  href="https://dikpora.jogjaprov.go.id"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
+                  dikpora.jogjaprov.go.id
+                </a>
+              </div>
             </div>
 
             <div className="text-center md:text-right max-w-sm">
               <h4 className="font-bold text-white mb-4 text-sm">Kontak Kami</h4>
               <div className="space-y-2 text-slate-400">
-                <p>Jl. Cendana No.9, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166</p>
+                <a
+                  href="https://maps.app.goo.gl/N6XssWVfCqDph8uk9"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-400 hover:underline block"
+                >
+                  Jl. Cendana No.9, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166
+                </a>
+                
                 <p>(0274) 513132</p>
                 <a
                   href="mailto:disdikpora@jogjaprov.go.id"

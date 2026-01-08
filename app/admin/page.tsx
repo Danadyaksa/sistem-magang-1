@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Lock, User, AlertCircle, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import Image from "next/image"
+
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -68,9 +70,15 @@ export default function AdminLoginPage() {
       </div>
 
       <Card className="w-full max-w-md shadow-xl border-slate-200 relative z-10 bg-white/90 backdrop-blur-sm">
-        <CardHeader className="space-y-1 text-center pb-8">
-          <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-2">
-            <Building2 className="h-8 w-8 text-blue-700" />
+        <CardHeader className="space-y-1 text-center pb-6">
+          <div className="mx-auto">
+            <Image
+              src="/logo-disdikpora.png"
+              alt="Logo Disdikpora DIY"
+              width={52}
+              height={52}
+              className="object-contain"
+            />
           </div>
           <CardTitle className="text-2xl font-bold text-slate-800">Admin Portal</CardTitle>
           <CardDescription>
