@@ -153,7 +153,13 @@ export default function Home() {
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm border-slate-200">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
+          <Link 
+            href="/" 
+            onClick={(e) => {
+              e.preventDefault(); // Mencegah reload halaman
+              window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll ke paling atas
+            }}
+          className="flex items-center gap-2 font-bold text-lg text-slate-800">
             <Image
               src="/logo-disdikpora.png"
               alt="Logo Disdikpora DIY"
@@ -162,7 +168,7 @@ export default function Home() {
               className="object-contain"
             />
             <span>Magang Disdikpora</span>
-          </div>
+          </Link>
           
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
             {["tentang", "alur", "kuota", "faq"].map((item) => (
