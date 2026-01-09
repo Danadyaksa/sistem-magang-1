@@ -10,21 +10,66 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Model untuk Admin Login (Sederhana aja dulu)
+// 1. Tabel Admin (Buat login staff dinas)
 model Admin {
   id        String   @id @default(uuid())
   username  String   @unique
-  password  String   // Nanti passwordnya di-hash ya
+  password  String   // Inget, best practicenya di-hash
   createdAt DateTime @default(now())
 }
 
-// Model untuk Posisi Magang (Yang tampil di Dashboard & Landing Page)
+// 2. Tabel Position / Bidang Magang
+// (Tetep ada buat Admin ngelola nama-nama bidang & kuota di dashboard)
 model Position {
   id          Int      @id @default(autoincrement())
-  title       String   // Nama Bidang, misal: "Sub Bagian Umum"
-  quota       Int      // Total Kuota, misal: 5
-  filled      Int      @default(0) // Yang sudah terisi, misal: 2
-  description String?  // Optional: Penjelasan singkat tugas bidang tsb
+  title       String   // Nama Divisi, misal: "Sub Bagian Umum"
+  quota       Int      // Kuota maks
+  filled      Int      @default(0) // Udah keisi berapa
+  description String?
+  
+  // Relasi: Satu posisi bisa punya banyak pendaftar yang DITERIMA di situ
+  applicants  Pendaftaran[] 
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// 3. Tabel Pendaftaran (INI YANG BARU)
+model Pendaftaran {
+  id            String   @id @default(uuid())
+  
+  // Data Diri
+  namaLengkap   String
+  nomorInduk    String   // NIS atau NIM
+  email         String
+  nomorHp       String
+  instansi      String   // Asal Sekolah/Kampus
+  fakultas      String?  
+  jurusan       String
+  
+  // Detail Magang
+  lamaMagang    Int      // Dalam hari
+  tanggalMulai  DateTime
+  tanggalSelesai DateTime
+  
+  // Surat Pengantar Kampus
+  pemohonSurat  String
+  nomorSurat    String
+  tanggalSurat  DateTime
+  
+  // Berkas (Kita simpen path/nama filenya aja)
+  cvPath        String
+  suratPath     String
+  fotoPath      String
+  
+  // Status Penerimaan
+  status        String   @default("PENDING") // Options: PENDING, ACCEPTED, REJECTED
+  
+  // PENENTUAN BIDANG OLEH ADMIN
+  // Awal daftar null (kosong). Kalo diterima, Admin isi ini.
+  positionId    Int?     
+  assignedPosition Position? @relation(fields: [positionId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
