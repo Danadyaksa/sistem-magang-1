@@ -5,11 +5,13 @@ import prisma from "@/lib/prisma";
 // DELETE
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // Type-nya harus Promise
 ) {
   try {
+    const { id } = await params; // <--- WAJIB DI-AWAIT DULU BRO!
+
     await prisma.position.delete({
-      where: { id: Number(params.id) },
+      where: { id: Number(id) },
     });
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -20,12 +22,14 @@ export async function DELETE(
 // UPDATE (PUT)
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // Ini juga sama
 ) {
   try {
+    const { id } = await params; // <--- Await juga disini
     const body = await request.json();
+
     const updated = await prisma.position.update({
-      where: { id: Number(params.id) },
+      where: { id: Number(id) },
       data: {
         title: body.title,
         quota: parseInt(body.quota),
