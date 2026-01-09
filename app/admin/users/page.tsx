@@ -16,6 +16,7 @@ import {
   Shield,
   Loader2,
   Lock,
+  User,
   FileText, // <-- Import Icon Applicants
 } from "lucide-react";
 
@@ -231,7 +232,7 @@ export default function AdminUsersPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
-              A
+              <User className="h-6 w-6" />
             </div>
           </div>
         </header>

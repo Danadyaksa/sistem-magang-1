@@ -15,7 +15,9 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  FileText, // <-- Gue tambahin buat icon Applicants
+  FileText,
+  Circle,
+  User, // <-- Gue tambahin buat icon Applicants
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -240,7 +242,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
-              A
+              <User className="h-6 w-6" />
             </div>
           </div>
         </header>

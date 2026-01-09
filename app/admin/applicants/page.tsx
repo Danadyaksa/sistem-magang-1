@@ -14,6 +14,7 @@ import {
   XCircle,
   Clock,
   Filter,
+  User,
   FileText,
   Image as ImageIcon, // Icon buat Foto
 } from "lucide-react";
@@ -130,7 +131,7 @@ export default function ApplicantsPage() {
     if (!selectedPelamar) return;
 
     if (status === "ACCEPTED" && !selectedPosition) {
-      alert("⚠️ Wajib pilih posisi/bidang penempatan dulu bro!");
+      alert("⚠️ Wajib pilih posisi/bidang penempatan terlebih dahulu!");
       return;
     }
 
@@ -234,12 +235,9 @@ export default function ApplicantsPage() {
               Review Pelamar
             </h2>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500 hidden md:inline">
-              Administrator
-            </span>
-            <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shadow-md">
-              A
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
+              <User className="h-6 w-6" />
             </div>
           </div>
         </header>
@@ -259,7 +257,7 @@ export default function ApplicantsPage() {
             <Button
               variant="outline"
               onClick={() => fetchData()}
-              className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm"
+              className="bg-blue-700 hover:bg-blue-800 text-white "
             >
               <Filter className="h-4 w-4 mr-2" /> Refresh Data
             </Button>
