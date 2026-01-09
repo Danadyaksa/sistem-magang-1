@@ -1,33 +1,43 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-export function middleware(request: NextRequest) {
-  // 1. Ambil path yang sedang diakses user
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  
-  // 2. Cek apakah user punya kue "admin_session" (tanda sudah login)
-  const isLogged = request.cookies.get('admin_session')?.value;
+  const token = request.cookies.get("admin_session")?.value;
+  const secret = new TextEncoder().encode(
+    process.env.JWT_SECRET || "rahasia-negara-bos"
+  );
 
-  // 3. ATURAN PROTEKSI:
-  // Jika user mau masuk ke halaman yang berawalan "/admin"...
-  // TAPI bukan halaman login...
-  // DAN user belum login...
-  if (path.startsWith('/admin') && !path.includes('/login') && !isLogged) {
-    // TENDANG ke halaman login
-    return NextResponse.redirect(new URL('/admin/login', request.url));
+  // Fungsi cek token valid atau nggak
+  const isValidToken = async () => {
+    if (!token) return false;
+    try {
+      await jwtVerify(token, secret);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const isAuth = await isValidToken();
+
+  // PROTEKSI ROUTE ADMIN
+  if (path.startsWith("/admin") && !path.includes("/login")) {
+    if (!isAuth) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
   }
 
-  // 4. ATURAN KEBALIKAN (Opsional tapi bagus):
-  // Jika user SUDAH login tapi mau buka halaman login lagi...
-  if (path.includes('/admin/login') && isLogged) {
-    // Lempar langsung ke dashboard
-    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+  // KALAU UDAH LOGIN, JANGAN BOLEH MASUK HALAMAN LOGIN LAGI
+  if (path.includes("/admin/login") && isAuth) {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
-// Tentukan halaman mana saja yang dijaga Satpam ini
 export const config = {
-  matcher: ['/admin/:path*'],
-}
+  matcher: ["/admin/:path*"],
+};

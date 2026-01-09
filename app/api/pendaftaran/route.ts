@@ -1,93 +1,82 @@
+// app/api/pendaftaran/route.ts
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { prisma } from "@/lib/prisma"; // Pastiin path prisma client lo bener
 
+// GET: Biar Admin bisa fetch data pelamar (kalau nanti dashboard butuh)
+export async function GET() {
+  try {
+    const data = await prisma.pendaftaran.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
+  }
+}
+
+// POST: Handle Submit Form dari User
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
 
-    // 1. Ambil Data Teks
-    const namaLengkap = formData.get("namaLengkap") as string;
-    const nomorInduk = formData.get("nomorInduk") as string;
-    const email = formData.get("email") as string;
-    const nomorHp = formData.get("nomorHp") as string;
-    const instansi = formData.get("instansi") as string;
-    const fakultas = formData.get("fakultas") as string;
-    const jurusan = formData.get("jurusan") as string;
-
-    // Parse angka & tanggal
-    const lamaMagang = parseInt(formData.get("lamaMagang") as string);
-    const tanggalMulai = new Date(formData.get("tanggalMulai") as string);
-    const tanggalSelesai = new Date(formData.get("tanggalSelesai") as string);
-    const tanggalSurat = new Date(formData.get("tanggalSurat") as string);
-
-    const pemohonSurat = formData.get("pemohonSurat") as string;
-    const nomorSurat = formData.get("nomorSurat") as string;
-
-    // 2. Handle Upload File (CV, Surat, Foto)
-    const files = [
-      { field: "cv", prefix: "CV" },
-      { field: "surat", prefix: "SURAT" },
-      { field: "foto", prefix: "FOTO" },
-    ];
-
-    const filePaths: any = {};
-
-    // Pastikan folder uploads ada
-    const uploadDir = path.join(process.cwd(), "public/uploads");
-    await mkdir(uploadDir, { recursive: true });
-
-    for (const item of files) {
-      const file: File | null = formData.get(item.field) as unknown as File;
-
-      if (!file) {
-        return NextResponse.json(
-          { error: `File ${item.field} wajib diisi` },
-          { status: 400 }
-        );
-      }
-
-      // Bikin nama file unik: CV_123456789_NamaFile.pdf
+    // Fungsi helper buat upload file
+    const uploadFile = async (file: File, prefix: string) => {
+      if (!file) return "";
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const uniqueName = `${item.prefix}_${Date.now()}_${file.name.replaceAll(
-        " ",
+
+      // Bikin nama file unik
+      const filename = `${prefix}-${Date.now()}-${file.name.replace(
+        /\s/g,
         "_"
       )}`;
-      const savePath = path.join(uploadDir, uniqueName);
+      const uploadDir = path.join(process.cwd(), "public/uploads");
 
-      await writeFile(savePath, buffer);
+      // Pastikan folder ada
+      await mkdir(uploadDir, { recursive: true });
 
-      // Simpan path relatif buat di DB (biar bisa diakses di frontend nanti)
-      filePaths[`${item.field}Path`] = `/uploads/${uniqueName}`;
-    }
+      // Simpan file
+      await writeFile(path.join(uploadDir, filename), buffer);
+      return `/uploads/${filename}`; // Return path public
+    };
 
-    // 3. Simpan ke Database (Prisma)
-    // NOTE: positionId dikosongin (null) karena nanti Admin yang isi
-    const pendaftaran = await prisma.pendaftaran.create({
+    // Ambil File dari Form
+    const cvFile = formData.get("cv") as File;
+    const suratFile = formData.get("surat") as File;
+    const fotoFile = formData.get("foto") as File;
+
+    // Upload dulu
+    const cvPath = await uploadFile(cvFile, "CV");
+    const suratPath = await uploadFile(suratFile, "SURAT");
+    const fotoPath = await uploadFile(fotoFile, "FOTO");
+
+    // Simpan data teks ke DB
+    const newPendaftaran = await prisma.pendaftaran.create({
       data: {
-        namaLengkap,
-        nomorInduk,
-        email,
-        nomorHp,
-        instansi,
-        fakultas,
-        jurusan,
-        lamaMagang,
-        tanggalMulai,
-        tanggalSelesai,
-        pemohonSurat,
-        nomorSurat,
-        tanggalSurat,
-        cvPath: filePaths.cvPath,
-        suratPath: filePaths.suratPath,
-        fotoPath: filePaths.fotoPath,
+        namaLengkap: formData.get("namaLengkap") as string,
+        nomorInduk: formData.get("nomorInduk") as string,
+        email: formData.get("email") as string,
+        nomorHp: formData.get("nomorHp") as string,
+        instansi: formData.get("instansi") as string,
+        fakultas: (formData.get("fakultas") as string) || "",
+        jurusan: formData.get("jurusan") as string,
+        lamaMagang: parseInt(formData.get("lamaMagang") as string),
+        tanggalMulai: new Date(formData.get("tanggalMulai") as string),
+        tanggalSelesai: new Date(formData.get("tanggalSelesai") as string),
+        pemohonSurat: formData.get("pemohonSurat") as string,
+        nomorSurat: formData.get("nomorSurat") as string,
+        tanggalSurat: new Date(formData.get("tanggalSurat") as string),
+        // Path File
+        cvPath,
+        suratPath,
+        fotoPath,
         status: "PENDING",
       },
     });
 
-    return NextResponse.json({ success: true, data: pendaftaran });
+    return NextResponse.json({ success: true, data: newPendaftaran });
   } catch (error) {
     console.error("Upload Error:", error);
     return NextResponse.json(

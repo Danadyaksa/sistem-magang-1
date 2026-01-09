@@ -1,49 +1,39 @@
+// app/api/positions/[id]/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// --- DELETE: Hapus Bidang ---
+// DELETE
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // <-- Ubah Tipe Jadi Promise
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params; // <-- WAJIB DI-AWAIT
-    const idInt = parseInt(id); 
-
     await prisma.position.delete({
-      where: { id: idInt },
+      where: { id: Number(params.id) },
     });
-
-    return NextResponse.json({ message: "Posisi berhasil dihapus" });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete Position Error:", error);
-    return NextResponse.json({ error: "Gagal menghapus posisi" }, { status: 500 });
+    return NextResponse.json({ error: "Gagal hapus" }, { status: 500 });
   }
 }
 
-// --- PUT: Edit Bidang ---
+// UPDATE (PUT)
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // <-- Ubah Tipe Jadi Promise
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params; // <-- WAJIB DI-AWAIT
-    const idInt = parseInt(id);
-    
     const body = await request.json();
-
-    const updatedPosition = await prisma.position.update({
-      where: { id: idInt },
+    const updated = await prisma.position.update({
+      where: { id: Number(params.id) },
       data: {
         title: body.title,
         quota: parseInt(body.quota),
         filled: parseInt(body.filled),
       },
     });
-
-    return NextResponse.json(updatedPosition);
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error("Update Position Error:", error);
-    return NextResponse.json({ error: "Gagal mengupdate posisi" }, { status: 500 });
+    return NextResponse.json({ error: "Gagal update" }, { status: 500 });
   }
 }
