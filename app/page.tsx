@@ -319,7 +319,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* KUOTA MAGANG (DYNAMIC & FILTERABLE) */}
+        {/* KUOTA MAGANG (DYNAMIC & FILTERABLE)*/}
         <section id="kuota" className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20">
           <div className="container mx-auto px-4">
             <FadeInSection>
