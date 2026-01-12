@@ -18,6 +18,8 @@ import {
   User,
   FileText,
   Settings,
+  Pencil,
+  Briefcase // Icon buat Jabatan
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,10 +44,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Tipe Data Admin
+// Tipe Data Admin (Update: Ada jabatan)
 type AdminUser = {
   id: string;
   username: string;
+  jabatan: string | null; // <-- Tambahan
   createdAt: string;
 };
 
@@ -60,20 +63,22 @@ export default function AdminUsersPage() {
 
   // --- STATE DATA ---
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-
-  // State untuk Admin yang sedang login (Header)
   const [currentAdmin, setCurrentAdmin] = useState({ username: "...", jabatan: "..." });
 
-  // --- STATE MODAL TAMBAH ADMIN ---
+  // --- STATE MODAL ---
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Form Data (Update: Ada jabatan)
   const [formData, setFormData] = useState({
     username: "",
+    jabatan: "", // <-- Tambahan
     password: "",
     confirmPassword: "",
   });
   const [formError, setFormError] = useState("");
 
-  // --- 1. FETCH DATA (Users & Current Session) ---
+  // --- 1. FETCH DATA ---
   useEffect(() => {
     fetchAdmins();
     fetchCurrentSession();
@@ -91,9 +96,7 @@ export default function AdminUsersPage() {
       } else {
         router.push("/admin/login");
       }
-    } catch (error) {
-      console.error("Auth error", error);
-    }
+    } catch (error) { console.error("Auth error", error); }
   };
 
   const fetchAdmins = async () => {
@@ -102,11 +105,8 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error("Gagal mengambil data");
       const data = await res.json();
       setAdmins(data);
-    } catch (error) {
-      console.error("Error fetching admins:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (error) { console.error("Error fetching admins:", error); } 
+    finally { setIsLoading(false); }
   };
 
   // --- 2. LOGIC ACTIONS ---
@@ -114,46 +114,87 @@ export default function AdminUsersPage() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       router.push("/admin/login");
-      router.refresh();
-    } catch (error) {
-      router.push("/admin/login");
-    }
+    } catch (error) { router.push("/admin/login"); }
+  };
+
+  const openAddModal = () => {
+    setEditingId(null);
+    setFormData({ username: "", jabatan: "", password: "", confirmPassword: "" });
+    setFormError("");
+    setIsDialogOpen(true);
+  };
+
+  const openEditModal = (admin: AdminUser) => {
+    setEditingId(admin.id);
+    // Isi form dengan data yang mau diedit
+    setFormData({ 
+      username: admin.username, 
+      jabatan: admin.jabatan || "", 
+      password: "", 
+      confirmPassword: "" 
+    });
+    setFormError("");
+    setIsDialogOpen(true);
   };
 
   const handleSave = async () => {
     setFormError("");
-    if (!formData.username || !formData.password) {
-      setFormError("Username dan password wajib diisi.");
+
+    if (!formData.username) {
+      setFormError("Username wajib diisi.");
       return;
     }
-    if (formData.password !== formData.confirmPassword) {
-      setFormError("Konfirmasi password tidak cocok.");
+
+    if (!editingId && !formData.password) {
+      setFormError("Password wajib diisi untuk admin baru.");
       return;
     }
-    if (formData.password.length < 6) {
-      setFormError("Password minimal 6 karakter.");
-      return;
+
+    if (formData.password) {
+      if (formData.password !== formData.confirmPassword) {
+        setFormError("Konfirmasi password tidak cocok.");
+        return;
+      }
+      if (formData.password.length < 6) {
+        setFormError("Password minimal 6 karakter.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/admins", {
-        method: "POST",
+      const url = editingId ? `/api/admins/${editingId}` : "/api/admins";
+      const method = editingId ? "PUT" : "POST";
+
+      const payload: any = { 
+        username: formData.username,
+        jabatan: formData.jabatan // <-- Kirim jabatan
+      };
+      
+      if (formData.password) {
+        if (editingId) {
+            payload.newPassword = formData.password;
+        } else {
+            payload.password = formData.password;
+        }
+      }
+
+      const res = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Gagal menambah admin");
+        throw new Error(errorData.error || "Gagal menyimpan data");
       }
 
       await fetchAdmins();
       setIsDialogOpen(false);
-      resetForm();
+      setFormData({ username: "", jabatan: "", password: "", confirmPassword: "" });
+      setEditingId(null);
+
     } catch (error: any) {
       setFormError(error.message);
     } finally {
@@ -162,104 +203,55 @@ export default function AdminUsersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Yakin ingin menghapus admin ini? Akses mereka akan dicabut.")) {
+    if (confirm("Yakin ingin menghapus admin ini?")) {
       try {
         await fetch(`/api/admins/${id}`, { method: "DELETE" });
-        await fetchAdmins();
-      } catch (error) {
-        alert("Gagal menghapus admin.");
-      }
+        fetchAdmins();
+      } catch (error) { alert("Gagal menghapus admin."); }
     }
   };
 
-  const resetForm = () => {
-    setFormData({ username: "", password: "", confirmPassword: "" });
-    setFormError("");
-  };
-
   const filteredAdmins = admins.filter((admin) =>
-    admin.username.toLowerCase().includes(searchTerm.toLowerCase())
+    admin.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (admin.jabatan && admin.jabatan.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* --- SIDEBAR --- */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:relative md:translate-x-0 shadow-xl`}
-      >
+      {/* SIDEBAR */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 shadow-xl`}>
         <div className="h-16 flex items-center px-6 border-b border-slate-800">
           <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
-          <button
-            className="ml-auto md:hidden text-slate-400 hover:text-white"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
+          <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
         <nav className="p-4 space-y-2">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
-            onClick={() => router.push("/admin/dashboard")}
-          >
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/dashboard")}>
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
-
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
-            onClick={() => router.push("/admin/applicants")}
-          >
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/applicants")}>
             <FileText className="mr-3 h-5 w-5" /> Applicants
           </Button>
-
-          {/* ACTIVE MENU */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20"
-          >
+          <Button variant="ghost" className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20">
             <Users className="mr-3 h-5 w-5" /> Admin Users
           </Button>
-
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
-            onClick={() => router.push("/admin/pengaturan")}
-          >
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/pengaturan")}>
             <Settings className="mr-3 h-5 w-5" /> Settings
           </Button>
-
           <div className="pt-8 mt-8 border-t border-slate-800">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20"
-              onClick={handleLogout}
-            >
+            <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={handleLogout}>
               <LogOut className="mr-3 h-5 w-5" /> Keluar
             </Button>
           </div>
         </nav>
       </aside>
 
-      {/* --- CONTENT --- */}
+      {/* CONTENT */}
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* HEADER */}
         <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
-            <button
-              className="md:hidden p-2 hover:bg-slate-100 rounded"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-6 w-6 text-slate-600" />
-            </button>
-            <h2 className="text-lg font-semibold text-slate-800">
-              Manajemen Pengguna
-            </h2>
+            <button className="md:hidden p-2 hover:bg-slate-100 rounded" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6 text-slate-600" /></button>
+            <h2 className="text-lg font-semibold text-slate-800">Manajemen Pengguna</h2>
           </div>
-          
-          {/* Profil Admin Kanan Atas */}
           <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900">{currentAdmin.username}</div>
@@ -274,17 +266,10 @@ export default function AdminUsersPage() {
         <main className="p-4 md:p-8 space-y-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Daftar Admin
-              </h1>
-              <p className="text-slate-500">
-                Kelola siapa saja yang bisa mengakses panel ini.
-              </p>
+              <h1 className="text-2xl font-bold text-slate-900">Daftar Admin</h1>
+              <p className="text-slate-500">Kelola siapa saja yang bisa mengakses panel ini.</p>
             </div>
-            <Button
-              onClick={() => setIsDialogOpen(true)}
-              className="bg-blue-700 hover:bg-blue-800"
-            >
+            <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800">
               <UserPlus className="mr-2 h-4 w-4" /> Tambah Admin
             </Button>
           </div>
@@ -293,87 +278,51 @@ export default function AdminUsersPage() {
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Cari username..."
-                  className="pl-9 bg-white"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <Input placeholder="Cari username atau jabatan..." className="pl-9 bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
             </div>
 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">No</TableHead>
+                  <TableHead className="w-[50px] text-center">No</TableHead>
                   <TableHead>Username</TableHead>
+                  <TableHead>Jabatan</TableHead> 
                   <TableHead>Role</TableHead>
-                  <TableHead>Terdaftar Sejak</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="text-right pr-6">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center text-slate-500"
-                    >
-                      <div className="flex justify-center items-center gap-2">
-                        <Loader2 className="animate-spin h-4 w-4" /> Memuat data...
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500"><div className="flex justify-center items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /> Memuat data...</div></TableCell></TableRow>
                 ) : filteredAdmins.length > 0 ? (
                   filteredAdmins.map((admin, index) => (
                     <TableRow key={admin.id}>
-                      <TableCell className="text-center text-slate-500">
-                        {index + 1}
-                      </TableCell>
+                      <TableCell className="text-center text-slate-500">{index + 1}</TableCell>
                       <TableCell className="font-medium text-slate-900">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                            <Shield className="h-4 w-4" />
-                          </div>
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600"><Shield className="h-4 w-4" /></div>
                           {admin.username}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
-                        >
-                          Super Admin
-                        </Badge>
+                      <TableCell className="text-slate-600">
+                        {admin.jabatan || "-"} {/* <-- Tampilkan Jabatan */}
                       </TableCell>
-                      <TableCell className="text-slate-500">
-                        {new Date(admin.createdAt).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => handleDelete(admin.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <TableCell><Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">Super Admin</Badge></TableCell>
+                      <TableCell className="text-right pr-4">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => openEditModal(admin)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(admin.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-32 text-center text-slate-500"
-                    >
-                      Belum ada admin lain.
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-500">Belum ada admin lain.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -381,13 +330,13 @@ export default function AdminUsersPage() {
         </main>
       </div>
 
-      {/* --- MODAL TAMBAH ADMIN --- */}
+      {/* --- MODAL FORM (ADD / EDIT) --- */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Tambah Admin Baru</DialogTitle>
+            <DialogTitle>{editingId ? "Edit Admin" : "Tambah Admin Baru"}</DialogTitle>
             <DialogDescription>
-              Buat akun baru untuk memberikan akses ke panel admin.
+              {editingId ? "Ubah detail login untuk akun ini." : "Buat akun baru untuk memberikan akses ke panel admin."}
             </DialogDescription>
           </DialogHeader>
 
@@ -398,70 +347,52 @@ export default function AdminUsersPage() {
               </Alert>
             )}
 
+            {/* INPUT USERNAME */}
             <div className="grid gap-2">
               <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                placeholder="misal: admin2"
-                value={formData.username}
-                onChange={(e) =>
-                  setFormData({ ...formData, username: e.target.value })
-                }
-              />
+              <Input id="username" 
+              placeholder="Contoh: admin2 " 
+              value={formData.username} 
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
             </div>
 
+            {/* INPUT JABATAN (BARU) */}
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="jabatan">Jabatan</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input
-                  id="password"
-                  type="password"
-                  className="pl-9"
-                  placeholder="******"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
+                <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <Input 
+                  id="jabatan" 
+                  className="pl-9" 
+                  placeholder="Contoh: Kepala Sub Bagian Umum" 
+                  value={formData.jabatan} 
+                  onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })} 
                 />
               </div>
             </div>
 
+            {/* INPUT PASSWORD */}
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password {editingId && <span className="text-slate-400 font-normal">(Opsional)</span>}</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <Input id="password" type="password" className="pl-9" placeholder={editingId ? "Isi hanya jika ingin ganti" : "******"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+              </div>
+            </div>
+
+            {/* INPUT CONFIRM PASSWORD */}
             <div className="grid gap-2">
               <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  className="pl-9"
-                  placeholder="******"
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      confirmPassword: e.target.value,
-                    })
-                  }
-                />
+                <Input id="confirmPassword" type="password" className="pl-9" placeholder={editingId ? "Ulangi password baru" : "******"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} />
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button
-              type="submit"
-              className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto"
-              onClick={handleSave}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menyimpan...
-                </>
-              ) : (
-                "Buat Akun"
-              )}
+            <Button type="submit" className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto" onClick={handleSave} disabled={isSubmitting}>
+              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menyimpan...</> : (editingId ? "Simpan Perubahan" : "Buat Akun")}
             </Button>
           </DialogFooter>
         </DialogContent>
