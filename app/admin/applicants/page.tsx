@@ -16,7 +16,9 @@ import {
   Filter,
   User,
   FileText,
-  Image as ImageIcon, // Icon buat Foto
+  RefreshCcw,
+  Image as ImageIcon,
+  Loader2, // Icon buat Foto
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -223,7 +225,7 @@ export default function ApplicantsPage() {
       {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col min-h-screen transition-all duration-300">
         {/* Header */}
-        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm">
+        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button
               className="md:hidden p-2 hover:bg-slate-100 rounded text-slate-600"
@@ -259,7 +261,7 @@ export default function ApplicantsPage() {
               onClick={() => fetchData()}
               className="bg-blue-700 hover:bg-blue-800 text-white "
             >
-              <Filter className="h-4 w-4 mr-2" /> Refresh Data
+              <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
             </Button>
           </div>
 
@@ -301,9 +303,10 @@ export default function ApplicantsPage() {
                         colSpan={6}
                         className="h-32 text-center text-slate-500"
                       >
-                        <div className="flex justify-center items-center gap-2 animate-pulse">
-                          Memuat data...
-                        </div>
+                        <div className="flex justify-center items-center gap-2">
+                        <Loader2 className="animate-spin h-4 w-4" /> Memuat
+                        data...
+                      </div>
                       </TableCell>
                     </TableRow>
                   ) : filteredData.length === 0 ? (
