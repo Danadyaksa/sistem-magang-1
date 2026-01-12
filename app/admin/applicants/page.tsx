@@ -1,3 +1,4 @@
+// app/admin/applicants/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -13,12 +14,12 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Filter,
   User,
   FileText,
   RefreshCcw,
   Image as ImageIcon,
-  Loader2, // Icon buat Foto
+  Loader2,
+  Settings
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -85,28 +86,31 @@ export default function ApplicantsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // State Admin (Otomatis dari Session)
+  const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
+
   // State Dialog & Approval
-  const [selectedPelamar, setSelectedPelamar] = useState<Pendaftaran | null>(
-    null
-  );
+  const [selectedPelamar, setSelectedPelamar] = useState<Pendaftaran | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // --- FETCH DATA ---
+  // --- 1. FETCH DATA UTAMA (PELAMAR & POSISI) ---
   const fetchData = async () => {
     try {
-      setLoading(true);
+      // Jangan set loading true disini agar tidak flickering saat refresh manual
+      // setLoading(true); 
       const [resPendaftar, resPositions] = await Promise.all([
-        fetch("/api/pendaftaran"),
-        fetch("/api/positions"),
+        fetch("/api/pendaftaran", { cache: 'no-store' }),
+        fetch("/api/positions", { cache: 'no-store' }),
       ]);
 
       const dataPendaftar = await resPendaftar.json();
       const dataPositions = await resPositions.json();
 
-      setPendaftar(dataPendaftar);
-      setPositions(dataPositions);
+      if(Array.isArray(dataPendaftar)) setPendaftar(dataPendaftar);
+      if(Array.isArray(dataPositions)) setPositions(dataPositions);
+
     } catch (error) {
       console.error("Gagal ambil data:", error);
     } finally {
@@ -114,11 +118,30 @@ export default function ApplicantsPage() {
     }
   };
 
+  // --- 2. FETCH ADMIN SESSION ---
+  const fetchAdminSession = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (res.ok) {
+        setAdmin({
+          username: data.username,
+          jabatan: data.jabatan || "Administrator"
+        });
+      } else {
+        router.push("/admin/login");
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchAdminSession();
   }, []);
 
-  // --- LOGIC ---
+  // --- LOGIC ACTIONS ---
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -150,12 +173,8 @@ export default function ApplicantsPage() {
 
       if (res.ok) {
         setIsDialogOpen(false);
-        fetchData();
-        alert(
-          `Sukses! Pelamar berhasil di-${
-            status === "ACCEPTED" ? "terima" : "tolak"
-          }.`
-        );
+        fetchData(); // Refresh data table
+        alert(`Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : "tolak"}.`);
       } else {
         alert("Gagal update status. Cek console.");
       }
@@ -210,6 +229,13 @@ export default function ApplicantsPage() {
           >
             <Users className="mr-3 h-5 w-5" /> Admin Users
           </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+            onClick={() => router.push("/admin/pengaturan")}
+          >
+            <Settings className="mr-3 h-5 w-5" /> Settings
+          </Button>
           <div className="pt-8 mt-8 border-t border-slate-800">
             <Button
               variant="ghost"
@@ -224,21 +250,24 @@ export default function ApplicantsPage() {
 
       {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col min-h-screen transition-all duration-300">
-        {/* Header */}
+        {/* HEADER */}
         <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button
-              className="md:hidden p-2 hover:bg-slate-100 rounded text-slate-600"
+              className="md:hidden p-2 hover:bg-slate-100 rounded"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-6 w-6 text-slate-600" />
             </button>
-            <h2 className="text-lg font-semibold text-slate-800">
-              Review Pelamar
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-800">Review Pelamar</h2>
           </div>
+          
           <div className="flex items-center gap-4">
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
+            <div className="text-right hidden md:block">
+              <div className="font-bold text-sm text-slate-900">{admin.username}</div>
+              <div className="text-xs text-slate-500">{admin.jabatan}</div>
+            </div>
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
               <User className="h-6 w-6" />
             </div>
           </div>
@@ -249,17 +278,13 @@ export default function ApplicantsPage() {
           {/* Page Title & Action */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Data Pelamar Masuk
-              </h1>
-              <p className="text-slate-500">
-                Cek berkas dan tentukan siapa yang layak magang.
-              </p>
+              <h1 className="text-2xl font-bold text-slate-900">Data Pelamar Masuk</h1>
+              <p className="text-slate-500">Cek berkas dan tentukan siapa yang layak magang.</p>
             </div>
             <Button
               variant="outline"
-              onClick={() => fetchData()}
-              className="bg-blue-700 hover:bg-blue-800 text-white "
+              onClick={() => { setLoading(true); fetchData(); }}
+              className="bg-blue-700 hover:bg-blue-800 text-white"
             >
               <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
             </Button>
@@ -288,33 +313,26 @@ export default function ApplicantsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-100">
-                    <TableHead className="w-[50px] text-center">No</TableHead>
-                    <TableHead>Nama Pelamar</TableHead>
-                    <TableHead>Instansi</TableHead>
-                    <TableHead>Tgl Daftar</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right pr-6">Aksi</TableHead>
+                    <TableHead className="w-[50px] text-center h-10">No</TableHead>
+                    <TableHead className="h-10">Nama Pelamar</TableHead>
+                    <TableHead className="h-10">Instansi</TableHead>
+                    <TableHead className="h-10">Tgl Daftar</TableHead>
+                    <TableHead className="h-10">Status</TableHead>
+                    <TableHead className="text-right pr-6 h-10">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        className="h-32 text-center text-slate-500"
-                      >
+                      <TableCell colSpan={6} className="h-24 text-center text-slate-500 py-3">
                         <div className="flex justify-center items-center gap-2">
-                        <Loader2 className="animate-spin h-4 w-4" /> Memuat
-                        data...
-                      </div>
+                          <Loader2 className="animate-spin h-4 w-4" /> Memuat data...
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : filteredData.length === 0 ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        className="h-40 text-center text-slate-500"
-                      >
+                      <TableCell colSpan={6} className="h-32 text-center text-slate-500 py-3">
                         <div className="flex flex-col items-center gap-2">
                           <FileText className="h-8 w-8 text-slate-300" />
                           <p>Belum ada pendaftar yang cocok.</p>
@@ -323,181 +341,97 @@ export default function ApplicantsPage() {
                     </TableRow>
                   ) : (
                     filteredData.map((item, idx) => (
-                      <TableRow
-                        key={item.id}
-                        className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0"
-                      >
-                        <TableCell className="text-center text-slate-500">
-                          {idx + 1}
-                        </TableCell>
-                        <TableCell className="font-medium">
+                      <TableRow key={item.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0">
+                        <TableCell className="text-center text-slate-500 py-3">{idx + 1}</TableCell>
+                        <TableCell className="font-medium py-3">
                           <div className="flex flex-col">
-                            <span className="text-slate-900">
-                              {item.namaLengkap}
-                            </span>
+                            <span className="text-slate-900 text-sm">{item.namaLengkap}</span>
                             <span className="text-xs text-slate-500 truncate max-w-[150px]">
                               {item.jurusan}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-600">
-                          {item.instansi}
+                        <TableCell className="text-slate-600 text-sm py-3">{item.instansi}</TableCell>
+                        <TableCell className="text-slate-500 text-sm py-3">
+                          {new Date(item.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                         </TableCell>
-                        <TableCell className="text-slate-500 text-sm">
-                          {new Date(item.createdAt).toLocaleDateString(
-                            "id-ID",
-                            { day: "numeric", month: "short" }
-                          )}
-                        </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3">
                           {item.status === "PENDING" && (
-                            <Badge
-                              variant="outline"
-                              className="bg-yellow-50 text-yellow-700 border-yellow-200 gap-1 font-normal"
-                            >
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 gap-1 font-normal text-xs py-0.5">
                               <Clock className="h-3 w-3" /> Pending
                             </Badge>
                           )}
                           {item.status === "ACCEPTED" && (
-                            <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200 gap-1 font-normal shadow-none">
+                            <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200 gap-1 font-normal shadow-none text-xs py-0.5">
                               <CheckCircle className="h-3 w-3" /> Diterima
                             </Badge>
                           )}
                           {item.status === "REJECTED" && (
-                            <Badge
-                              variant="outline"
-                              className="bg-red-50 text-red-700 border-red-200 gap-1 font-normal"
-                            >
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1 font-normal text-xs py-0.5">
                               <XCircle className="h-3 w-3" /> Ditolak
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-right pr-4">
+                        <TableCell className="text-right pr-4 py-3">
                           {/* --- DIALOG DETAIL --- */}
                           <Dialog
-                            open={
-                              isDialogOpen && selectedPelamar?.id === item.id
-                            }
+                            open={isDialogOpen && selectedPelamar?.id === item.id}
                             onOpenChange={(open) => {
                               setIsDialogOpen(open);
                               if (open) {
                                 setSelectedPelamar(item);
-                                setSelectedPosition(
-                                  item.positionId?.toString() || ""
-                                );
+                                setSelectedPosition(item.positionId?.toString() || "");
                               }
                             }}
                           >
                             <DialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-blue-50 text-slate-400 hover:text-blue-600"
-                              >
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-blue-50 text-slate-400 hover:text-blue-600">
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl bg-white p-0 overflow-hidden border-slate-200">
                               <DialogHeader className="p-6 pb-2">
-                                <DialogTitle className="text-xl">
-                                  Detail Pendaftaran
-                                </DialogTitle>
-                                <DialogDescription>
-                                  Tinjau kelengkapan berkas kandidat.
-                                </DialogDescription>
+                                <DialogTitle className="text-xl">Detail Pendaftaran</DialogTitle>
+                                <DialogDescription>Tinjau kelengkapan berkas kandidat.</DialogDescription>
                               </DialogHeader>
 
                               <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Info Kiri */}
                                 <div className="space-y-4">
                                   <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 uppercase font-semibold">
-                                      Nama Lengkap
-                                    </Label>
-                                    <div className="text-slate-900 font-medium border-b border-slate-100 pb-1">
-                                      {item.namaLengkap}
-                                    </div>
+                                    <Label className="text-xs text-slate-500 uppercase font-semibold">Nama Lengkap</Label>
+                                    <div className="text-slate-900 font-medium border-b border-slate-100 pb-1">{item.namaLengkap}</div>
                                   </div>
                                   <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 uppercase font-semibold">
-                                      Asal Instansi & Jurusan
-                                    </Label>
-                                    <div className="text-slate-900 text-sm">
-                                      {item.instansi}
-                                    </div>
-                                    <div className="text-slate-500 text-xs">
-                                      {item.jurusan}
-                                    </div>
+                                    <Label className="text-xs text-slate-500 uppercase font-semibold">Asal Instansi & Jurusan</Label>
+                                    <div className="text-slate-900 text-sm">{item.instansi}</div>
+                                    <div className="text-slate-500 text-xs">{item.jurusan}</div>
                                   </div>
                                   <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 uppercase font-semibold">
-                                      Rencana Magang
-                                    </Label>
+                                    <Label className="text-xs text-slate-500 uppercase font-semibold">Rencana Magang</Label>
                                     <div className="flex items-center gap-2 text-sm text-slate-700">
                                       <Clock className="h-3 w-3 text-blue-500" />
-                                      {new Date(
-                                        item.tanggalMulai
-                                      ).toLocaleDateString()}{" "}
-                                      —{" "}
-                                      {new Date(
-                                        item.tanggalSelesai
-                                      ).toLocaleDateString()}
+                                      {new Date(item.tanggalMulai).toLocaleDateString()} — {new Date(item.tanggalSelesai).toLocaleDateString()}
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Info Kanan (Dokumen) */}
                                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
-                                  <Label className="text-xs text-slate-500 uppercase font-semibold block mb-2">
-                                    Lampiran Berkas
-                                  </Label>
-
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start bg-white hover:bg-blue-50 text-slate-600 border-slate-200"
-                                    asChild
-                                  >
-                                    <a
-                                      href={item.cvPath}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <FileText className="mr-2 h-4 w-4 text-blue-600" />{" "}
-                                      Lihat CV
+                                  <Label className="text-xs text-slate-500 uppercase font-semibold block mb-2">Lampiran Berkas</Label>
+                                  <Button variant="outline" size="sm" className="w-full justify-start bg-white hover:bg-blue-50 text-slate-600 border-slate-200" asChild>
+                                    <a href={item.cvPath} target="_blank" rel="noopener noreferrer">
+                                      <FileText className="mr-2 h-4 w-4 text-blue-600" /> Lihat CV
                                     </a>
                                   </Button>
-
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start bg-white hover:bg-orange-50 text-slate-600 border-slate-200"
-                                    asChild
-                                  >
-                                    <a
-                                      href={item.suratPath}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <FileText className="mr-2 h-4 w-4 text-orange-600" />{" "}
-                                      Surat Pengantar
+                                  <Button variant="outline" size="sm" className="w-full justify-start bg-white hover:bg-orange-50 text-slate-600 border-slate-200" asChild>
+                                    <a href={item.suratPath} target="_blank" rel="noopener noreferrer">
+                                      <FileText className="mr-2 h-4 w-4 text-orange-600" /> Surat Pengantar
                                     </a>
                                   </Button>
-
-                                  {/* --- TOMBOL FOTO --- */}
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start bg-white hover:bg-purple-50 text-slate-600 border-slate-200"
-                                    asChild
-                                  >
-                                    <a
-                                      href={item.fotoPath}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <ImageIcon className="mr-2 h-4 w-4 text-purple-600" />{" "}
-                                      Lihat Pas Foto
+                                  <Button variant="outline" size="sm" className="w-full justify-start bg-white hover:bg-purple-50 text-slate-600 border-slate-200" asChild>
+                                    <a href={item.fotoPath} target="_blank" rel="noopener noreferrer">
+                                      <ImageIcon className="mr-2 h-4 w-4 text-purple-600" /> Lihat Pas Foto
                                     </a>
                                   </Button>
                                 </div>
@@ -509,14 +443,10 @@ export default function ApplicantsPage() {
                               <div className="px-6 py-4 bg-slate-50/50">
                                 <div className="mb-3 flex items-center gap-2">
                                   <CheckCircle className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-semibold text-slate-900">
-                                    Keputusan Admin
-                                  </span>
+                                  <span className="text-sm font-semibold text-slate-900"> min</span>
                                 </div>
                                 <div className="space-y-2">
-                                  <Label className="text-xs text-slate-500">
-                                    Tempatkan di Bidang (Wajib jika diterima)
-                                  </Label>
+                                  <Label className="text-xs text-slate-500">Tempatkan di Bidang (Wajib jika diterima)</Label>
                                   <Select
                                     value={selectedPosition}
                                     onValueChange={setSelectedPosition}
@@ -527,14 +457,8 @@ export default function ApplicantsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {positions.map((pos) => (
-                                        <SelectItem
-                                          key={pos.id}
-                                          value={pos.id.toString()}
-                                        >
-                                          {pos.title}{" "}
-                                          <span className="text-slate-400 text-xs ml-2">
-                                            (Sisa: {pos.quota - pos.filled})
-                                          </span>
+                                        <SelectItem key={pos.id} value={pos.id.toString()}>
+                                          {pos.title} <span className="text-slate-400 text-xs ml-2">(Sisa: {pos.quota - pos.filled})</span>
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -548,29 +472,22 @@ export default function ApplicantsPage() {
                                     <Button
                                       variant="ghost"
                                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      onClick={() =>
-                                        handleUpdateStatus("REJECTED")
-                                      }
+                                      onClick={() => handleUpdateStatus("REJECTED")}
                                       disabled={isProcessing}
                                     >
                                       Tolak Pengajuan
                                     </Button>
                                     <Button
                                       className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                                      onClick={() =>
-                                        handleUpdateStatus("ACCEPTED")
-                                      }
+                                      onClick={() => handleUpdateStatus("ACCEPTED")}
                                       disabled={isProcessing}
                                     >
-                                      {isProcessing
-                                        ? "Menyimpan..."
-                                        : "Terima & Simpan"}
+                                      {isProcessing ? "Menyimpan..." : "Terima & Simpan"}
                                     </Button>
                                   </>
                                 ) : (
                                   <div className="w-full text-center text-sm text-slate-500 italic">
-                                    Status pelamar ini sudah diputuskan:{" "}
-                                    <strong>{item.status}</strong>
+                                    Status pelamar ini sudah diputuskan: <strong>{item.status}</strong>
                                   </div>
                                 )}
                               </DialogFooter>

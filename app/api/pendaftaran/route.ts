@@ -1,58 +1,60 @@
 // app/api/pendaftaran/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
-// GET: Biar Admin bisa fetch data pelamar (kalau nanti dashboard butuh)
-export async function GET() {
-  try {
-    const data = await prisma.pendaftaran.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Server Error" }, { status: 500 });
-  }
-}
+// Inisialisasi Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// POST: Handle Submit Form dari User
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
 
-    // Fungsi helper buat upload file
-    const uploadFile = async (file: File, prefix: string) => {
-      if (!file) return "";
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+    // 1. Ambil File
+    const cvFile = formData.get("cv") as File | null;
+    const suratFile = formData.get("surat") as File | null;
+    const fotoFile = formData.get("foto") as File | null;
 
-      // Bikin nama file unik
-      const filename = `${prefix}-${Date.now()}-${file.name.replace(
-        /\s/g,
-        "_"
-      )}`;
-      const uploadDir = path.join(process.cwd(), "public/uploads");
+    if (!cvFile || !suratFile || !fotoFile) {
+      return NextResponse.json(
+        { error: "Semua berkas wajib diupload" },
+        { status: 400 }
+      );
+    }
 
-      // Pastikan folder ada
-      await mkdir(uploadDir, { recursive: true });
+    // 2. Fungsi Upload ke Supabase Storage
+    const uploadToSupabase = async (file: File, folder: string) => {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${folder}-${Date.now()}.${fileExt}`;
+      const filePath = `${folder}/${fileName}`;
 
-      // Simpan file
-      await writeFile(path.join(uploadDir, filename), buffer);
-      return `/uploads/${filename}`; // Return path public
+      const { error } = await supabase.storage
+        .from("berkas-magang") // Pastikan nama bucket ini sudah dibuat di Supabase
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      // Ambil Public URL
+      const { data } = supabase.storage
+        .from("berkas-magang")
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
     };
 
-    // Ambil File dari Form
-    const cvFile = formData.get("cv") as File;
-    const suratFile = formData.get("surat") as File;
-    const fotoFile = formData.get("foto") as File;
+    // 3. Upload File secara Paralel (Biar Cepat)
+    const [cvUrl, suratUrl, fotoUrl] = await Promise.all([
+      uploadToSupabase(cvFile, "cv"),
+      uploadToSupabase(suratFile, "surat"),
+      uploadToSupabase(fotoFile, "foto"),
+    ]);
 
-    // Upload dulu
-    const cvPath = await uploadFile(cvFile, "CV");
-    const suratPath = await uploadFile(suratFile, "SURAT");
-    const fotoPath = await uploadFile(fotoFile, "FOTO");
-
-    // Simpan data teks ke DB
+    // 4. Simpan Data Text & URL File ke Database
     const newPendaftaran = await prisma.pendaftaran.create({
       data: {
         namaLengkap: formData.get("namaLengkap") as string,
@@ -68,20 +70,32 @@ export async function POST(request: Request) {
         pemohonSurat: formData.get("pemohonSurat") as string,
         nomorSurat: formData.get("nomorSurat") as string,
         tanggalSurat: new Date(formData.get("tanggalSurat") as string),
-        // Path File
-        cvPath,
-        suratPath,
-        fotoPath,
+        // Simpan Link Supabase
+        cvPath: cvUrl,
+        suratPath: suratUrl,
+        fotoPath: fotoUrl,
         status: "PENDING",
       },
     });
 
     return NextResponse.json({ success: true, data: newPendaftaran });
-  } catch (error) {
-    console.error("Upload Error:", error);
+
+  } catch (error: any) {
+    console.error("Error Pendaftaran:", error);
     return NextResponse.json(
-      { error: "Gagal memproses pendaftaran" },
+      { error: error.message || "Gagal memproses pendaftaran" },
       { status: 500 }
     );
+  }
+}
+
+export async function GET() {
+  try {
+    const data = await prisma.pendaftaran.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+// app/admin/users/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,11 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Briefcase,
   LogOut,
   Menu,
   X,
-  Plus,
   Search,
   Trash2,
   UserPlus,
@@ -17,7 +16,8 @@ import {
   Loader2,
   Lock,
   User,
-  FileText, // <-- Import Icon Applicants
+  FileText,
+  Settings,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -52,16 +52,19 @@ type AdminUser = {
 export default function AdminUsersPage() {
   const router = useRouter();
 
-  // State UI
+  // --- STATE UI ---
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State Data
+  // --- STATE DATA ---
   const [admins, setAdmins] = useState<AdminUser[]>([]);
 
-  // State Modal Tambah Admin
+  // State untuk Admin yang sedang login (Header)
+  const [currentAdmin, setCurrentAdmin] = useState({ username: "...", jabatan: "..." });
+
+  // --- STATE MODAL TAMBAH ADMIN ---
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -70,7 +73,29 @@ export default function AdminUsersPage() {
   });
   const [formError, setFormError] = useState("");
 
-  // --- 1. FETCH DATA ADMIN ---
+  // --- 1. FETCH DATA (Users & Current Session) ---
+  useEffect(() => {
+    fetchAdmins();
+    fetchCurrentSession();
+  }, []);
+
+  const fetchCurrentSession = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (res.ok) {
+        setCurrentAdmin({
+          username: data.username,
+          jabatan: data.jabatan || "Administrator",
+        });
+      } else {
+        router.push("/admin/login");
+      }
+    } catch (error) {
+      console.error("Auth error", error);
+    }
+  };
+
   const fetchAdmins = async () => {
     try {
       const res = await fetch("/api/admins");
@@ -84,11 +109,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  useEffect(() => {
-    fetchAdmins();
-  }, []);
-
-  // --- 2. LOGIC CRUD ---
+  // --- 2. LOGIC ACTIONS ---
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -141,9 +162,7 @@ export default function AdminUsersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      confirm("Yakin ingin menghapus admin ini? Akses mereka akan dicabut.")
-    ) {
+    if (confirm("Yakin ingin menghapus admin ini? Akses mereka akan dicabut.")) {
       try {
         await fetch(`/api/admins/${id}`, { method: "DELETE" });
         await fetchAdmins();
@@ -164,16 +183,16 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* SIDEBAR */}
+      {/* --- SIDEBAR --- */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:relative md:translate-x-0`}
+        } md:relative md:translate-x-0 shadow-xl`}
       >
         <div className="h-16 flex items-center px-6 border-b border-slate-800">
           <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
           <button
-            className="ml-auto md:hidden"
+            className="ml-auto md:hidden text-slate-400 hover:text-white"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-6 w-6" />
@@ -188,7 +207,6 @@ export default function AdminUsersPage() {
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
 
-          {/* MENU APPLICANTS DITAMBAH DI SINI */}
           <Button
             variant="ghost"
             className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
@@ -197,11 +215,20 @@ export default function AdminUsersPage() {
             <FileText className="mr-3 h-5 w-5" /> Applicants
           </Button>
 
+          {/* ACTIVE MENU */}
           <Button
             variant="ghost"
-            className="w-full justify-start text-white bg-slate-800"
+            className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20"
           >
             <Users className="mr-3 h-5 w-5" /> Admin Users
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+            onClick={() => router.push("/admin/pengaturan")}
+          >
+            <Settings className="mr-3 h-5 w-5" /> Settings
           </Button>
 
           <div className="pt-8 mt-8 border-t border-slate-800">
@@ -216,8 +243,9 @@ export default function AdminUsersPage() {
         </nav>
       </aside>
 
-      {/* CONTENT */}
+      {/* --- CONTENT --- */}
       <div className="flex-1 flex flex-col min-h-screen">
+        {/* HEADER */}
         <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button
@@ -230,8 +258,14 @@ export default function AdminUsersPage() {
               Manajemen Pengguna
             </h2>
           </div>
+          
+          {/* Profil Admin Kanan Atas */}
           <div className="flex items-center gap-4">
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
+            <div className="text-right hidden md:block">
+              <div className="font-bold text-sm text-slate-900">{currentAdmin.username}</div>
+              <div className="text-xs text-slate-500">{currentAdmin.jabatan}</div>
+            </div>
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
               <User className="h-6 w-6" />
             </div>
           </div>
@@ -286,8 +320,7 @@ export default function AdminUsersPage() {
                       className="h-24 text-center text-slate-500"
                     >
                       <div className="flex justify-center items-center gap-2">
-                        <Loader2 className="animate-spin h-4 w-4" /> Memuat
-                        data...
+                        <Loader2 className="animate-spin h-4 w-4" /> Memuat data...
                       </div>
                     </TableCell>
                   </TableRow>
@@ -348,6 +381,7 @@ export default function AdminUsersPage() {
         </main>
       </div>
 
+      {/* --- MODAL TAMBAH ADMIN --- */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

@@ -14,6 +14,7 @@ model Admin {
   id        String   @id @default(uuid())
   username  String   @unique
   password  String   // Ini nanti di-hash
+  jabatan   String?  // <--- Cuma tambah ini aja
   createdAt DateTime @default(now())
 }
 
