@@ -4,6 +4,7 @@ import "./globals.css";
 
 const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
 
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
