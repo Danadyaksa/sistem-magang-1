@@ -16,8 +16,11 @@ import {
   Trash2,
   FileText,
   User,
-  Loader2, // Tambah loader
+  Loader2,
+  AlertTriangle // Import icon warning
 } from "lucide-react";
+
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +40,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription // Import Description
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -56,6 +60,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false); // State Logout
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -91,7 +96,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (Array.isArray(data)) setPositions(data);
     } catch (error) {
-      console.error("Error fetching positions:", error);
+      toast.error("Gagal mengambil data posisi.");
     } finally {
       setIsLoading(false);
     }
@@ -99,53 +104,95 @@ export default function AdminDashboard() {
 
   // 2. ACTIONS
   const handleSave = async () => {
+    if (!formData.title.trim()) {
+        toast.warning("Nama bidang tidak boleh kosong!");
+        return;
+    }
+    if (formData.quota < 0 || formData.filled < 0) {
+        toast.warning("Angka tidak boleh negatif!");
+        return;
+    }
+
     setIsSubmitting(true);
-    const payload = {
-      title: formData.title,
-      quota: formData.quota,
-      filled: formData.filled,
+
+    const saveProcess = async () => {
+        const payload = {
+            title: formData.title,
+            quota: formData.quota,
+            filled: formData.filled,
+        };
+
+        const url = editingId ? `/api/positions/${editingId}` : "/api/positions";
+        const method = editingId ? "PUT" : "POST";
+        
+        const res = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        if(!res.ok) throw new Error("Gagal menyimpan");
+
+        await fetchPositions();
+        return editingId ? "Data posisi berhasil diperbarui!" : "Posisi baru berhasil ditambahkan!";
     };
 
-    try {
-      const url = editingId ? `/api/positions/${editingId}` : "/api/positions";
-      const method = editingId ? "PUT" : "POST";
-      
-      await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      
-      await fetchPositions();
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      alert("Gagal menyimpan data");
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast.promise(saveProcess(), {
+        loading: 'Menyimpan data...',
+        success: (msg) => {
+            setIsDialogOpen(false);
+            resetForm();
+            return msg;
+        },
+        error: 'Terjadi kesalahan saat menyimpan.',
+        finally: () => setIsSubmitting(false)
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Yakin hapus data ini?")) {
-      await fetch(`/api/positions/${id}`, { method: "DELETE" });
-      fetchPositions();
-    }
+  const handleDelete = (id: number) => {
+    toast("Yakin ingin menghapus posisi ini?", {
+        description: "Data kuota akan hilang permanen.",
+        action: {
+            label: "Ya, Hapus",
+            onClick: async () => {
+                try {
+                    const res = await fetch(`/api/positions/${id}`, { method: "DELETE" });
+                    if(res.ok) {
+                        toast.success("Posisi berhasil dihapus");
+                        fetchPositions();
+                    } else {
+                        toast.error("Gagal menghapus posisi");
+                    }
+                } catch (error) {
+                    toast.error("Kesalahan server");
+                }
+            }
+        },
+        cancel: {
+            label: "Batal",
+            onClick: () => {}
+        },
+        duration: 5000,
+    });
   };
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/admin/login");
+  // --- LOGIC LOGOUT ---
+  const handleLogoutConfirm = async () => {
+    setIsLogoutOpen(false);
+    const promise = fetch("/api/auth/logout", { method: "POST" });
+    toast.promise(promise, {
+        loading: 'Sedang keluar...',
+        success: () => {
+            router.push("/admin/login");
+            return 'Berhasil logout';
+        },
+        error: 'Gagal logout',
+    });
   };
 
-  // Helpers untuk Badge yang lebih cantik
   const renderStatusBadge = (filled: number, quota: number) => {
-    if (filled >= quota) {
-      return <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200">Penuh</Badge>;
-    }
-    if (quota - filled <= 1) {
-      return <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">Terbatas</Badge>;
-    }
+    if (filled >= quota) return <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200">Penuh</Badge>;
+    if (quota - filled <= 1) return <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">Terbatas</Badge>;
     return <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Dibuka</Badge>;
   };
 
@@ -157,37 +204,34 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* SIDEBAR */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 shadow-xl`}>
         <div className="h-16 flex items-center px-6 border-b border-slate-800">
           <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
           <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
         <nav className="p-4 space-y-2">
-          {/* MENU DASHBOARD AKTIF */}
           <Button variant="ghost" className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20">
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/applicants")}>
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" onClick={() => router.push("/admin/applicants")}>
             <FileText className="mr-3 h-5 w-5" /> Applicants
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/users")}>
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" onClick={() => router.push("/admin/users")}>
             <Users className="mr-3 h-5 w-5" /> Admin Users
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/pengaturan")}>
+          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" onClick={() => router.push("/admin/pengaturan")}>
             <Settings className="mr-3 h-5 w-5" /> Settings
           </Button>
           <div className="pt-8 mt-8 border-t border-slate-800">
-            <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={handleLogout}>
+            <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors" onClick={() => setIsLogoutOpen(true)}>
               <LogOut className="mr-3 h-5 w-5" /> Keluar
             </Button>
           </div>
         </nav>
       </aside>
 
-      {/* CONTENT */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40">
+        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm">
           <div className="flex items-center gap-4">
             <button className="md:hidden p-2 hover:bg-slate-100 rounded" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6 text-slate-600" /></button>
             <h2 className="text-lg font-semibold text-slate-800">Overview Kuota</h2>
@@ -203,24 +247,23 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <main className="p-4 md:p-8 space-y-8">
-          {/* STATS */}
+        <main className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">Total Posisi</CardTitle>
                 <Briefcase className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{isLoading ? "..." : positions.length}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">Total Kuota</CardTitle>
                 <Users className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{isLoading ? "..." : positions.reduce((acc, curr) => acc + curr.quota, 0)}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">Terisi</CardTitle>
               </CardHeader>
@@ -228,29 +271,27 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* TABLE CONTAINER MIRIP ADMIN USERS */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Manajemen Posisi</h1>
               <p className="text-slate-500">Kelola kuota dan nama bidang magang.</p>
             </div>
-            <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800">
+            <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800 shadow-lg shadow-blue-700/20 transition-all hover:scale-105">
               <Plus className="mr-2 h-4 w-4" /> Tambah Posisi
             </Button>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-             {/* HEADER PENCARIAN DI DALAM KOTAK PUTIH */}
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                <Input placeholder="Cari nama bidang..." className="pl-9 bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Input placeholder="Cari nama bidang..." className="pl-9 bg-white focus-visible:ring-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
             </div>
 
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[50px] text-center">No</TableHead>
                   <TableHead className="w-[40%]">Nama Bidang</TableHead>
                   <TableHead className="text-center">Terisi / Kuota</TableHead>
@@ -263,11 +304,8 @@ export default function AdminDashboard() {
                    <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500"><div className="flex justify-center items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /> Memuat data...</div></TableCell></TableRow>
                 ) : filteredPositions.length > 0 ? (
                   filteredPositions.map((pos, index) => (
-                    <TableRow key={pos.id}>
-                       {/* Kolom No */}
+                    <TableRow key={pos.id} className="hover:bg-slate-50 transition-colors duration-200">
                       <TableCell className="text-center text-slate-500">{index + 1}</TableCell>
-                      
-                      {/* Kolom Nama Bidang dengan Ikon */}
                       <TableCell className="font-medium text-slate-900">
                          <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
@@ -276,26 +314,20 @@ export default function AdminDashboard() {
                             {pos.title}
                          </div>
                       </TableCell>
-                      
-                      {/* Kolom Kuota */}
                       <TableCell className="text-center">
                         <span className="font-semibold text-slate-700">{pos.filled}</span>
                         <span className="text-slate-400 mx-1">/</span>
                         <span className="text-slate-500">{pos.quota}</span>
                       </TableCell>
-
-                      {/* Kolom Status (Badge Warna) */}
                       <TableCell className="text-center">
                         {renderStatusBadge(pos.filled, pos.quota)}
                       </TableCell>
-
-                      {/* Kolom Aksi */}
                       <TableCell className="text-right pr-4">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => openEditModal(pos)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" onClick={() => openEditModal(pos)}>
                              <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(pos.id)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => handleDelete(pos.id)}>
                              <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -312,7 +344,7 @@ export default function AdminDashboard() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="animate-in fade-in zoom-in-95 duration-200">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Posisi" : "Tambah Posisi Baru"}</DialogTitle>
           </DialogHeader>
@@ -323,7 +355,30 @@ export default function AdminDashboard() {
               <div className="grid gap-2"><Label>Kuota</Label><Input type="number" value={formData.quota} onChange={(e) => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} /></div>
             </div>
           </div>
-          <DialogFooter><Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800">{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 transition-all">
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Menyimpan...</> : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL LOGOUT */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200">
+           <DialogHeader className="flex flex-col items-center text-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <DialogTitle className="text-xl">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center">
+                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+              </DialogDescription>
+           </DialogHeader>
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+              <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
+           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

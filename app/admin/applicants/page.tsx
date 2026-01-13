@@ -1,4 +1,3 @@
-// app/admin/applicants/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,8 +18,11 @@ import {
   RefreshCcw,
   Image as ImageIcon,
   Loader2,
-  Settings
+  Settings,
+  AlertTriangle // Import icon warning
 } from "lucide-react";
+
+import { toast } from "sonner"; // Use sonner here too for consistency
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +87,7 @@ export default function ApplicantsPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false); // State Logout
 
   // State Admin (Otomatis dari Session)
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
@@ -98,8 +101,6 @@ export default function ApplicantsPage() {
   // --- 1. FETCH DATA UTAMA (PELAMAR & POSISI) ---
   const fetchData = async () => {
     try {
-      // Jangan set loading true disini agar tidak flickering saat refresh manual
-      // setLoading(true); 
       const [resPendaftar, resPositions] = await Promise.all([
         fetch("/api/pendaftaran", { cache: 'no-store' }),
         fetch("/api/positions", { cache: 'no-store' }),
@@ -113,6 +114,7 @@ export default function ApplicantsPage() {
 
     } catch (error) {
       console.error("Gagal ambil data:", error);
+      toast.error("Gagal mengambil data.");
     } finally {
       setLoading(false);
     }
@@ -142,21 +144,24 @@ export default function ApplicantsPage() {
   }, []);
 
   // --- LOGIC ACTIONS ---
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/admin/login");
-      router.refresh();
-    } catch (error) {
-      router.push("/admin/login");
-    }
+  const handleLogoutConfirm = async () => {
+    setIsLogoutOpen(false);
+    const promise = fetch("/api/auth/logout", { method: "POST" });
+    toast.promise(promise, {
+        loading: 'Sedang keluar...',
+        success: () => {
+            router.push("/admin/login");
+            return 'Berhasil logout';
+        },
+        error: 'Gagal logout',
+    });
   };
 
   const handleUpdateStatus = async (status: "ACCEPTED" | "REJECTED") => {
     if (!selectedPelamar) return;
 
     if (status === "ACCEPTED" && !selectedPosition) {
-      alert("⚠️ Wajib pilih posisi/bidang penempatan terlebih dahulu!");
+      toast.warning("Wajib pilih posisi/bidang penempatan terlebih dahulu!");
       return;
     }
 
@@ -174,12 +179,12 @@ export default function ApplicantsPage() {
       if (res.ok) {
         setIsDialogOpen(false);
         fetchData(); // Refresh data table
-        alert(`Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : "tolak"}.`);
+        toast.success(`Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : "tolak"}.`);
       } else {
-        alert("Gagal update status. Cek console.");
+        toast.error("Gagal update status.");
       }
     } catch (error) {
-      alert("Server error.");
+      toast.error("Server error.");
     } finally {
       setIsProcessing(false);
     }
@@ -240,7 +245,7 @@ export default function ApplicantsPage() {
             <Button
               variant="ghost"
               className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20"
-              onClick={handleLogout}
+              onClick={() => setIsLogoutOpen(true)}
             >
               <LogOut className="mr-3 h-5 w-5" /> Keluar
             </Button>
@@ -283,7 +288,7 @@ export default function ApplicantsPage() {
             </div>
             <Button
               onClick={() => { setLoading(true); fetchData(); }}
-              className="bg-blue-700 hover:bg-blue-800 text-white"
+              className="bg-blue-700 hover:bg-blue-800 text-white shadow-sm"
             >
               <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
             </Button>
@@ -442,7 +447,7 @@ export default function ApplicantsPage() {
                               <div className="px-6 py-4 bg-slate-50/50">
                                 <div className="mb-3 flex items-center gap-2">
                                   <CheckCircle className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-semibold text-slate-900"> min</span>
+                                  <span className="text-sm font-semibold text-slate-900">Keputusan Admin</span>
                                 </div>
                                 <div className="space-y-2">
                                   <Label className="text-xs text-slate-500">Tempatkan di Bidang (Wajib jika diterima)</Label>
@@ -502,6 +507,25 @@ export default function ApplicantsPage() {
           </Card>
         </main>
       </div>
+
+      {/* MODAL LOGOUT */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200">
+           <DialogHeader className="flex flex-col items-center text-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <DialogTitle className="text-xl">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center">
+                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+              </DialogDescription>
+           </DialogHeader>
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+              <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

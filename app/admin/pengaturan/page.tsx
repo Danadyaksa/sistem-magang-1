@@ -14,8 +14,12 @@ import {
   User,
   Save,
   Shield,
-  UserCircle
+  UserCircle,
+  Loader2,
+  AlertTriangle 
 } from "lucide-react";
+
+import { toast } from "sonner";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +27,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function PengaturanPage() {
   const router = useRouter();
@@ -30,23 +42,21 @@ export default function PengaturanPage() {
   // --- STATE UI ---
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   
   // --- STATE DATA ---
-  // Data Form Profil
   const [profile, setProfile] = useState({
     id: "", 
     username: "",
     jabatan: "",
   });
 
-  // Data Form Password
   const [pass, setPass] = useState({
     current: "",
     new: "",
     confirm: "",
   });
 
-  // Data Header (Admin yang login)
   const [currentAdmin, setCurrentAdmin] = useState({ username: "...", jabatan: "..." });
 
   // --- 1. FETCH DATA ---
@@ -60,13 +70,10 @@ export default function PengaturanPage() {
       const data = await res.json();
       
       if (res.ok) {
-        // Set Data Header
         setCurrentAdmin({
           username: data.username,
           jabatan: data.jabatan || "Administrator",
         });
-        
-        // Set Data Form Profil
         setProfile({
           id: data.id,
           username: data.username,
@@ -80,75 +87,104 @@ export default function PengaturanPage() {
     }
   };
 
-  // --- 2. LOGIC UPDATE ---
+  // --- 2. UPDATE PROFIL ---
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(!profile.username) {
+        toast.warning("Username tidak boleh kosong");
+        return;
+    }
+
     setLoading(true);
 
-    try {
-      const res = await fetch(`/api/admins/${profile.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: profile.username,
-          jabatan: profile.jabatan,
-        }),
-      });
+    const promise = async () => {
+        const res = await fetch(`/api/admins/${profile.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: profile.username,
+                jabatan: profile.jabatan,
+            }),
+        });
 
-      if (res.ok) {
-        alert("Profil berhasil disimpan!");
-        router.refresh(); // Refresh agar header update
-        fetchSession();   // Ambil data terbaru lagi
-      } else {
-        const json = await res.json();
-        alert("Gagal: " + json.error);
-      }
-    } catch (error) {
-      alert("Terjadi kesalahan sistem");
-    } finally {
-      setLoading(false);
-    }
+        if (!res.ok) {
+            const json = await res.json();
+            throw new Error(json.error || "Gagal update profil");
+        }
+        
+        router.refresh(); 
+        fetchSession(); 
+        return "Profil berhasil diperbarui!";
+    };
+
+    toast.promise(promise(), {
+        loading: 'Menyimpan perubahan...',
+        success: (msg) => msg,
+        error: (err) => err.message,
+        finally: () => setLoading(false)
+    });
   };
 
+  // --- 3. UPDATE PASSWORD ---
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if(!pass.current || !pass.new || !pass.confirm) {
+        toast.warning("Semua kolom wajib diisi!");
+        return;
+    }
+
     if (pass.new !== pass.confirm) {
-      alert("Konfirmasi password tidak cocok!");
+      toast.warning("Konfirmasi password baru tidak cocok!");
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admins/${profile.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword: pass.current,
-          newPassword: pass.new,
-        }),
-      });
-
-      const json = await res.json();
-      if (res.ok) {
-        alert("Password berhasil diganti!");
-        setPass({ current: "", new: "", confirm: "" });
-      } else {
-        alert("Gagal: " + json.error);
-      }
-    } catch (error) {
-      alert("Terjadi kesalahan sistem");
-    } finally {
-      setLoading(false);
+    if (pass.new.length < 6) {
+        toast.warning("Password baru minimal 6 karakter");
+        return;
     }
+
+    setLoading(true);
+
+    const promise = async () => {
+        const res = await fetch(`/api/admins/${profile.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                currentPassword: pass.current,
+                newPassword: pass.new,
+            }),
+        });
+
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Gagal ganti password");
+
+        setPass({ current: "", new: "", confirm: "" });
+        return "Password berhasil diganti!";
+    };
+
+    toast.promise(promise(), {
+        loading: 'Memproses password...',
+        success: (msg) => msg,
+        error: (err) => err.message,
+        finally: () => setLoading(false)
+    });
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/admin/login");
-    } catch (error) {
-      router.push("/admin/login");
-    }
+  // --- 4. LOGIC LOGOUT ---
+  const handleLogoutConfirm = async () => {
+    setIsLogoutOpen(false);
+    
+    const promise = fetch("/api/auth/logout", { method: "POST" });
+    
+    toast.promise(promise, {
+        loading: 'Sedang keluar...',
+        success: () => {
+            router.push("/admin/login");
+            return 'Berhasil logout';
+        },
+        error: 'Gagal logout',
+    });
   };
 
   return (
@@ -171,7 +207,7 @@ export default function PengaturanPage() {
         <nav className="p-4 space-y-2">
           <Button
             variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
             onClick={() => router.push("/admin/dashboard")}
           >
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
@@ -179,7 +215,7 @@ export default function PengaturanPage() {
 
           <Button
             variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
             onClick={() => router.push("/admin/applicants")}
           >
             <FileText className="mr-3 h-5 w-5" /> Applicants
@@ -187,13 +223,12 @@ export default function PengaturanPage() {
 
           <Button
             variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
             onClick={() => router.push("/admin/users")}
           >
             <Users className="mr-3 h-5 w-5" /> Admin Users
           </Button>
 
-          {/* ACTIVE MENU */}
           <Button
             variant="ghost"
             className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20"
@@ -204,8 +239,8 @@ export default function PengaturanPage() {
           <div className="pt-8 mt-8 border-t border-slate-800">
             <Button
               variant="ghost"
-              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20"
-              onClick={handleLogout}
+              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors"
+              onClick={() => setIsLogoutOpen(true)}
             >
               <LogOut className="mr-3 h-5 w-5" /> Keluar
             </Button>
@@ -215,8 +250,7 @@ export default function PengaturanPage() {
 
       {/* --- CONTENT --- */}
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* HEADER */}
-        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40">
+        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               className="md:hidden p-2 hover:bg-slate-100 rounded"
@@ -240,10 +274,8 @@ export default function PengaturanPage() {
           </div>
         </header>
 
-        {/* MAIN BODY */}
-        <main className="p-4 md:p-8 space-y-8 w-full">
+        <main className="p-4 md:p-8 space-y-8 w-full animate-in fade-in duration-500">
           
-          {/* JUDUL HALAMAN (Biar sama kaya yang lain) */}
           <div className="max-w-4xl mx-auto w-full">
             <h1 className="text-2xl font-bold text-slate-900">
               Profil & Keamanan
@@ -253,12 +285,9 @@ export default function PengaturanPage() {
             </p>
           </div>
 
-          {/* CONTENT TENGAH & LEBAR (max-w-4xl mx-auto) */}
           <div className="max-w-4xl mx-auto w-full">
             <Tabs defaultValue="profil" className="w-full">
-              
-              {/* TAB NAVIGATION FULL WIDTH */}
-              <TabsList className="grid w-full grid-cols-2 bg-white border border-slate-200 p-1 mb-6 rounded-lg h-12">
+              <TabsList className="grid w-full grid-cols-2 bg-white border border-slate-200 p-1 mb-6 rounded-lg h-12 shadow-sm">
                 <TabsTrigger 
                   value="profil" 
                   className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 font-medium rounded-md h-full transition-all"
@@ -275,8 +304,7 @@ export default function PengaturanPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* TAB CONTENT: PROFIL */}
-              <TabsContent value="profil">
+              <TabsContent value="profil" className="animate-in fade-in slide-in-from-left-4 duration-300">
                 <Card className="border-slate-200 shadow-sm">
                   <CardHeader>
                     <CardTitle>Informasi Dasar</CardTitle>
@@ -305,8 +333,8 @@ export default function PengaturanPage() {
                         />
                       </div>
                       <div className="pt-2">
-                        <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto">
-                          {loading ? "Menyimpan..." : (
+                        <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto transition-all">
+                          {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Menyimpan...</> : (
                              <>
                                <Save className="w-4 h-4 mr-2" /> Simpan Perubahan
                              </>
@@ -318,8 +346,7 @@ export default function PengaturanPage() {
                 </Card>
               </TabsContent>
 
-              {/* TAB CONTENT: PASSWORD */}
-              <TabsContent value="password">
+              <TabsContent value="password" className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <Card className="border-slate-200 shadow-sm">
                   <CardHeader>
                     <CardTitle>Keamanan Akun</CardTitle>
@@ -364,8 +391,8 @@ export default function PengaturanPage() {
                         />
                       </div>
                       <div className="pt-2">
-                        <Button type="submit" variant="destructive" disabled={loading} className="w-full sm:w-auto">
-                          {loading ? "Memproses..." : (
+                        <Button type="submit" variant="destructive" disabled={loading} className="w-full sm:w-auto transition-all">
+                          {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Memproses...</> : (
                              <>
                                <Shield className="w-4 h-4 mr-2" /> Update Password
                              </>
@@ -376,11 +403,40 @@ export default function PengaturanPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-
             </Tabs>
           </div>
         </main>
       </div>
+
+      {/* --- MODAL DIALOG LOGOUT (Perbaikan Tombol Merah) --- */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200">
+           <DialogHeader className="flex flex-col items-center text-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <DialogTitle className="text-xl">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center">
+                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+              </DialogDescription>
+           </DialogHeader>
+           
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>
+                 Batal
+              </Button>
+              {/* SAYA MENAMBAHKAN 'text-white' DISINI */}
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" 
+                onClick={handleLogoutConfirm}
+              >
+                 Ya, Keluar
+              </Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
