@@ -282,7 +282,6 @@ export default function ApplicantsPage() {
               <p className="text-slate-500">Cek berkas dan tentukan siapa yang layak magang.</p>
             </div>
             <Button
-              variant="outline"
               onClick={() => { setLoading(true); fetchData(); }}
               className="bg-blue-700 hover:bg-blue-800 text-white"
             >

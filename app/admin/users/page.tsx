@@ -1,4 +1,3 @@
-// app/admin/users/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,12 +13,12 @@ import {
   UserPlus,
   Shield,
   Loader2,
-  Lock,
+  Lock, // Ikon gembok
   User,
   FileText,
   Settings,
   Pencil,
-  Briefcase // Icon buat Jabatan
+  Briefcase
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,11 +43,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Tipe Data Admin (Update: Ada jabatan)
 type AdminUser = {
   id: string;
   username: string;
-  jabatan: string | null; // <-- Tambahan
+  jabatan: string | null;
   createdAt: string;
 };
 
@@ -69,12 +67,13 @@ export default function AdminUsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Form Data (Update: Ada jabatan)
+  // Form Data (Diupdate untuk 3 kolom password)
   const [formData, setFormData] = useState({
     username: "",
-    jabatan: "", // <-- Tambahan
-    password: "",
-    confirmPassword: "",
+    jabatan: "",
+    currentPassword: "", // Password Lama
+    newPassword: "",     // Password Baru
+    confirmPassword: "", // Konfirmasi Password Baru
   });
   const [formError, setFormError] = useState("");
 
@@ -119,18 +118,20 @@ export default function AdminUsersPage() {
 
   const openAddModal = () => {
     setEditingId(null);
-    setFormData({ username: "", jabatan: "", password: "", confirmPassword: "" });
+    // Reset form bersih
+    setFormData({ username: "", jabatan: "", currentPassword: "", newPassword: "", confirmPassword: "" });
     setFormError("");
     setIsDialogOpen(true);
   };
 
   const openEditModal = (admin: AdminUser) => {
     setEditingId(admin.id);
-    // Isi form dengan data yang mau diedit
+    // Isi form dengan data yang mau diedit (Password dikosongkan)
     setFormData({ 
       username: admin.username, 
       jabatan: admin.jabatan || "", 
-      password: "", 
+      currentPassword: "", 
+      newPassword: "", 
       confirmPassword: "" 
     });
     setFormError("");
@@ -140,24 +141,53 @@ export default function AdminUsersPage() {
   const handleSave = async () => {
     setFormError("");
 
+    // Validasi Username
     if (!formData.username) {
       setFormError("Username wajib diisi.");
       return;
     }
 
-    if (!editingId && !formData.password) {
-      setFormError("Password wajib diisi untuk admin baru.");
-      return;
-    }
+    // --- LOGIKA VALIDASI PASSWORD ---
+    
+    // Case 1: Admin Baru (WAJIB isi Password Baru & Konfirmasi)
+    if (!editingId) {
+       if (!formData.newPassword) {
+         setFormError("Password wajib diisi untuk admin baru.");
+         return;
+       }
+       if (formData.newPassword !== formData.confirmPassword) {
+         setFormError("Konfirmasi password tidak cocok.");
+         return;
+       }
+       if (formData.newPassword.length < 6) {
+         setFormError("Password minimal 6 karakter.");
+         return;
+       }
+    } 
+    // Case 2: Edit Admin (OPSIONAL, tapi kalau diisi harus lengkap)
+    else {
+      // Jika salah satu kolom password baru diisi, maka semua validasi jalan
+      if (formData.newPassword || formData.confirmPassword || formData.currentPassword) {
+        
+        if (!formData.currentPassword) {
+          setFormError("Masukkan password lama untuk mengubah password.");
+          return;
+        }
 
-    if (formData.password) {
-      if (formData.password !== formData.confirmPassword) {
-        setFormError("Konfirmasi password tidak cocok.");
-        return;
-      }
-      if (formData.password.length < 6) {
-        setFormError("Password minimal 6 karakter.");
-        return;
+        if (!formData.newPassword) {
+          setFormError("Masukkan password baru.");
+          return;
+        }
+
+        if (formData.newPassword !== formData.confirmPassword) {
+          setFormError("Konfirmasi password baru tidak cocok.");
+          return;
+        }
+
+        if (formData.newPassword.length < 6) {
+          setFormError("Password baru minimal 6 karakter.");
+          return;
+        }
       }
     }
 
@@ -166,17 +196,22 @@ export default function AdminUsersPage() {
       const url = editingId ? `/api/admins/${editingId}` : "/api/admins";
       const method = editingId ? "PUT" : "POST";
 
+      // Siapkan payload
       const payload: any = { 
         username: formData.username,
-        jabatan: formData.jabatan // <-- Kirim jabatan
+        jabatan: formData.jabatan
       };
       
-      if (formData.password) {
-        if (editingId) {
-            payload.newPassword = formData.password;
-        } else {
-            payload.password = formData.password;
+      // Masukkan password ke payload jika ada
+      if (editingId) {
+        // Untuk Edit: Kirim current & new password
+        if (formData.newPassword) {
+          payload.currentPassword = formData.currentPassword;
+          payload.newPassword = formData.newPassword;
         }
+      } else {
+        // Untuk Baru: Kirim password biasa
+        payload.password = formData.newPassword;
       }
 
       const res = await fetch(url, {
@@ -192,7 +227,6 @@ export default function AdminUsersPage() {
 
       await fetchAdmins();
       setIsDialogOpen(false);
-      setFormData({ username: "", jabatan: "", password: "", confirmPassword: "" });
       setEditingId(null);
 
     } catch (error: any) {
@@ -306,7 +340,7 @@ export default function AdminUsersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-slate-600">
-                        {admin.jabatan || "-"} {/* <-- Tampilkan Jabatan */}
+                        {admin.jabatan || "-"}
                       </TableCell>
                       <TableCell><Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">Super Admin</Badge></TableCell>
                       <TableCell className="text-right pr-4">
@@ -356,7 +390,7 @@ export default function AdminUsersPage() {
               onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
             </div>
 
-            {/* INPUT JABATAN (BARU) */}
+            {/* INPUT JABATAN */}
             <div className="grid gap-2">
               <Label htmlFor="jabatan">Jabatan</Label>
               <div className="relative">
@@ -371,23 +405,59 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            {/* INPUT PASSWORD */}
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password {editingId && <span className="text-slate-400 font-normal">(Opsional)</span>}</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input id="password" type="password" className="pl-9" placeholder={editingId ? "Isi hanya jika ingin ganti" : "******"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-              </div>
-            </div>
+            {/* BAGIAN PASSWORD */}
+            {editingId ? (
+              // --- TAMPILAN MODE EDIT (3 KOLOM) ---
+              <div className="space-y-4 pt-2 border-t mt-2">
+                <p className="text-sm font-medium text-slate-900">Ganti Password <span className="text-slate-400 font-normal">(Opsional)</span></p>
+                
+                {/* 1. PASSWORD LAMA */}
+                <div className="grid gap-2">
+                  <Label htmlFor="currentPassword">Password Lama</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input id="currentPassword" type="password" className="pl-9" placeholder="Password saat ini..." value={formData.currentPassword} onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })} />
+                  </div>
+                </div>
 
-            {/* INPUT CONFIRM PASSWORD */}
-            <div className="grid gap-2">
-              <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input id="confirmPassword" type="password" className="pl-9" placeholder={editingId ? "Ulangi password baru" : "******"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} />
+                {/* 2. PASSWORD BARU */}
+                <div className="grid gap-2">
+                  <Label htmlFor="newPassword">Password Baru</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input id="newPassword" type="password" className="pl-9" placeholder="Password baru..." value={formData.newPassword} onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* 3. KONFIRMASI PASSWORD */}
+                <div className="grid gap-2">
+                  <Label htmlFor="confirmPassword">Konfirmasi Password Baru</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input id="confirmPassword" type="password" className="pl-9" placeholder="Ulangi password baru..." value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} />
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              // --- TAMPILAN MODE TAMBAH BARU (2 KOLOM BIASA) ---
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="newPassword">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input id="newPassword" type="password" className="pl-9" placeholder="******" value={formData.newPassword} onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input id="confirmPassword" type="password" className="pl-9" placeholder="******" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} />
+                  </div>
+                </div>
+              </>
+            )}
+
           </div>
 
           <DialogFooter>
