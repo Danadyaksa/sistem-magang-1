@@ -1,6 +1,6 @@
 "use client";
 
-import { ModeToggle } from "@/components/mode-toggle"; // <-- Tambah Import Ini
+import { ModeToggle } from "@/components/mode-toggle";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -188,16 +188,16 @@ export default function PengaturanPage() {
   };
 
   return (
-    // MAIN WRAPPER: dark:bg-slate-950
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300">
+    // FIX LAYOUT: h-screen & overflow-hidden
+    <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
       
       {/* --- SIDEBAR --- */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:relative md:translate-x-0 shadow-xl`}
+        } md:relative md:translate-x-0 shadow-xl flex flex-col h-full`}
       >
-        <div className="h-16 flex items-center px-6 border-b border-slate-800">
+        <div className="h-16 flex items-center px-6 border-b border-slate-800 flex-none">
           <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
           <button
             className="ml-auto md:hidden text-slate-400 hover:text-white"
@@ -206,7 +206,7 @@ export default function PengaturanPage() {
             <X className="h-6 w-6" />
           </button>
         </div>
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
           <Button
             variant="ghost"
             className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
@@ -250,10 +250,10 @@ export default function PengaturanPage() {
         </nav>
       </aside>
 
-      {/* --- CONTENT --- */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* HEADER: dark:bg-slate-950 dark:border-slate-800 */}
-        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm transition-colors duration-300">
+      {/* --- CONTENT WRAPPER: flex-1 flex-col h-full overflow-hidden --- */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        {/* HEADER: flex-none */}
+        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
           <div className="flex items-center gap-4">
             <button
               className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
@@ -267,8 +267,7 @@ export default function PengaturanPage() {
           </div>
           
           <div className="flex items-center gap-4">
-            {/* TOGGLE DARK MODE */}
-            <ModeToggle />
+            
 
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{currentAdmin.username}</div>
@@ -277,10 +276,13 @@ export default function PengaturanPage() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
+            {/* TOGGLE DARK MODE */}
+            <ModeToggle />
           </div>
         </header>
 
-        <main className="p-4 md:p-8 space-y-8 w-full animate-in fade-in duration-500">
+        {/* MAIN: flex-1 overflow-y-auto */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           
           <div className="max-w-4xl mx-auto w-full">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -341,7 +343,7 @@ export default function PengaturanPage() {
                         />
                       </div>
                       <div className="pt-2">
-                        <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 w-full sm:w-auto transition-all">
+                        <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 w-full sm:w-auto transition-all text-white">
                           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Menyimpan...</> : (
                             <>
                                <Save className="w-4 h-4 mr-2" /> Simpan Perubahan
@@ -400,7 +402,7 @@ export default function PengaturanPage() {
                         />
                       </div>
                       <div className="pt-2">
-                        <Button type="submit" variant="destructive" disabled={loading} className="w-full sm:w-auto transition-all">
+                        <Button type="submit" variant="destructive" disabled={loading} className="w-full sm:w-auto transition-all text-white">
                           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Memproses...</> : (
                             <>
                                <Shield className="w-4 h-4 mr-2" /> Update Password

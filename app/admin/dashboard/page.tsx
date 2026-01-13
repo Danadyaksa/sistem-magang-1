@@ -205,16 +205,23 @@ export default function AdminDashboard() {
   const filteredPositions = positions.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    // TAMBAH: dark:bg-slate-950 transition-colors
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300">
+    // FIX LAYOUT: h-screen & overflow-hidden (Biar halaman gak scroll, tapi konten di dalam yang scroll)
+    <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
       
-      {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 shadow-xl`}>
-        <div className="h-16 flex items-center px-6 border-b border-slate-800">
+      {/* SIDEBAR - Fixed height, scrollable content internally if needed */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out 
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
+        md:relative md:translate-x-0 shadow-xl flex flex-col h-full
+      `}>
+        {/* Sidebar Header (Fixed) */}
+        <div className="h-16 flex items-center px-6 border-b border-slate-800 flex-none">
           <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
           <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
-        <nav className="p-4 space-y-2">
+        
+        {/* Sidebar Menu (Scrollable) */}
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
           <Button variant="ghost" className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20">
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
@@ -235,9 +242,11 @@ export default function AdminDashboard() {
         </nav>
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* HEADER: dark:bg-slate-950 dark:border-slate-800 */}
-        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm transition-colors duration-300">
+      {/* CONTENT WRAPPER: flex-1 flex-col h-full overflow-hidden */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        {/* HEADER: Diam di atas (flex-none) */}
+        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
           <div className="flex items-center gap-4">
             <button className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
@@ -245,8 +254,7 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Overview Kuota</h2>
           </div>
           <div className="flex items-center gap-4">
-            {/* TOGGLE DARK MODE */}
-            <ModeToggle />
+            
             
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.username}</div>
@@ -255,11 +263,13 @@ export default function AdminDashboard() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
-            
+            {/* TOGGLE DARK MODE */}
+            <ModeToggle />
           </div>
         </header>
 
-        <main className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+        {/* MAIN: Ini yang bisa di-scroll (flex-1 overflow-y-auto) */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           {/* STATS CARDS: dark:bg-slate-900 dark:border-slate-800 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
@@ -289,7 +299,7 @@ export default function AdminDashboard() {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Manajemen Posisi</h1>
               <p className="text-slate-500 dark:text-slate-400">Kelola kuota dan nama bidang magang.</p>
             </div>
-            <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg shadow-blue-700/20 transition-all hover:scale-105">
+            <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg shadow-blue-700/20 transition-all hover:scale-105 text-white">
               <Plus className="mr-2 h-4 w-4" /> Tambah Posisi
             </Button>
           </div>
@@ -364,19 +374,19 @@ export default function AdminDashboard() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="animate-in fade-in zoom-in-95 duration-200">
+        <DialogContent className="animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Posisi" : "Tambah Posisi Baru"}</DialogTitle>
+            <DialogTitle className="dark:text-slate-100">{editingId ? "Edit Posisi" : "Tambah Posisi Baru"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2"><Label>Nama Bidang</Label><Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Contoh: Sub Bagian Keuangan" /></div>
+            <div className="grid gap-2"><Label className="dark:text-slate-300">Nama Bidang</Label><Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Contoh: Sub Bagian Keuangan" className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>Terisi</Label><Input type="number" value={formData.filled} onChange={(e) => setFormData({ ...formData, filled: parseInt(e.target.value) || 0 })} /></div>
-              <div className="grid gap-2"><Label>Kuota</Label><Input type="number" value={formData.quota} onChange={(e) => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} /></div>
+              <div className="grid gap-2"><Label className="dark:text-slate-300">Terisi</Label><Input type="number" value={formData.filled} onChange={(e) => setFormData({ ...formData, filled: parseInt(e.target.value) || 0 })} className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
+              <div className="grid gap-2"><Label className="dark:text-slate-300">Kuota</Label><Input type="number" value={formData.quota} onChange={(e) => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all">
+            <Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all text-white">
               {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menyimpan...</> : "Simpan"}
             </Button>
           </DialogFooter>
@@ -385,18 +395,18 @@ export default function AdminDashboard() {
 
       {/* MODAL LOGOUT */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
-        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200">
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
           <DialogHeader className="flex flex-col items-center text-center gap-2">
             <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
               <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
-            <DialogTitle className="text-xl">Konfirmasi Keluar</DialogTitle>
-            <DialogDescription className="text-center">
+            <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+            <DialogDescription className="text-center dark:text-slate-400">
               Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-            <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+            <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
             <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
           </DialogFooter>
         </DialogContent>

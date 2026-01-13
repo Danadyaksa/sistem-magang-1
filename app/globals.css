@@ -98,7 +98,6 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* ... bagian atas biarin aja ... */
 
 @layer base {
   /* INI WAJIB ADA BIAR BACKGROUND BERUBAHNYA PELAN (FADING) */
@@ -106,7 +105,7 @@
     @apply border-border outline-ring/50;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 500ms; /* Durasi animasi 0.5 detik */
+    transition-duration: 100ms; /* Durasi animasi 0.5 detik */
   }
 
   body {
