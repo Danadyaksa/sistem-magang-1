@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
-// 1. Import Toaster dari sonner
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
+const outfit = Outfit({subsets:['latin'], variable:'--font-sans'});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Magang Disdikpora DIY",
-  description: "Magang di Dinas Pendidikan, Pemuda, dan Olahraga DIYx",
+  description: "Magang di Dinas Pendidikan, Pemuda, dan Olahraga DIY",
 };
 
 export default function RootLayout({
@@ -27,16 +27,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={outfit.variable}>
+    <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        
-        {/* 2. Pasang Component Toaster disini */}
-        {/* position="top-center" -> Biar muncul di tengah atas */}
-        {/* richColors -> Biar sukses warnanya hijau, error warnanya merah (cakep) */}
-        <Toaster position="top-center" richColors />
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            // disableTransitionOnChange  <-- BARIS INI YANG KITA BUANG!
+        >
+            {children}
+            <Toaster position="top-center" richColors />
+        </ThemeProvider>
       </body>
     </html>
   );

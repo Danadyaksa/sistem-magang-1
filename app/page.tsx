@@ -1,5 +1,6 @@
 "use client";
 
+import { ModeToggle } from "@/components/mode-toggle"; // <-- Tambah Import Ini
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -141,7 +142,8 @@ export default function Home() {
     });
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 text-sm">
+    // WRAPPER UTAMA: Support Dark Mode Background
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 text-sm transition-colors duration-300">
       
       <style jsx global>{`
         html {
@@ -150,7 +152,7 @@ export default function Home() {
       `}</style>
 
       {/* NAVBAR */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm border-slate-200">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-slate-200 dark:border-slate-800 transition-colors duration-300">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link 
             href="/" 
@@ -158,7 +160,7 @@ export default function Home() {
               e.preventDefault(); // Mencegah reload halaman
               window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll ke paling atas
             }}
-          className="flex items-center gap-2 font-bold text-lg text-slate-800">
+          className="flex items-center gap-2 font-bold text-lg text-slate-800 dark:text-slate-100">
             <Image
               src="/logo-disdikpora.png"
               alt="Logo Disdikpora DIY"
@@ -169,47 +171,53 @@ export default function Home() {
             <span>Magang Disdikpora</span>
           </Link>
           
-          <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
+          <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
             {["tentang", "alur", "kuota", "faq"].map((item) => (
               <Link 
                 key={item}
                 href={`#${item}`} 
                 onClick={(e) => handleScroll(e, item)}
-                className="hover:text-blue-700 transition-colors capitalize"
+                className="hover:text-blue-700 dark:hover:text-blue-400 transition-colors capitalize"
               >
                 {item}
               </Link>
             ))}
           </nav>
 
-          <div className="hidden md:block">
-            <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 rounded-full px-6 shadow-sm">
+          <div className="hidden md:flex items-center gap-4">
+            {/* Dark Mode Toggle */}
+            <ModeToggle />
+            
+            <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-full px-6 shadow-sm text-white">
               <Link href="/daftar">Daftar Sekarang</Link>
             </Button>
           </div>
 
-          <button 
-            className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-md"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+          <div className="flex items-center gap-4 md:hidden">
+             <ModeToggle />
+             <button 
+                className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+             >
+                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+             </button>
+          </div>
         </div>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-100 bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-5 duration-200">
-            <div className="flex flex-col p-4 space-y-4 font-medium text-slate-600">
+          <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 absolute w-full left-0 shadow-lg animate-in slide-in-from-top-5 duration-200">
+            <div className="flex flex-col p-4 space-y-4 font-medium text-slate-600 dark:text-slate-300">
               {["tentang", "alur", "kuota", "faq"].map((item) => (
                 <Link 
                   key={item}
                   href={`#${item}`} 
                   onClick={(e) => handleScroll(e, item)}
-                  className="hover:text-blue-700 hover:bg-slate-50 p-2 rounded-md transition-colors capitalize"
+                  className="hover:text-blue-700 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900 p-2 rounded-md transition-colors capitalize"
                 >
                   {item}
                 </Link>
               ))}
-              <Button asChild className="w-full bg-blue-700 hover:bg-blue-800 rounded-full">
+              <Button asChild className="w-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-full text-white">
                 <Link href="/daftar">Daftar Sekarang</Link>
               </Button>
             </div>
@@ -219,69 +227,70 @@ export default function Home() {
 
       <main>
         {/* HERO SECTION */}
-        <section id="tentang" className="relative py-24 md:py-32 text-center container mx-auto px-4 overflow-hidden bg-slate-50 border-b border-slate-200">
-          <div className="absolute inset-0 z-0 opacity-[0.8]" 
+        <section id="tentang" className="relative py-24 md:py-32 text-center container mx-auto px-4 overflow-hidden bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+          <div className="absolute inset-0 z-0 opacity-[0.8] dark:opacity-[0.2]" 
                style={{ 
                  backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', 
                  backgroundSize: '24px 24px' 
                }}>
           </div>
-          <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent via-slate-50/50 to-slate-50"></div>
+          {/* Gradient Overlay for Dark Mode */}
+          <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent via-slate-50/50 to-slate-50 dark:via-slate-950/50 dark:to-slate-950"></div>
 
           <div className="relative z-10">
             <FadeInSection>
               <div className="space-y-6">
-                <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 text-blue-700 bg-blue-50 mb-4 inline-flex">
-                  <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2 animate-pulse"></span>
+                <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 mb-4 inline-flex">
+                  <span className="flex h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400 mr-2 animate-pulse"></span>
                   Pendaftaran Magang Periode 2026 Telah Dibuka
                 </Badge>
 
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-tight">
                   Sistem Informasi Magang <br />
-                  <span className="text-blue-700">Dinas Dikpora DIY</span>
+                  <span className="text-blue-700 dark:text-blue-500">Dinas Dikpora DIY</span>
                 </h1>
                 
-                <p className="text-base md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                <p className="text-base md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
                   Bergabunglah dalam program magang Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta. 
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 w-full max-w-md mx-auto sm:max-w-none">
-                  <Button size="lg" className="h-12 w-full sm:w-auto px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all" asChild>
+                  <Button size="lg" className="h-12 w-full sm:w-auto px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all text-white" asChild>
                     <Link href="/daftar">
                       Isi Formulir Pendaftaran
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="h-12 w-full sm:w-auto px-8 text-base rounded-full hover:bg-slate-100 bg-white" asChild>
+                  <Button size="lg" variant="outline" className="h-12 w-full sm:w-auto px-8 text-base rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-950 dark:text-slate-200 dark:border-slate-700" asChild>
                     <Link href="#alur" onClick={(e) => handleScroll(e, "alur")}>Pelajari Dulu</Link>
                   </Button>
                 </div>
               </div>
             </FadeInSection>
             
-            <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400">
+            <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400 dark:text-slate-600">
               <ChevronDown className="h-6 w-6" />
             </div>
           </div>
         </section>
 
         {/* ALUR PENDAFTARAN */}
-        <section id="alur" className="py-20 bg-white border-y border-slate-100 scroll-mt-20">
+        <section id="alur" className="py-20 bg-white dark:bg-slate-950 border-y border-slate-100 dark:border-slate-800 scroll-mt-20 transition-colors">
           <div className="container mx-auto px-4">
             <FadeInSection>
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800">
+              <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800 dark:text-slate-100">
                 Alur Pendaftaran
               </h2>
             </FadeInSection>
 
             <div className="grid md:grid-cols-3 gap-6">
               <FadeInSection delay={100}>
-                <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
+                <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <FileText className="h-6 w-6 text-blue-700" />
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                      <FileText className="h-6 w-6 text-blue-700 dark:text-blue-400" />
                     </div>
-                    <CardTitle className="text-lg">1. Siapkan Berkas</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardTitle className="text-lg dark:text-slate-100">1. Siapkan Berkas</CardTitle>
+                    <CardDescription className="text-sm dark:text-slate-400">
                       Scan surat pengantar resmi dari sekolah/kampus dan proposal kegiatan magang dalam format PDF.
                     </CardDescription>
                   </CardHeader>
@@ -289,13 +298,13 @@ export default function Home() {
               </FadeInSection>
 
               <FadeInSection delay={200}>
-                <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
+                <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <SquarePen className="h-6 w-6 text-blue-700" />
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                      <SquarePen className="h-6 w-6 text-blue-700 dark:text-blue-400" />
                     </div>
-                    <CardTitle className="text-lg">2. Isi Formulir</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardTitle className="text-lg dark:text-slate-100">2. Isi Formulir</CardTitle>
+                    <CardDescription className="text-sm dark:text-slate-400">
                       Lengkapi data diri, durasi magang, dan upload berkas persyaratan melalui link Google Form yang tersedia.
                     </CardDescription>
                   </CardHeader>
@@ -303,13 +312,13 @@ export default function Home() {
               </FadeInSection>
 
               <FadeInSection delay={300}>
-                <Card className="h-full hover:shadow-md transition-shadow border-slate-200">
+                <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                      <CalendarCheck className="h-6 w-6 text-blue-700" />
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                      <CalendarCheck className="h-6 w-6 text-blue-700 dark:text-blue-400" />
                     </div>
-                    <CardTitle className="text-lg">3. Tunggu Konfirmasi</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardTitle className="text-lg dark:text-slate-100">3. Tunggu Konfirmasi</CardTitle>
+                    <CardDescription className="text-sm dark:text-slate-400">
                       Tim kami akan memverifikasi berkas Anda. Konfirmasi penerimaan akan dikirim melalui WhatsApp/Email.
                     </CardDescription>
                   </CardHeader>
@@ -320,14 +329,14 @@ export default function Home() {
         </section>
 
         {/* KUOTA MAGANG (DYNAMIC & FILTERABLE) */}
-        <section id="kuota" className="py-20 bg-slate-50 border-y border-slate-200 scroll-mt-20">
+        <section id="kuota" className="py-20 bg-slate-50 dark:bg-slate-950 border-y border-slate-200 dark:border-slate-800 scroll-mt-20 transition-colors">
           <div className="container mx-auto px-4">
             <FadeInSection>
               <div className="text-center mb-8">
-                <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
+                <h2 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-4">
                   Kuota Magang
                 </h2>
-                <p className="text-slate-600 max-w-2xl mx-auto text-sm md:text-base">
+                <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
                   Cek ketersediaan kuota magang di setiap divisi Dinas Pendidikan, Pemuda, dan Olahraga DIY update terbaru hari ini.
                 </p>
               </div>
@@ -341,37 +350,26 @@ export default function Home() {
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <Input 
                       placeholder="Cari nama bidang..." 
-                      className="pl-9 bg-white" 
+                      className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:text-slate-100" 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
 
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-full sm:w-[200px] bg-white border-slate-200 text-slate-700 shadow-sm">
+                    <SelectTrigger className="w-full sm:w-[200px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-sm">
                       <Filter className="w-4 h-4 mr-0 text-slate-500" />
                       <SelectValue placeholder="Urutkan" />
                     </SelectTrigger>
                     
-                    <SelectContent className="bg-white border-slate-200 text-slate-900">
-                      {/* Timpa hijau default */}
-                      <SelectItem 
-                        value="default" 
-                        className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 data-[state=checked]:bg-slate-100 data-[state=checked]:text-slate-900"
-                      >
+                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+                      <SelectItem value="default" className="cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800">
                         Default
                       </SelectItem>
-                      
-                      <SelectItem 
-                        value="quota-high" 
-                        className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 data-[state=checked]:bg-slate-100 data-[state=checked]:text-slate-900"
-                      >
+                      <SelectItem value="quota-high" className="cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800">
                         Sisa Kuota Terbanyak
                       </SelectItem>
-                      <SelectItem 
-                        value="quota-low" 
-                        className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 data-[state=checked]:bg-slate-100 data-[state=checked]:text-slate-900"
-                      >
+                      <SelectItem value="quota-low" className="cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800">
                         Sisa Kuota Sedikit
                       </SelectItem>
                     </SelectContent>
@@ -384,7 +382,7 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
               {isLoading ? (
                 <div className="text-center py-10">
-                  <div className="inline-flex items-center justify-center gap-2 text-slate-500">
+                  <div className="inline-flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <span>Memuat data kuota...</span>
                   </div>
@@ -394,20 +392,20 @@ export default function Home() {
                   const status = getStatus(pos.filled, pos.quota);
                   return (
                     <FadeInSection key={pos.id} delay={index * 50}>
-                      <Card className={`w-full border border-slate-200 shadow-sm hover:border-slate-400 transition-colors bg-white ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50' : ''}`}>
+                      <Card className={`w-full border border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-400 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-900 ${pos.filled >= pos.quota ? 'opacity-70 bg-slate-50 dark:bg-slate-950' : ''}`}>
                         <CardHeader className="py-2 px-3 sm:px-4">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <div className="flex-1">
-                              <CardTitle className="text-base md:text-lg font-bold text-slate-800">
+                              <CardTitle className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100">
                                 {pos.title}
                               </CardTitle>
                             </div>
                             <Badge variant="secondary" 
                               className={`
                                 border shrink-0 text-xs 
-                                ${status === 'Dibuka' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                                ${status === 'Terbatas' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
-                                ${status === 'Penuh' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                                ${status === 'Dibuka' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : ''}
+                                ${status === 'Terbatas' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' : ''}
+                                ${status === 'Penuh' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800' : ''}
                               `}
                             >
                               {status}
@@ -416,12 +414,12 @@ export default function Home() {
                         </CardHeader>
                         <CardContent className="pb-4 pt-0 px-3 sm:px-4">
                           <div className="space-y-2">
-                            <div className="flex justify-between text-sm text-slate-600">
+                            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
                               <span>Terisi: {pos.filled} orang</span>
                               <span className="font-medium">Kuota: {pos.quota}</span>
                             </div>
-                            <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100" />
-                            <div className="text-[10px] text-slate-400 mt-1">
+                            <Progress value={(pos.filled / pos.quota) * 100} className="h-2.5 bg-slate-100 dark:bg-slate-800" />
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                                *Update Real-time
                             </div>
                           </div>
@@ -431,7 +429,7 @@ export default function Home() {
                   );
                 })
               ) : (
-                <div className="text-center py-10 text-slate-500 bg-white border border-slate-200 rounded-lg">
+                <div className="text-center py-10 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
                   {searchTerm ? "Tidak ditemukan bidang dengan nama tersebut." : "Belum ada data posisi magang."}
                 </div>
               )}
@@ -441,47 +439,47 @@ export default function Home() {
         </section>
         
         {/* FAQ SECTION */}
-        <section id="faq" className="py-20 bg-white scroll-mt-20">
+        <section id="faq" className="py-20 bg-white dark:bg-slate-950 scroll-mt-20 transition-colors">
           <div className="container mx-auto px-4 max-w-3xl">
             <FadeInSection>
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 text-slate-800">
+              <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 text-slate-800 dark:text-slate-100">
                 Pertanyaan Umum (FAQ)
               </h2>
             </FadeInSection>
             
             <FadeInSection delay={200}>
-              <Card className="border-none shadow-sm bg-slate-50">
+              <Card className="border-none shadow-sm bg-slate-50 dark:bg-slate-900">
                 <CardContent className="pt-6">
                   <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="item-1">
-                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
+                    <AccordionItem value="item-1" className="border-b-slate-200 dark:border-b-slate-800">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 dark:text-slate-200 text-left">
                         Berapa lama durasi minimal magang?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
                         Durasi magang menyesuaikan dengan kebijakan kampus/sekolah, namun umumnya minimal 1 bulan dan maksimal 6 bulan.
                       </AccordionContent>
                     </AccordionItem>
-                    <AccordionItem value="item-2">
-                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
+                    <AccordionItem value="item-2" className="border-b-slate-200 dark:border-b-slate-800">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 dark:text-slate-200 text-left">
                         Apakah magang ini berbayar/digaji?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
                         Magang di Disdikpora DIY bersifat <strong>unpaid</strong> (tidak digaji). Program ini difokuskan untuk memberikan pengalaman kerja nyata.
                       </AccordionContent>
                     </AccordionItem>
-                    <AccordionItem value="item-3">
-                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
+                    <AccordionItem value="item-3" className="border-b-slate-200 dark:border-b-slate-800">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 dark:text-slate-200 text-left">
                         Dokumen apa saja yang wajib diupload?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
                         Anda wajib menyertakan <strong>Surat Pengantar Resmi</strong> dari Sekolah/Kampus dan <strong>Proposal Kegiatan</strong>.
                       </AccordionContent>
                     </AccordionItem>
-                    <AccordionItem value="item-4">
-                      <AccordionTrigger className="text-base font-medium text-slate-700 text-left">
+                    <AccordionItem value="item-4" className="border-b-slate-200 dark:border-b-slate-800">
+                      <AccordionTrigger className="text-base font-medium text-slate-700 dark:text-slate-200 text-left">
                         Kapan saya dapat kepastian diterima?
                       </AccordionTrigger>
-                      <AccordionContent className="text-slate-600 text-sm">
+                      <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
                         Proses verifikasi berkas biasanya memakan waktu 3-7 hari kerja tergantung antrian pendaftar.
                       </AccordionContent>
                     </AccordionItem>

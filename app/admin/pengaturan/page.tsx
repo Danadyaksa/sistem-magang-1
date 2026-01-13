@@ -1,6 +1,6 @@
-// app/admin/pengaturan/page.tsx
 "use client";
 
+import { ModeToggle } from "@/components/mode-toggle"; // <-- Tambah Import Ini
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -188,7 +188,9 @@ export default function PengaturanPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    // MAIN WRAPPER: dark:bg-slate-950
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300">
+      
       {/* --- SIDEBAR --- */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${
@@ -250,25 +252,29 @@ export default function PengaturanPage() {
 
       {/* --- CONTENT --- */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-white border-b h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm">
+        {/* HEADER: dark:bg-slate-950 dark:border-slate-800 */}
+        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between sticky top-0 z-40 shadow-sm transition-colors duration-300">
           <div className="flex items-center gap-4">
             <button
-              className="md:hidden p-2 hover:bg-slate-100 rounded"
+              className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="h-6 w-6 text-slate-600" />
+              <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
             </button>
-            <h2 className="text-lg font-semibold text-slate-800">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
               Pengaturan Akun
             </h2>
           </div>
           
           <div className="flex items-center gap-4">
+            {/* TOGGLE DARK MODE */}
+            <ModeToggle />
+
             <div className="text-right hidden md:block">
-              <div className="font-bold text-sm text-slate-900">{currentAdmin.username}</div>
-              <div className="text-xs text-slate-500">{currentAdmin.jabatan}</div>
+              <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{currentAdmin.username}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{currentAdmin.jabatan}</div>
             </div>
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
+            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
           </div>
@@ -277,65 +283,67 @@ export default function PengaturanPage() {
         <main className="p-4 md:p-8 space-y-8 w-full animate-in fade-in duration-500">
           
           <div className="max-w-4xl mx-auto w-full">
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               Profil & Keamanan
             </h1>
-            <p className="text-slate-500">
+            <p className="text-slate-500 dark:text-slate-400">
               Kelola informasi pribadi dan keamanan akun Anda.
             </p>
           </div>
 
           <div className="max-w-4xl mx-auto w-full">
             <Tabs defaultValue="profil" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-white border border-slate-200 p-1 mb-6 rounded-lg h-12 shadow-sm">
+              {/* TAB LIST: dark:bg-slate-950 dark:border-slate-800 */}
+              <TabsList className="grid w-full grid-cols-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
                 <TabsTrigger 
                   value="profil" 
-                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 font-medium rounded-md h-full transition-all"
+                  className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400"
                 >
                   <UserCircle className="w-4 h-4 mr-2" />
                   Profil Admin
                 </TabsTrigger>
                 <TabsTrigger 
                   value="password" 
-                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 font-medium rounded-md h-full transition-all"
+                  className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400"
                 >
                   <Shield className="w-4 h-4 mr-2" />
                   Ganti Password
                 </TabsTrigger>
               </TabsList>
 
+              {/* CARD PROFIL */}
               <TabsContent value="profil" className="animate-in fade-in slide-in-from-left-4 duration-300">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 transition-colors">
                   <CardHeader>
-                    <CardTitle>Informasi Dasar</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="dark:text-slate-100">Informasi Dasar</CardTitle>
+                    <CardDescription className="dark:text-slate-400">
                       Perbarui nama pengguna dan jabatan yang ditampilkan.
                     </CardDescription>
                   </CardHeader>
-                  <Separator className="bg-slate-100" />
+                  <Separator className="bg-slate-100 dark:bg-slate-800" />
                   <CardContent className="pt-6">
                     <form onSubmit={handleUpdateProfile} className="space-y-5">
                       <div className="grid gap-2">
-                        <Label className="text-slate-600">Username</Label>
+                        <Label className="text-slate-600 dark:text-slate-300">Username</Label>
                         <Input 
                           value={profile.username} 
                           onChange={(e) => setProfile({...profile, username: e.target.value})} 
-                          className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                          className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 dark:text-slate-100 transition-colors"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label className="text-slate-600">Jabatan</Label>
+                        <Label className="text-slate-600 dark:text-slate-300">Jabatan</Label>
                         <Input 
                           value={profile.jabatan} 
                           onChange={(e) => setProfile({...profile, jabatan: e.target.value})} 
                           placeholder="Contoh: Kepala Tata Usaha"
-                          className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                          className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 dark:text-slate-100 transition-colors"
                         />
                       </div>
                       <div className="pt-2">
-                        <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto transition-all">
+                        <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 w-full sm:w-auto transition-all">
                           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Menyimpan...</> : (
-                             <>
+                            <>
                                <Save className="w-4 h-4 mr-2" /> Simpan Perubahan
                              </>
                           )}
@@ -346,54 +354,55 @@ export default function PengaturanPage() {
                 </Card>
               </TabsContent>
 
+              {/* CARD PASSWORD */}
               <TabsContent value="password" className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 transition-colors">
                   <CardHeader>
-                    <CardTitle>Keamanan Akun</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="dark:text-slate-100">Keamanan Akun</CardTitle>
+                    <CardDescription className="dark:text-slate-400">
                       Pastikan password Anda kuat dan tidak diketahui orang lain.
                     </CardDescription>
                   </CardHeader>
-                  <Separator className="bg-slate-100" />
+                  <Separator className="bg-slate-100 dark:bg-slate-800" />
                   <CardContent className="pt-6">
                     <form onSubmit={handleUpdatePassword} className="space-y-5">
                       <div className="grid gap-2">
-                        <Label className="text-slate-600">Password Lama</Label>
+                        <Label className="text-slate-600 dark:text-slate-300">Password Lama</Label>
                         <Input 
                           type="password" 
                           required 
                           placeholder="••••••"
                           value={pass.current}
                           onChange={(e) => setPass({...pass, current: e.target.value})}
-                          className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                          className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 dark:text-slate-100 transition-colors"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label className="text-slate-600">Password Baru</Label>
+                        <Label className="text-slate-600 dark:text-slate-300">Password Baru</Label>
                         <Input 
                           type="password" 
                           required 
                           placeholder="••••••"
                           value={pass.new}
                           onChange={(e) => setPass({...pass, new: e.target.value})}
-                          className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                          className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 dark:text-slate-100 transition-colors"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label className="text-slate-600">Konfirmasi Password Baru</Label>
+                        <Label className="text-slate-600 dark:text-slate-300">Konfirmasi Password Baru</Label>
                         <Input 
                           type="password" 
                           required 
                           placeholder="••••••"
                           value={pass.confirm}
                           onChange={(e) => setPass({...pass, confirm: e.target.value})}
-                          className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                          className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 dark:text-slate-100 transition-colors"
                         />
                       </div>
                       <div className="pt-2">
                         <Button type="submit" variant="destructive" disabled={loading} className="w-full sm:w-auto transition-all">
                           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Memproses...</> : (
-                             <>
+                            <>
                                <Shield className="w-4 h-4 mr-2" /> Update Password
                              </>
                           )}
@@ -408,24 +417,23 @@ export default function PengaturanPage() {
         </main>
       </div>
 
-      {/* --- MODAL DIALOG LOGOUT (Perbaikan Tombol Merah) --- */}
+      {/* --- MODAL DIALOG LOGOUT --- */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
-        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200">
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
            <DialogHeader className="flex flex-col items-center text-center gap-2">
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
-                 <AlertTriangle className="h-6 w-6 text-red-600" />
+              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
-              <DialogTitle className="text-xl">Konfirmasi Keluar</DialogTitle>
-              <DialogDescription className="text-center">
+              <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
                  Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
               </DialogDescription>
            </DialogHeader>
            
            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-              <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>
+              <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>
                  Batal
               </Button>
-              {/* SAYA MENAMBAHKAN 'text-white' DISINI */}
               <Button 
                 variant="destructive" 
                 className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" 
