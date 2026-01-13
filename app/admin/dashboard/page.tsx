@@ -14,9 +14,9 @@ import {
   Search,
   Pencil,
   Trash2,
-  Loader2,
   FileText,
   User,
+  Loader2, // Tambah loader
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -139,11 +138,15 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
-  // Helpers
-  const getStatus = (filled: number, quota: number) => {
-    if (filled >= quota) return "Penuh";
-    if (quota - filled <= 1) return "Terbatas";
-    return "Dibuka";
+  // Helpers untuk Badge yang lebih cantik
+  const renderStatusBadge = (filled: number, quota: number) => {
+    if (filled >= quota) {
+      return <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200">Penuh</Badge>;
+    }
+    if (quota - filled <= 1) {
+      return <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">Terbatas</Badge>;
+    }
+    return <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Dibuka</Badge>;
   };
 
   const openAddModal = () => { resetForm(); setEditingId(null); setIsDialogOpen(true); };
@@ -155,14 +158,14 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 shadow-xl`}>
         <div className="h-16 flex items-center px-6 border-b border-slate-800">
           <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
-          <button className="ml-auto md:hidden" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
+          <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
         <nav className="p-4 space-y-2">
           {/* MENU DASHBOARD AKTIF */}
-          <Button variant="ghost" className="w-full justify-start text-white bg-slate-800">
+          <Button variant="ghost" className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20">
             <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
           </Button>
           <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => router.push("/admin/applicants")}>
@@ -225,50 +228,82 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* TABLE */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">Manajemen Posisi</h3>
-                <p className="text-sm text-slate-500">Kelola kuota dan nama bidang magang.</p>
-              </div>
-              <div className="flex gap-3 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                  <Input placeholder="Cari bidang..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                </div>
-                <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800"><Plus className="h-4 w-4 mr-2" /> Tambah</Button>
+          {/* TABLE CONTAINER MIRIP ADMIN USERS */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Manajemen Posisi</h1>
+              <p className="text-slate-500">Kelola kuota dan nama bidang magang.</p>
+            </div>
+            <Button onClick={openAddModal} className="bg-blue-700 hover:bg-blue-800">
+              <Plus className="mr-2 h-4 w-4" /> Tambah Posisi
+            </Button>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+             {/* HEADER PENCARIAN DI DALAM KOTAK PUTIH */}
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                <Input placeholder="Cari nama bidang..." className="pl-9 bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
             </div>
 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[300px]">Nama Bidang</TableHead>
-                  <TableHead className="text-center">Terisi</TableHead>
-                  <TableHead className="text-center">Total Kuota</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="w-[50px] text-center">No</TableHead>
+                  <TableHead className="w-[40%]">Nama Bidang</TableHead>
+                  <TableHead className="text-center">Terisi / Kuota</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right pr-6">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500">Memuat...</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500"><div className="flex justify-center items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /> Memuat data...</div></TableCell></TableRow>
                 ) : filteredPositions.length > 0 ? (
-                  filteredPositions.map((pos) => (
+                  filteredPositions.map((pos, index) => (
                     <TableRow key={pos.id}>
-                      <TableCell className="font-medium">{pos.title}</TableCell>
-                      <TableCell className="text-center">{pos.filled}</TableCell>
-                      <TableCell className="text-center">{pos.quota}</TableCell>
-                      <TableCell><Badge variant="outline">{getStatus(pos.filled, pos.quota)}</Badge></TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-blue-50 text-slate-400 hover:text-blue-600" onClick={() => openEditModal(pos)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(pos.id)}><Trash2 className="h-4 w-4" /></Button>
+                       {/* Kolom No */}
+                      <TableCell className="text-center text-slate-500">{index + 1}</TableCell>
+                      
+                      {/* Kolom Nama Bidang dengan Ikon */}
+                      <TableCell className="font-medium text-slate-900">
+                         <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                <Briefcase className="h-4 w-4" />
+                            </div>
+                            {pos.title}
+                         </div>
+                      </TableCell>
+                      
+                      {/* Kolom Kuota */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-slate-700">{pos.filled}</span>
+                        <span className="text-slate-400 mx-1">/</span>
+                        <span className="text-slate-500">{pos.quota}</span>
+                      </TableCell>
+
+                      {/* Kolom Status (Badge Warna) */}
+                      <TableCell className="text-center">
+                        {renderStatusBadge(pos.filled, pos.quota)}
+                      </TableCell>
+
+                      {/* Kolom Aksi */}
+                      <TableCell className="text-right pr-4">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => openEditModal(pos)}>
+                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(pos.id)}>
+                             <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow><TableCell colSpan={5} className="h-24 text-center">Data kosong.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-500">Belum ada data posisi.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -279,16 +314,16 @@ export default function AdminDashboard() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Posisi" : "Tambah Posisi"}</DialogTitle>
+            <DialogTitle>{editingId ? "Edit Posisi" : "Tambah Posisi Baru"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2"><Label>Nama Bidang</Label><Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>Nama Bidang</Label><Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Contoh: Sub Bagian Keuangan" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2"><Label>Terisi</Label><Input type="number" value={formData.filled} onChange={(e) => setFormData({ ...formData, filled: parseInt(e.target.value) || 0 })} /></div>
               <div className="grid gap-2"><Label>Kuota</Label><Input type="number" value={formData.quota} onChange={(e) => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} /></div>
             </div>
           </div>
-          <DialogFooter><Button onClick={handleSave} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800">{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
