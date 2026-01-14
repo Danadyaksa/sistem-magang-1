@@ -29,7 +29,6 @@ Project ini dikembangkan sebagai bagian dari kegiatan **Kerja Praktik (KP)** / p
 
 ## Struktur Folder Project
 
-.
 - ├── app/ # Routing dan halaman aplikasi
 - ├── components/ # Komponen UI yang dapat digunakan ulang
 - ├── lib/ # Helper, utilitas, dan konfigurasi
