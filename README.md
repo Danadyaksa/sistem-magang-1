@@ -7,7 +7,7 @@ Project ini dikembangkan sebagai bagian dari kegiatan **Kerja Praktik (KP)** / p
 
 ---
 
-## 🎯 Tujuan Sistem
+## Tujuan Sistem
 - Mempermudah proses pendaftaran magang secara online
 - Mengelola data peserta magang secara terpusat
 - Mengurangi proses manual dan penggunaan dokumen fisik
@@ -15,7 +15,7 @@ Project ini dikembangkan sebagai bagian dari kegiatan **Kerja Praktik (KP)** / p
 
 ---
 
-## 🚀 Teknologi yang Digunakan
+## Teknologi yang Digunakan
 
 - **Next.js** – Framework React berbasis server & client
 - **TypeScript** – Bahasa pemrograman dengan type safety
@@ -27,17 +27,17 @@ Project ini dikembangkan sebagai bagian dari kegiatan **Kerja Praktik (KP)** / p
 
 ---
 
-## 📂 Struktur Folder Project
+## Struktur Folder Project
 
 .
-├── app/ # Routing dan halaman aplikasi
-├── components/ # Komponen UI yang dapat digunakan ulang
-├── lib/ # Helper, utilitas, dan konfigurasi
-├── prisma/ # Schema database dan migration
-├── public/ # Asset publik (gambar, ikon, dll)
-├── .env # Environment variable
-├── package.json # Dependency project
-├── components.json # Konfigurasi UI (jika ada)
-└── README.md
+- ├── app/ # Routing dan halaman aplikasi
+- ├── components/ # Komponen UI yang dapat digunakan ulang
+- ├── lib/ # Helper, utilitas, dan konfigurasi
+- ├── prisma/ # Schema database dan migration
+- ├── public/ # Asset publik (gambar, ikon, dll)
+- ├── .env # Environment variable
+- ├── package.json # Dependency project
+- ├── components.json # Konfigurasi UI (jika ada)
+- └── README.md
 
 ---
