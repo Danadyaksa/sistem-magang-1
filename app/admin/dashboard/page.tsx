@@ -2,7 +2,7 @@
 
 import Image from "next/image"; 
 import { ModeToggle } from "@/components/mode-toggle";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -21,7 +21,10 @@ import {
   Loader2,
   AlertTriangle,
   PanelLeftClose, 
-  PanelLeftOpen   
+  PanelLeftOpen,
+  ArrowUpDown, // <-- ICON SORT
+  ArrowUp,     // <-- ICON SORT
+  ArrowDown    // <-- ICON SORT
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -72,6 +75,9 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
+  // State Sorting
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -128,7 +134,57 @@ export default function AdminDashboard() {
     }
   };
 
-  // 3. ACTIONS
+  // 3. LOGIC FILTERING & SORTING (USEMEMO)
+  
+  // Helper untuk hitung bobot status (biar bisa di-sort)
+  const getStatusWeight = (filled: number, quota: number) => {
+    if (filled >= quota) return 3; // Penuh (Paling tinggi)
+    if (quota - filled <= 1) return 2; // Terbatas
+    return 1; // Dibuka
+  };
+
+  const processedPositions = useMemo(() => {
+    // A. Copy & Filter
+    let data = positions.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    // B. Sorting
+    if (sortConfig !== null) {
+      data.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (sortConfig.key === 'title') {
+            aValue = a.title.toLowerCase();
+            bValue = b.title.toLowerCase();
+        } else if (sortConfig.key === 'filled') {
+            // Sort berdasarkan jumlah terisi
+            aValue = a.filled;
+            bValue = b.filled;
+        } else if (sortConfig.key === 'status') {
+            // Sort berdasarkan Status (Penuh > Terbatas > Dibuka)
+            aValue = getStatusWeight(a.filled, a.quota);
+            bValue = getStatusWeight(b.filled, b.quota);
+        }
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return data;
+  }, [positions, searchTerm, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+
+  // 4. ACTIONS
   const handleSave = async () => {
     if (!formData.title.trim()) {
       toast.warning("Nama bidang tidak boleh kosong!");
@@ -226,8 +282,6 @@ export default function AdminDashboard() {
   const openAddModal = () => { resetForm(); setEditingId(null); setIsDialogOpen(true); };
   const openEditModal = (pos: Position) => { setFormData({ title: pos.title, quota: pos.quota, filled: pos.filled }); setEditingId(pos.id); setIsDialogOpen(true); };
   const resetForm = () => setFormData({ title: "", quota: 3, filled: 0 });
-
-  const filteredPositions = positions.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Component untuk Item Sidebar
   const SidebarItem = ({ icon: Icon, label, active = false, onClick, className = "" }: any) => (
@@ -346,7 +400,7 @@ export default function AdminDashboard() {
             {/* Tombol Minimize Sidebar (Desktop) */}
             <button 
                 className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-                onClick={toggleSidebar} // <-- Panggil fungsi toggleSidebar
+                onClick={toggleSidebar} 
                 title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
                 {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
@@ -421,17 +475,60 @@ export default function AdminDashboard() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent dark:border-slate-800">
                   <TableHead className="w-[50px] text-center dark:text-slate-400">No</TableHead>
-                  <TableHead className="w-[40%] dark:text-slate-400">Nama Bidang</TableHead>
-                  <TableHead className="text-center dark:text-slate-400">Terisi / Kuota</TableHead>
-                  <TableHead className="text-center dark:text-slate-400">Status</TableHead>
+                  
+                  {/* HEADER NAMA BIDANG (SORTABLE) */}
+                  <TableHead 
+                    className="w-[40%] dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('title')}
+                  >
+                    <div className="flex items-center gap-2">
+                       Nama Bidang
+                       {sortConfig?.key === 'title' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                    </div>
+                  </TableHead>
+
+                  {/* HEADER TERISI/KUOTA (SORTABLE) */}
+                  <TableHead 
+                    className="text-center dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('filled')}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                       Terisi / Kuota
+                       {sortConfig?.key === 'filled' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                    </div>
+                  </TableHead>
+
+                  {/* HEADER STATUS (SORTABLE) */}
+                  <TableHead 
+                    className="text-center dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('status')}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                       Status
+                       {sortConfig?.key === 'status' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                    </div>
+                  </TableHead>
+
                   <TableHead className="text-right pr-6 dark:text-slate-400">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500 dark:text-slate-400"><div className="flex justify-center items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /> Memuat data...</div></TableCell></TableRow>
-                ) : filteredPositions.length > 0 ? (
-                  filteredPositions.map((pos, index) => (
+                ) : processedPositions.length > 0 ? (
+                  processedPositions.map((pos, index) => (
                     // TABLE ROW HOVER
                     <TableRow key={pos.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200 dark:border-slate-800">
                       <TableCell className="text-center text-slate-500 dark:text-slate-400">{index + 1}</TableCell>

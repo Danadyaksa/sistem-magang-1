@@ -29,7 +29,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  Download
+  Download,
+  ArrowUpDown, 
+  ArrowUp,     
+  ArrowDown    
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -75,7 +78,7 @@ import {
 type Pendaftaran = {
   id: string;
   namaLengkap: string;
-  nomorHp: string; // <-- UPDATE: Tambahkan field ini
+  nomorHp: string;
   instansi: string;
   jurusan: string;
   tanggalMulai: string;
@@ -121,11 +124,14 @@ export default function ApplicantsPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // --- STATE FILTER & PAGINATION ---
+  // --- STATE FILTER, SORT & PAGINATION ---
   const [searchTerm, setSearchTerm] = useState("");
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("all");
   
+  // State Sorting
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
 
@@ -190,14 +196,24 @@ export default function ApplicantsPage() {
     fetchAdminSession();
   }, []);
 
-  // --- LOGIC FILTERING ---
+  // --- LOGIC FILTERING & SORTING ---
+  
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
   const availableYears = useMemo(() => {
     const years = new Set(pendaftar.map(p => new Date(p.createdAt).getFullYear()));
     return Array.from(years).sort((a, b) => b - a);
   }, [pendaftar]);
 
   const filteredData = useMemo(() => {
-    return pendaftar.filter((item) => {
+    // 1. Filtering
+    let data = pendaftar.filter((item) => {
       const date = new Date(item.createdAt);
       const matchesSearch = 
         item.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -208,7 +224,35 @@ export default function ApplicantsPage() {
 
       return matchesSearch && matchesYear && matchesMonth;
     });
-  }, [pendaftar, searchTerm, filterYear, filterMonth]);
+
+    // 2. Sorting
+    if (sortConfig !== null) {
+      data.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof Pendaftaran];
+        let bValue: any = b[sortConfig.key as keyof Pendaftaran];
+
+        // Handling khusus tipe data
+        if (sortConfig.key === 'createdAt') {
+            aValue = new Date(a.createdAt).getTime();
+            bValue = new Date(b.createdAt).getTime();
+        } else if (typeof aValue === 'string') {
+            // Untuk Nama, Instansi, Status -> Compare Lowercase biar rapi
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return data;
+  }, [pendaftar, searchTerm, filterYear, filterMonth, sortConfig]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -261,24 +305,22 @@ export default function ApplicantsPage() {
     }
   };
 
-  // --- EXPORT TO EXCEL FUNCTION (PERBAIKAN TAMPILAN) ---
+  // --- EXPORT TO EXCEL FUNCTION ---
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
       toast.warning("Tidak ada data untuk diexport.");
       return;
     }
 
-    // 1. Setup Workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Data Pelamar");
 
-    // 2. Definisi Header & Key untuk Mapping Data
     const columns = [
       { header: "No", key: "no", width: 5 },
       { header: "Nama Lengkap", key: "nama", width: 30 },
       { header: "Instansi", key: "instansi", width: 25 },
       { header: "Jurusan", key: "jurusan", width: 25 },
-      { header: "Nomor HP", key: "hp", width: 18 }, // <-- FIX: Field Nomor HP
+      { header: "Nomor HP", key: "hp", width: 18 },
       { header: "Tgl Daftar", key: "tgl_daftar", width: 15 },
       { header: "Mulai Magang", key: "tgl_mulai", width: 15 },
       { header: "Selesai Magang", key: "tgl_selesai", width: 15 },
@@ -288,11 +330,8 @@ export default function ApplicantsPage() {
 
     worksheet.columns = columns;
 
-    // 3. Masukkan Data (Rows)
     filteredData.forEach((item, index) => {
       const posisi = positions.find(p => p.id === item.positionId)?.title || "-";
-      
-      // FIX: Format Status agar rapi
       let statusLabel = "PENDING";
       if(item.status === "ACCEPTED") statusLabel = "DITERIMA";
       if(item.status === "REJECTED") statusLabel = "DITOLAK";
@@ -302,7 +341,7 @@ export default function ApplicantsPage() {
         nama: item.namaLengkap,
         instansi: item.instansi,
         jurusan: item.jurusan,
-        hp: item.nomorHp || "-", // <-- FIX: Panggil field nomorHp yang benar
+        hp: item.nomorHp || "-",
         tgl_daftar: new Date(item.createdAt).toLocaleDateString("id-ID"),
         tgl_mulai: new Date(item.tanggalMulai).toLocaleDateString("id-ID"),
         tgl_selesai: new Date(item.tanggalSelesai).toLocaleDateString("id-ID"),
@@ -311,52 +350,42 @@ export default function ApplicantsPage() {
       });
     });
 
-    // 4. STYLING: HEADER
     const headerRow = worksheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 }; // Font Putih, Tebal
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
     headerRow.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FF1e40af" } // Biru (Tailwind Blue-800)
+      fgColor: { argb: "FF1e40af" }
     };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    headerRow.height = 30; // Tinggi Header
+    headerRow.height = 30;
 
-    // 5. STYLING: ROWS & AUTO WIDTH
     worksheet.eachRow((row, rowNumber) => {
        row.eachCell((cell, colNumber) => {
-          // A. BORDER DI SEMUA CELL
           cell.border = {
              top: { style: 'thin' },
              left: { style: 'thin' },
              bottom: { style: 'thin' },
              right: { style: 'thin' }
           };
-
-          // B. ALIGNMENT (Rata Tengah untuk kolom tertentu)
-          // Col 1 (No), Col 5 (HP), Col 6-9 (Tgl & Status)
           if ([1, 5, 6, 7, 8, 9].includes(colNumber)) {
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
           } else {
             cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
           }
        });
-
-       // C. AUTO WIDTH CALCULATION (Agar kolom tidak terpotong)
-       if(rowNumber > 1) { // Skip header logic for content width check
+       if(rowNumber > 1) {
          row.eachCell((cell, colNumber) => {
             const column = worksheet.getColumn(colNumber);
             const cellLength = cell.value ? cell.value.toString().length : 10;
-            // Kita set max width 50 biar ga kepanjangan banget
             const currentWidth = column.width || 10;
             if (cellLength > currentWidth && cellLength < 50) {
-               column.width = cellLength + 2; // Tambah padding dikit
+               column.width = cellLength + 2;
             }
          });
        }
     });
 
-    // 6. Generate & Download
     const buffer = await workbook.xlsx.writeBuffer();
     const fileName = `Rekap_Magang_${new Date().toISOString().split('T')[0]}.xlsx`;
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -514,10 +543,67 @@ export default function ApplicantsPage() {
                 <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                   <TableRow className="border-b border-slate-200 dark:border-slate-700">
                     <TableHead className="w-[50px] text-center h-10 dark:text-slate-400">No</TableHead>
-                    <TableHead className="h-10 dark:text-slate-400">Nama Pelamar</TableHead>
-                    <TableHead className="h-10 dark:text-slate-400">Instansi</TableHead>
-                    <TableHead className="h-10 dark:text-slate-400">Tgl Daftar</TableHead>
-                    <TableHead className="h-10 dark:text-slate-400">Status</TableHead>
+                    
+                    {/* --- HEADER NAMA (SORTABLE) --- */}
+                    <TableHead 
+                      className="h-10 dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                      onClick={() => requestSort('namaLengkap')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Nama Pelamar
+                        {sortConfig?.key === 'namaLengkap' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    </TableHead>
+
+                    {/* --- HEADER INSTANSI (SORTABLE) --- */}
+                    <TableHead 
+                      className="h-10 dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                      onClick={() => requestSort('instansi')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Instansi
+                        {sortConfig?.key === 'instansi' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    </TableHead>
+                    
+                    {/* --- HEADER TANGGAL (SORTABLE) --- */}
+                    <TableHead 
+                      className="h-10 dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                      onClick={() => requestSort('createdAt')}
+                    >
+                      <div className="flex items-center gap-2">
+                         Tgl Daftar
+                         {sortConfig?.key === 'createdAt' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    </TableHead>
+
+                    {/* --- HEADER STATUS (SORTABLE) --- */}
+                    <TableHead 
+                      className="h-10 dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                      onClick={() => requestSort('status')}
+                    >
+                      <div className="flex items-center gap-2">
+                         Status
+                         {sortConfig?.key === 'status' ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    </TableHead>
+                    
                     <TableHead className="text-right pr-6 h-10 dark:text-slate-400">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
