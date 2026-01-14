@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image"; 
 import { ModeToggle } from "@/components/mode-toggle";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,9 @@ import {
   Image as ImageIcon,
   Loader2,
   Settings,
-  AlertTriangle
+  AlertTriangle,
+  PanelLeftClose, 
+  PanelLeftOpen   
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -55,6 +58,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // --- TIPE DATA ---
 type Pendaftaran = {
@@ -83,7 +92,8 @@ export default function ApplicantsPage() {
   const router = useRouter();
 
   // --- STATE ---
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Desktop Minimize
   const [pendaftar, setPendaftar] = useState<Pendaftaran[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +109,24 @@ export default function ApplicantsPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // --- 1. FETCH DATA ---
+  // --- 1. CEK LOCAL STORAGE SAAT PERTAMA LOAD ---
+  useEffect(() => {
+    // Cek apakah user sebelumnya me-minimize sidebar
+    const savedState = localStorage.getItem("sidebarCollapsed");
+    if (savedState === "true") {
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  // --- FUNGSI TOGGLE SIDEBAR + SIMPAN KE STORAGE ---
+  const toggleSidebar = () => {
+    const newState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newState);
+    // Simpan status baru ke local storage
+    localStorage.setItem("sidebarCollapsed", String(newState));
+  };
+
+  // --- 2. FETCH DATA ---
   const fetchData = async () => {
     try {
       const [resPendaftar, resPositions] = await Promise.all([
@@ -121,7 +148,7 @@ export default function ApplicantsPage() {
     }
   };
 
-  // --- 2. FETCH ADMIN SESSION ---
+  // --- 3. FETCH ADMIN SESSION ---
   const fetchAdminSession = async () => {
     try {
       const res = await fetch("/api/auth/me");
@@ -179,7 +206,7 @@ export default function ApplicantsPage() {
 
       if (res.ok) {
         setIsDialogOpen(false);
-        fetchData();
+        fetchData(); // Refresh data table
         toast.success(`Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : "tolak"}.`);
       } else {
         toast.error("Gagal update status.");
@@ -197,82 +224,132 @@ export default function ApplicantsPage() {
       item.instansi.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Component Sidebar Item
+  const SidebarItem = ({ icon: Icon, label, active = false, onClick, className = "" }: any) => (
+    <TooltipProvider>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            onClick={onClick}
+            className={`
+              w-full flex items-center transition-all duration-200
+              ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"}
+              ${active 
+                ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" 
+                : "text-slate-300 hover:text-white hover:bg-slate-800"
+              }
+              ${className}
+            `}
+          >
+            <Icon className={`h-5 w-5 ${isSidebarCollapsed ? "" : "mr-3"}`} />
+            {!isSidebarCollapsed && <span>{label}</span>}
+          </Button>
+        </TooltipTrigger>
+        {isSidebarCollapsed && (
+          <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700 ml-2">
+            {label}
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   return (
-    // FIX LAYOUT: h-screen & overflow-hidden
+    // FIX LAYOUT
     <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
       
-      {/* --- SIDEBAR --- */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:relative md:translate-x-0 shadow-xl flex flex-col h-full`}
+      {/* SIDEBAR */}
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-all duration-300 ease-in-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
+          md:relative md:translate-x-0 
+          ${isSidebarCollapsed ? "w-20" : "w-64"}
+        `}
       >
-        <div className="h-16 flex items-center px-6 border-b border-slate-800 flex-none">
-          <h1 className="font-bold text-xl tracking-wider">Admin Panel</h1>
-          <button
-            className="ml-auto md:hidden text-slate-400 hover:text-white"
-            onClick={() => setSidebarOpen(false)}
-          >
+        {/* Sidebar Header */}
+        <div className={`h-16 flex items-center border-b border-slate-800 flex-none ${isSidebarCollapsed ? "justify-center px-0" : "px-6 gap-3"}`}>
+          
+          <div className="flex items-center justify-center">
+             <Image 
+               src="/logo-disdikpora.png" 
+               alt="Logo Disdikpora" 
+               width={isSidebarCollapsed ? 28 : 32} 
+               height={isSidebarCollapsed ? 28 : 32} 
+               className="object-contain transition-all duration-300"
+             />
+          </div>
+          
+          {!isSidebarCollapsed && (
+            <h1 className="font-bold text-xl tracking-wider truncate animate-in fade-in duration-300">
+              Dinas DIKPORA
+            </h1>
+          )}
+          
+          <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X className="h-6 w-6" />
           </button>
         </div>
-        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+
+        {/* Menu */}
+        <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
+          <SidebarItem 
+            icon={LayoutDashboard} 
+            label="Dashboard" 
             onClick={() => router.push("/admin/dashboard")}
-          >
-            <LayoutDashboard className="mr-3 h-5 w-5" /> Dashboard
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white bg-slate-800 shadow-md shadow-slate-900/20"
-          >
-            <FileText className="mr-3 h-5 w-5" /> Applicants
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-            onClick={() => router.push("/admin/users")}
-          >
-            <Users className="mr-3 h-5 w-5" /> Admin Users
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-            onClick={() => router.push("/admin/pengaturan")}
-          >
-            <Settings className="mr-3 h-5 w-5" /> Settings
-          </Button>
-          <div className="pt-8 mt-8 border-t border-slate-800">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors"
-              onClick={() => setIsLogoutOpen(true)}
-            >
-              <LogOut className="mr-3 h-5 w-5" /> Keluar
-            </Button>
+          />
+          <SidebarItem 
+            icon={FileText} 
+            label="Applicants" 
+            active={true} 
+          />
+          <SidebarItem 
+            icon={Users} 
+            label="Admin Users" 
+            onClick={() => router.push("/admin/users")} 
+          />
+          <SidebarItem 
+            icon={Settings} 
+            label="Settings" 
+            onClick={() => router.push("/admin/pengaturan")} 
+          />
+          
+          <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
+            <SidebarItem 
+              icon={LogOut} 
+              label="Keluar" 
+              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+              onClick={() => setIsLogoutOpen(true)} 
+            />
           </div>
         </nav>
       </aside>
 
-      {/* --- CONTENT WRAPPER: flex-1 flex-col h-full overflow-hidden --- */}
+      {/* CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* HEADER: flex-none */}
+        {/* HEADER */}
         <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
           <div className="flex items-center gap-4">
-            <button
-              className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
+            {/* Hamburger Mobile */}
+            <button className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}>
+                <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
             </button>
+
+            {/* Tombol Minimize Sidebar (Desktop) - WITH SAVE FUNCTION */}
+            <button 
+                className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                onClick={toggleSidebar} // <-- Panggil fungsi toggleSidebar yg baru
+                title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+                {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
+
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Review Pelamar</h2>
           </div>
           
           <div className="flex items-center gap-4">
-             
-
+            <ModeToggle />
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.username}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">{admin.jabatan}</div>
@@ -280,12 +357,10 @@ export default function ApplicantsPage() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
-            {/* TOGGLE DARK MODE ADDED HERE */}
-            <ModeToggle />
           </div>
         </header>
 
-        {/* Content Body: flex-1 overflow-y-auto */}
+        {/* Content Body */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           {/* Page Title & Action */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -295,13 +370,13 @@ export default function ApplicantsPage() {
             </div>
             <Button
               onClick={() => { setLoading(true); fetchData(); }}
-              className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg shadow-blue-700/20 transition-all hover:scale-105 text-white"
+              className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-sm"
             >
               <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
             </Button>
           </div>
 
-          {/* Table Card: dark:bg-slate-900 dark:border-slate-800 */}
+          {/* Table Card */}
           <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden transition-colors">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4">
               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
