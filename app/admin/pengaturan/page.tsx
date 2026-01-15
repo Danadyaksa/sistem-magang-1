@@ -347,7 +347,7 @@ export default function PengaturanPage() {
           
           <div className="flex items-center gap-4">
             {/* TOGGLE DARK MODE */}
-            <ModeToggle />
+            
 
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{currentAdmin.username}</div>
@@ -356,13 +356,16 @@ export default function PengaturanPage() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
+            <ModeToggle />
           </div>
         </header>
 
         {/* MAIN */}
+        
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           
-          <div className="max-w-4xl mx-auto w-full">
+          {/* REVISI: HAPUS MAX-W-4XL AGAR FULL WIDTH */}
+          <div className="w-full">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               Profil & Keamanan
             </h1>
@@ -371,7 +374,7 @@ export default function PengaturanPage() {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto w-full">
+          <div className="w-full">
             <Tabs defaultValue="profil" className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
                 <TabsTrigger 

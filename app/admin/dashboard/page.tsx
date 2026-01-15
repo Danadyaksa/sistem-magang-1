@@ -25,7 +25,8 @@ import {
   PanelLeftOpen,
   ArrowUpDown, 
   ArrowUp, 
-  ArrowDown
+  ArrowDown,
+  UserCheck
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -326,7 +327,7 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Overview Kuota</h2>
           </div>
           <div className="flex items-center gap-4">
-            <ModeToggle />
+            
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.username}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">{admin.jabatan}</div>
@@ -334,6 +335,7 @@ export default function AdminDashboard() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
+            <ModeToggle />
           </div>
         </header>
 
@@ -350,13 +352,14 @@ export default function AdminDashboard() {
             <Card className="hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Kuota</CardTitle>
-                <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold dark:text-slate-100">{isLoading ? "..." : positions.reduce((acc, curr) => acc + curr.quota, 0)}</div></CardContent>
             </Card>
             <Card className="hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Terisi</CardTitle>
+                <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold dark:text-slate-100">{isLoading ? "..." : positions.reduce((acc, curr) => acc + curr.filled, 0)}</div></CardContent>
             </Card>

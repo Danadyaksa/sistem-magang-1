@@ -26,8 +26,11 @@ import {
   Plus,
   School,
   ChevronDown,
-  Pencil, // Icon Edit Baru
-  Loader2
+  Pencil,
+  Loader2,
+  ArrowUpDown, // Import Icon Sort
+  ArrowUp,     // Import Icon Sort
+  ArrowDown    // Import Icon Sort
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -112,11 +115,12 @@ const StatusBadge = ({ status, daysLeft }: { status: string, daysLeft: number })
   return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200 shadow-none px-2 py-0.5 text-[10px]">Aktif</Badge>;
 };
 
+// REVISI: Ukuran Badge Diperkecil (text-[8px], padding lebih tipis)
 const SourceBadge = ({ path }: { path?: string | null }) => {
   if (path && (path === "-" || path.includes("manual-entry"))) {
-    return <span className="text-[9px] font-bold tracking-wider text-purple-600 bg-purple-50 border border-purple-200 px-1 rounded uppercase ml-2">Manual</span>;
+    return <span className="text-[8px] font-bold tracking-wider text-purple-600 bg-purple-50 border border-purple-200 px-1 py-[1px] rounded uppercase ml-1.5">Manual</span>;
   }
-  return <span className="text-[9px] font-bold tracking-wider text-blue-600 bg-blue-50 border border-blue-200 px-1 rounded uppercase ml-2">Web</span>;
+  return <span className="text-[8px] font-bold tracking-wider text-blue-600 bg-blue-50 border border-blue-200 px-1 py-[1px] rounded uppercase ml-1.5">Web</span>;
 };
 
 // --- SUB-COMPONENT: KARTU BIDANG ---
@@ -132,34 +136,88 @@ const PositionCard = ({
   onEditClick: (intern: Intern) => void 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // STATE SORTING LOKAL (Per Kartu)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  // LOGIKA SORTING
+  const sortedInterns = useMemo(() => {
+    let sortableItems = [...interns];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof Intern];
+        let bValue: any = b[sortConfig.key as keyof Intern];
+
+        // Custom Key Handling
+        if (sortConfig.key === 'periode') {
+             aValue = new Date(a.tanggalMulai).getTime();
+             bValue = new Date(b.tanggalMulai).getTime();
+        }
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [interns, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: string) => {
+    if (sortConfig?.key === key) {
+        return sortConfig.direction === "asc" ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />;
+    }
+    return <ArrowUpDown className="ml-1 h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />;
+  };
+
+  const getBadgeStyle = (count: number, quota: number) => {
+    if (count === 0) {
+      return "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+    }
+    if (count >= quota) {
+      return "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800";
+    }
+    return "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800";
+  };
 
   return (
-    <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm overflow-hidden transition-all hover:shadow-md mb-4">
+    <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm overflow-hidden transition-all hover:shadow-md mb-3">
       {/* HEADER: KLIK UNTUK BUKA/TUTUP */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 py-4 px-6 flex justify-between items-center select-none group"
+        className="cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 py-3 px-4 flex justify-between items-center select-none group"
       >
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-md border shadow-sm transition-colors ${isOpen ? "bg-blue-50 border-blue-100" : "bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700"}`}>
-             <Briefcase className={`h-5 w-5 ${isOpen ? "text-blue-600" : "text-slate-500"}`} />
+          <div className={`p-1.5 rounded-md border shadow-sm transition-colors ${isOpen ? "bg-blue-50 border-blue-100" : "bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700"}`}>
+             <Briefcase className={`h-4 w-4 ${isOpen ? "text-blue-600" : "text-slate-500"}`} />
           </div>
           <div>
-             <CardTitle className={`text-base font-semibold ${isOpen ? "text-blue-700 dark:text-blue-400" : "text-slate-700 dark:text-slate-200"}`}>
+             <CardTitle className={`text-sm md:text-base font-semibold ${isOpen ? "text-blue-700 dark:text-blue-400" : "text-slate-700 dark:text-slate-200"}`}>
                 {pos.title}
              </CardTitle>
-             <div className="text-xs text-slate-500 mt-0.5">
-                {interns.length} Data Peserta
-             </div>
+             {isOpen && (
+               <div className="text-[10px] text-slate-500 mt-0.5 animate-in fade-in">
+                  Kuota Maksimal: {pos.quota}
+               </div>
+             )}
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="bg-white dark:bg-slate-800 font-normal hidden sm:inline-flex">
-             {interns.filter(i => i.statusWaktu === "ACTIVE").length} Aktif
-          </Badge>
+          {!isOpen && (
+            <Badge variant="outline" className={`text-xs font-medium border ${getBadgeStyle(interns.length, pos.quota)}`}>
+              {interns.length} / {pos.quota} Peserta
+            </Badge>
+          )}
           <div className={`text-slate-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
-             <ChevronDown className="h-5 w-5" />
+             <ChevronDown className="h-4 w-4" />
           </div>
         </div>
       </div>
@@ -171,23 +229,49 @@ const PositionCard = ({
             <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow className="bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800">
-                  <TableHead className="w-[50px] text-center px-6">No</TableHead>
-                  <TableHead className="px-6">Nama Peserta</TableHead>
-                  <TableHead className="px-6">Periode Magang</TableHead>
-                  <TableHead className="w-[30%] px-6">Progress</TableHead>
-                  <TableHead className="text-center px-6">Status</TableHead>
-                  <TableHead className="text-right px-6">Aksi</TableHead>
+                  <TableHead className="w-[50px] text-center px-4 h-9 text-xs">No</TableHead>
+                  
+                  {/* REVISI: HEADER SORTABLE */}
+                  <TableHead 
+                    className="px-4 h-9 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('namaLengkap')}
+                  >
+                    <div className="flex items-center">Nama Peserta {getSortIcon('namaLengkap')}</div>
+                  </TableHead>
+
+                  <TableHead 
+                    className="px-4 h-9 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('periode')}
+                  >
+                    <div className="flex items-center">Periode Magang {getSortIcon('periode')}</div>
+                  </TableHead>
+
+                  <TableHead 
+                    className="w-[30%] px-4 h-9 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('progress')}
+                  >
+                     <div className="flex items-center">Progress {getSortIcon('progress')}</div>
+                  </TableHead>
+
+                  <TableHead 
+                    className="text-center px-4 h-9 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('statusWaktu')}
+                  >
+                     <div className="flex items-center justify-center">Status {getSortIcon('statusWaktu')}</div>
+                  </TableHead>
+
+                  <TableHead className="text-right px-4 h-9 text-xs">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {interns.length === 0 ? (
+                {sortedInterns.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center h-24 text-slate-400 italic text-sm">
+                      <TableCell colSpan={6} className="text-center h-16 text-slate-400 italic text-xs">
                         Belum ada peserta aktif di bidang ini.
                       </TableCell>
                     </TableRow>
                 ) : (
-                  interns.map((intern, idx) => (
+                  sortedInterns.map((intern, idx) => (
                     <TableRow 
                       key={intern.id} 
                       className={`
@@ -195,44 +279,43 @@ const PositionCard = ({
                         ${intern.statusWaktu === 'UPCOMING' ? 'bg-slate-50/60 dark:bg-slate-900/50 text-slate-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}
                       `}
                     >
-                      <TableCell className="text-center text-slate-500 px-6 py-4">{idx + 1}</TableCell>
-                      <TableCell className="px-6 py-4">
-                        <div className="font-medium flex items-center">
+                      <TableCell className="text-center text-slate-500 px-4 py-2.5 text-xs">{idx + 1}</TableCell>
+                      <TableCell className="px-4 py-2.5">
+                        <div className="font-medium flex items-center text-sm">
                           {intern.namaLengkap}
                           <SourceBadge path={intern.cvPath} />
                         </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
                           <School className="h-3 w-3" /> {intern.instansi}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
-                        <div className="flex flex-col text-sm">
+                      <TableCell className="px-4 py-2.5">
+                        <div className="flex flex-col text-xs">
                           <span>{new Date(intern.tanggalMulai).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })} - {new Date(intern.tanggalSelesai).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          <span className="text-xs text-slate-400 mt-0.5">Total {intern.totalDurasi} Hari</span>
+                          <span className="text-[10px] text-slate-400">Total {intern.totalDurasi} Hari</span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
-                        <div className="w-full space-y-1.5">
-                          <div className="flex justify-between text-xs font-medium text-slate-600 dark:text-slate-400">
+                      <TableCell className="px-4 py-2.5">
+                        <div className="w-full space-y-1">
+                          <div className="flex justify-between text-[10px] font-medium text-slate-600 dark:text-slate-400">
                               <span>{Math.round(intern.progress)}%</span>
                               {intern.statusWaktu === "ACTIVE" && <span className="text-blue-600 dark:text-blue-400">Sisa {intern.sisaHari} Hari</span>}
                           </div>
-                          <Progress value={intern.progress} className="h-2 bg-slate-100 dark:bg-slate-800 [&>div]:bg-blue-600 rounded-full" />
+                          <Progress value={intern.progress} className="h-1.5 bg-slate-100 dark:bg-slate-800 [&>div]:bg-blue-600 rounded-full" />
                         </div>
                       </TableCell>
-                      <TableCell className="text-center px-6 py-4">
+                      <TableCell className="text-center px-4 py-2.5">
                         <StatusBadge status={intern.statusWaktu} daysLeft={intern.sisaHari} />
                       </TableCell>
-                      <TableCell className="text-right px-6 py-4">
-                        {/* TOMBOL EDIT PERPANJANG/STOP */}
+                      <TableCell className="text-right px-4 py-2.5">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                          className="h-7 w-7 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
                           onClick={() => onEditClick(intern)}
                           title="Edit Tanggal / Data"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -243,6 +326,142 @@ const PositionCard = ({
           </div>
         </CardContent>
       )}
+    </Card>
+  );
+};
+
+// --- SUB-COMPONENT: TABEL RIWAYAT DENGAN SORTING ---
+const HistoryTable = ({ 
+  interns, 
+  positions 
+}: { 
+  interns: Intern[], 
+  positions: Position[] 
+}) => {
+  // STATE SORTING LOKAL (History)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  // LOGIKA SORTING
+  const sortedHistory = useMemo(() => {
+    let sortableItems = [...interns];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (sortConfig.key === 'namaLengkap') {
+           aValue = a.namaLengkap.toLowerCase();
+           bValue = b.namaLengkap.toLowerCase();
+        } else if (sortConfig.key === 'bidang') {
+           const posA = positions.find(p => p.id === a.positionId)?.title || "";
+           const posB = positions.find(p => p.id === b.positionId)?.title || "";
+           aValue = posA.toLowerCase();
+           bValue = posB.toLowerCase();
+        } else if (sortConfig.key === 'tanggalSelesai') {
+           aValue = new Date(a.tanggalSelesai).getTime();
+           bValue = new Date(b.tanggalSelesai).getTime();
+        } else {
+           // Default fallback
+           aValue = a[sortConfig.key as keyof Intern];
+           bValue = b[sortConfig.key as keyof Intern];
+        }
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [interns, sortConfig, positions]);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: string) => {
+    if (sortConfig?.key === key) {
+        return sortConfig.direction === "asc" ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />;
+    }
+    return <ArrowUpDown className="ml-1 h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />;
+  };
+
+  return (
+    <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm">
+      <CardHeader className="border-b border-slate-100 dark:border-slate-800 py-4 px-6">
+        <CardTitle className="text-lg">Arsip Alumni Magang</CardTitle>
+        <CardDescription>Daftar peserta yang telah menyelesaikan masa magang.</CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/40">
+                  <TableHead className="w-[60px] text-center h-12 px-6">No</TableHead>
+                  
+                  {/* HEADER NAMA PESERTA (SORTABLE) */}
+                  <TableHead 
+                    className="h-12 px-6 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('namaLengkap')}
+                  >
+                    <div className="flex items-center">Nama Peserta {getSortIcon('namaLengkap')}</div>
+                  </TableHead>
+
+                  {/* HEADER BIDANG (SORTABLE) */}
+                  <TableHead 
+                    className="h-12 px-6 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('bidang')}
+                  >
+                    <div className="flex items-center">Bidang {getSortIcon('bidang')}</div>
+                  </TableHead>
+
+                  {/* HEADER TANGGAL SELESAI (SORTABLE) */}
+                  <TableHead 
+                    className="h-12 px-6 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group"
+                    onClick={() => requestSort('tanggalSelesai')}
+                  >
+                    <div className="flex items-center">Tanggal Selesai {getSortIcon('tanggalSelesai')}</div>
+                  </TableHead>
+
+                  <TableHead className="text-right h-12 px-6">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedHistory.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center h-32 text-slate-500">Belum ada alumni.</TableCell></TableRow>
+                ) : (
+                  sortedHistory.map((intern, idx) => {
+                    const posName = positions.find(p => p.id === intern.positionId)?.title || "-";
+                    return (
+                      <TableRow key={intern.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-50 dark:border-slate-800 last:border-0">
+                        <TableCell className="text-center text-slate-500 px-6 py-4">{idx + 1}</TableCell>
+                        <TableCell className="px-6 py-4">
+                          <div className="font-medium flex items-center gap-2">
+                            {intern.namaLengkap}
+                            <SourceBadge path={intern.cvPath} />
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1">{intern.instansi}</div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4"><Badge variant="outline" className="font-normal bg-white dark:bg-slate-900">{posName}</Badge></TableCell>
+                        <TableCell className="text-slate-600 text-sm px-6 py-4">
+                          {new Date(intern.tanggalSelesai).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </TableCell>
+                        <TableCell className="text-right px-6 py-4">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+          </Table>
+        </div>
+      </CardContent>
     </Card>
   );
 };
@@ -562,7 +781,7 @@ export default function PKLMonitoringPage() {
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Monitoring PKL</h2>
           </div>
           <div className="flex items-center gap-4">
-            <ModeToggle />
+            
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.username}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">{admin.jabatan}</div>
@@ -570,12 +789,13 @@ export default function PKLMonitoringPage() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
+            <ModeToggle />
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           
-          <div className="max-w-4xl mx-auto w-full">
+          <div className="w-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
               <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Daftar Anak PKL</h1>
@@ -602,7 +822,7 @@ export default function PKLMonitoringPage() {
             </div>
           </div>
 
-          <div className="max-w-4xl mx-auto w-full">
+          <div className="w-full">
             <Tabs defaultValue="active" className="w-full" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
                 <TabsTrigger 
@@ -642,57 +862,10 @@ export default function PKLMonitoringPage() {
                 {loading ? (
                    <div className="flex justify-center h-40 items-center"><Hourglass className="animate-spin text-slate-400" /></div>
                 ) : (
-                  <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm">
-                    <CardHeader className="border-b border-slate-100 dark:border-slate-800 py-4 px-6">
-                      <CardTitle className="text-lg">Arsip Alumni Magang</CardTitle>
-                      <CardDescription>Daftar peserta yang telah menyelesaikan masa magang.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto w-full">
-                        <Table className="min-w-[800px]">
-                            <TableHeader>
-                              <TableRow className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/40">
-                                <TableHead className="w-[60px] text-center h-12 px-6">No</TableHead>
-                                <TableHead className="h-12 px-6">Nama Peserta</TableHead>
-                                <TableHead className="h-12 px-6">Bidang</TableHead>
-                                <TableHead className="h-12 px-6">Tanggal Selesai</TableHead>
-                                <TableHead className="text-right h-12 px-6">Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {interns.filter(i => i.statusWaktu === "FINISHED").length === 0 ? (
-                                <TableRow><TableCell colSpan={5} className="text-center h-32 text-slate-500">Belum ada alumni.</TableCell></TableRow>
-                              ) : (
-                                interns.filter(i => i.statusWaktu === "FINISHED").map((intern, idx) => {
-                                  const posName = positions.find(p => p.id === intern.positionId)?.title || "-";
-                                  return (
-                                    <TableRow key={intern.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-50 dark:border-slate-800 last:border-0">
-                                      <TableCell className="text-center text-slate-500 px-6 py-4">{idx + 1}</TableCell>
-                                      <TableCell className="px-6 py-4">
-                                        <div className="font-medium flex items-center gap-2">
-                                          {intern.namaLengkap}
-                                          <SourceBadge path={intern.cvPath} />
-                                        </div>
-                                        <div className="text-xs text-slate-500 mt-1">{intern.instansi}</div>
-                                      </TableCell>
-                                      <TableCell className="px-6 py-4"><Badge variant="outline" className="font-normal bg-white dark:bg-slate-900">{posName}</Badge></TableCell>
-                                      <TableCell className="text-slate-600 text-sm px-6 py-4">
-                                        {new Date(intern.tanggalSelesai).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
-                                      </TableCell>
-                                      <TableCell className="text-right px-6 py-4">
-                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                                          <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })
-                              )}
-                            </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <HistoryTable 
+                    interns={interns.filter(i => i.statusWaktu === "FINISHED")} 
+                    positions={positions} 
+                  />
                 )}
               </TabsContent>
             </Tabs>

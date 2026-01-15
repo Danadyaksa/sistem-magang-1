@@ -459,7 +459,7 @@ export default function ApplicantsPage() {
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Review Pelamar</h2>
           </div>
           <div className="flex items-center gap-4">
-            <ModeToggle />
+            
             <div className="text-right hidden md:block">
               <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.username}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">{admin.jabatan}</div>
@@ -467,6 +467,7 @@ export default function ApplicantsPage() {
             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
               <User className="h-6 w-6" />
             </div>
+            <ModeToggle />
           </div>
         </header>
 
