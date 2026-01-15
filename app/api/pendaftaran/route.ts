@@ -12,26 +12,39 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
 
-    // 1. Ambil File
+    // --- 1. AMBIL FILE ---
     const cvFile = formData.get("cv") as File | null;
     const suratFile = formData.get("surat") as File | null;
     const fotoFile = formData.get("foto") as File | null;
 
-    if (!cvFile || !suratFile || !fotoFile) {
-      return NextResponse.json(
-        { error: "Semua berkas wajib diupload" },
-        { status: 400 }
-      );
+    // Cek apakah ini input manual dari Admin (File bernama "manual-entry.txt")
+    // Ini sinkron dengan frontend yang kita buat tadi
+    const isManualEntry = cvFile?.name === "manual-entry.txt";
+
+    // Validasi: Jika BUKAN manual (Pendaftaran Web), file wajib ada semua
+    if (!isManualEntry) {
+      if (!cvFile || !suratFile || !fotoFile) {
+        return NextResponse.json(
+          { error: "Semua berkas wajib diupload untuk pendaftaran web" },
+          { status: 400 }
+        );
+      }
     }
 
-    // 2. Fungsi Upload ke Supabase Storage
-    const uploadToSupabase = async (file: File, folder: string) => {
+    // --- 2. FUNGSI UPLOAD (DENGAN BYPASS MANUAL) ---
+    const uploadToSupabase = async (file: File | null, folder: string) => {
+      // JIKA MANUAL atau FILE KOSONG -> Langsung return tanda strip "-"
+      // Tidak perlu upload ke Supabase, jadi cepat & hemat storage
+      if (isManualEntry || !file) {
+        return "-";
+      }
+
       const fileExt = file.name.split(".").pop();
       const fileName = `${folder}-${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
 
       const { error } = await supabase.storage
-        .from("berkas-magang") // Pastikan nama bucket ini sudah dibuat di Supabase
+        .from("berkas-magang")
         .upload(filePath, file, {
           cacheControl: "3600",
           upsert: false,
@@ -39,7 +52,6 @@ export async function POST(request: Request) {
 
       if (error) throw error;
 
-      // Ambil Public URL
       const { data } = supabase.storage
         .from("berkas-magang")
         .getPublicUrl(filePath);
@@ -47,34 +59,66 @@ export async function POST(request: Request) {
       return data.publicUrl;
     };
 
-    // 3. Upload File secara Paralel (Biar Cepat)
+    // --- 3. PROSES UPLOAD PARALEL ---
+    // Jika manual, fungsi ini akan selesai instan karena cuma return string "-"
     const [cvUrl, suratUrl, fotoUrl] = await Promise.all([
       uploadToSupabase(cvFile, "cv"),
       uploadToSupabase(suratFile, "surat"),
       uploadToSupabase(fotoFile, "foto"),
     ]);
 
-    // 4. Simpan Data Text & URL File ke Database
+    // --- 4. PERSIAPAN DATA (HANDLING NULL / DEFAULT VALUE) ---
+    // PENTING: Karena input manual tidak mengirim semua field, kita beri nilai default
+    // supaya database tidak error karena data kosong/null.
+    
+    const namaLengkap = formData.get("namaLengkap") as string;
+    const instansi = formData.get("instansi") as string;
+    
+    // Default strip "-" jika kosong
+    const nomorInduk = (formData.get("nomorInduk") as string) || "-"; 
+    const email = (formData.get("email") as string) || "-"; 
+    const nomorHp = (formData.get("nomorHp") as string) || "-";
+    const fakultas = (formData.get("fakultas") as string) || "-";
+    const jurusan = (formData.get("jurusan") as string) || "-";
+    
+    // Default Angka 0 jika kosong (Mencegah NaN)
+    const rawLama = formData.get("lamaMagang");
+    const lamaMagang = rawLama ? parseInt(rawLama as string) : 0; 
+
+    // Default Tanggal Hari Ini jika kosong (Mencegah Invalid Date)
+    const rawTglMulai = formData.get("tanggalMulai") as string;
+    const tanggalMulai = rawTglMulai ? new Date(rawTglMulai) : new Date();
+
+    const rawTglSelesai = formData.get("tanggalSelesai") as string;
+    const tanggalSelesai = rawTglSelesai ? new Date(rawTglSelesai) : new Date();
+
+    // Field Surat Pengantar (Manual biasanya tidak pakai ini di awal)
+    const pemohonSurat = (formData.get("pemohonSurat") as string) || "-";
+    const nomorSurat = (formData.get("nomorSurat") as string) || "-";
+    
+    const rawTglSurat = formData.get("tanggalSurat") as string;
+    const tanggalSurat = rawTglSurat ? new Date(rawTglSurat) : new Date();
+
+    // --- 5. SIMPAN KE DATABASE ---
     const newPendaftaran = await prisma.pendaftaran.create({
       data: {
-        namaLengkap: formData.get("namaLengkap") as string,
-        nomorInduk: formData.get("nomorInduk") as string,
-        email: formData.get("email") as string,
-        nomorHp: formData.get("nomorHp") as string,
-        instansi: formData.get("instansi") as string,
-        fakultas: (formData.get("fakultas") as string) || "",
-        jurusan: formData.get("jurusan") as string,
-        lamaMagang: parseInt(formData.get("lamaMagang") as string),
-        tanggalMulai: new Date(formData.get("tanggalMulai") as string),
-        tanggalSelesai: new Date(formData.get("tanggalSelesai") as string),
-        pemohonSurat: formData.get("pemohonSurat") as string,
-        nomorSurat: formData.get("nomorSurat") as string,
-        tanggalSurat: new Date(formData.get("tanggalSurat") as string),
-        // Simpan Link Supabase
-        cvPath: cvUrl,
-        suratPath: suratUrl,
-        fotoPath: fotoUrl,
-        status: "PENDING",
+        namaLengkap,
+        nomorInduk,
+        email,
+        nomorHp,
+        instansi,
+        fakultas,
+        jurusan,
+        lamaMagang,
+        tanggalMulai,
+        tanggalSelesai,
+        pemohonSurat,
+        nomorSurat,
+        tanggalSurat,
+        cvPath: cvUrl,      // Akan berisi "-" jika manual
+        suratPath: suratUrl, // Akan berisi "-" jika manual
+        fotoPath: fotoUrl,   // Akan berisi "-" jika manual
+        status: "PENDING",   // Nanti di frontend Admin langsung di-PATCH jadi ACCEPTED
       },
     });
 

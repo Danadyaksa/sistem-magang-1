@@ -16,15 +16,16 @@ import {
   Search,
   Pencil,
   Trash2,
+  CalendarClock,
   FileText,
   User,
   Loader2,
   AlertTriangle,
   PanelLeftClose, 
   PanelLeftOpen,
-  ArrowUpDown, // <-- ICON SORT
-  ArrowUp,     // <-- ICON SORT
-  ArrowDown    // <-- ICON SORT
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -68,8 +69,8 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   // State
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Desktop Minimize
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -82,31 +83,26 @@ export default function AdminDashboard() {
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ title: "", quota: 3, filled: 0 });
+  
+  // NOTE: 'filled' dihapus dari state form karena otomatis
+  const [formData, setFormData] = useState({ title: "", quota: 3 });
 
   // Admin Profile State
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
 
-  // --- 1. CEK LOCAL STORAGE SAAT PERTAMA LOAD ---
+  // --- 1. SETUP ---
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
-    if (savedState === "true") {
-      setIsSidebarCollapsed(true);
-    }
+    if (savedState === "true") setIsSidebarCollapsed(true);
+    fetchPositions();
+    fetchAdminProfile();
   }, []);
 
-  // --- FUNGSI TOGGLE SIDEBAR + SIMPAN KE STORAGE ---
   const toggleSidebar = () => {
     const newState = !isSidebarCollapsed;
     setIsSidebarCollapsed(newState);
     localStorage.setItem("sidebarCollapsed", String(newState));
   };
-
-  // --- 2. FETCH DATA ---
-  useEffect(() => {
-    fetchPositions();
-    fetchAdminProfile();
-  }, []);
 
   const fetchAdminProfile = async () => {
     try {
@@ -117,13 +113,12 @@ export default function AdminDashboard() {
       } else {
         router.push("/admin/login");
       }
-    } catch (error) {
-      console.error("Auth Error", error);
-    }
+    } catch (error) { console.error("Auth Error", error); }
   };
 
   const fetchPositions = async () => {
     try {
+      // Backend sudah otomatis menghitung 'filled'
       const res = await fetch("/api/positions", { cache: "no-store" });
       const data = await res.json();
       if (Array.isArray(data)) setPositions(data);
@@ -134,20 +129,16 @@ export default function AdminDashboard() {
     }
   };
 
-  // 3. LOGIC FILTERING & SORTING (USEMEMO)
-  
-  // Helper untuk hitung bobot status (biar bisa di-sort)
+  // --- 3. LOGIC SORTING ---
   const getStatusWeight = (filled: number, quota: number) => {
-    if (filled >= quota) return 3; // Penuh (Paling tinggi)
-    if (quota - filled <= 1) return 2; // Terbatas
-    return 1; // Dibuka
+    if (filled >= quota) return 3; 
+    if (quota - filled <= 1) return 2;
+    return 1;
   };
 
   const processedPositions = useMemo(() => {
-    // A. Copy & Filter
     let data = positions.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // B. Sorting
     if (sortConfig !== null) {
       data.sort((a, b) => {
         let aValue: any;
@@ -157,11 +148,9 @@ export default function AdminDashboard() {
             aValue = a.title.toLowerCase();
             bValue = b.title.toLowerCase();
         } else if (sortConfig.key === 'filled') {
-            // Sort berdasarkan jumlah terisi
             aValue = a.filled;
             bValue = b.filled;
         } else if (sortConfig.key === 'status') {
-            // Sort berdasarkan Status (Penuh > Terbatas > Dibuka)
             aValue = getStatusWeight(a.filled, a.quota);
             bValue = getStatusWeight(b.filled, b.quota);
         }
@@ -171,7 +160,6 @@ export default function AdminDashboard() {
         return 0;
       });
     }
-
     return data;
   }, [positions, searchTerm, sortConfig]);
 
@@ -183,15 +171,14 @@ export default function AdminDashboard() {
     setSortConfig({ key, direction });
   };
 
-
-  // 4. ACTIONS
+  // --- 4. ACTIONS ---
   const handleSave = async () => {
     if (!formData.title.trim()) {
       toast.warning("Nama bidang tidak boleh kosong!");
       return;
     }
-    if (formData.quota < 0 || formData.filled < 0) {
-      toast.warning("Angka tidak boleh negatif!");
+    if (formData.quota < 0) {
+      toast.warning("Kuota tidak boleh negatif!");
       return;
     }
 
@@ -201,7 +188,7 @@ export default function AdminDashboard() {
       const payload = {
         title: formData.title,
         quota: formData.quota,
-        filled: formData.filled,
+        // filled tidak dikirim, biarkan backend/database handle
       };
 
       const url = editingId ? `/api/positions/${editingId}` : "/api/positions";
@@ -250,29 +237,21 @@ export default function AdminDashboard() {
           }
         }
       },
-      cancel: {
-        label: "Batal",
-        onClick: () => { }
-      },
+      cancel: { label: "Batal", onClick: () => { } },
       duration: 5000,
     });
   };
 
-  // --- LOGIC LOGOUT ---
   const handleLogoutConfirm = async () => {
     setIsLogoutOpen(false);
     const promise = fetch("/api/auth/logout", { method: "POST" });
     toast.promise(promise, {
       loading: 'Sedang keluar...',
-      success: () => {
-        router.push("/admin/login");
-        return 'Berhasil logout';
-      },
+      success: () => { router.push("/admin/login"); return 'Berhasil logout'; },
       error: 'Gagal logout',
     });
   };
 
-  // Render Badge Status dengan Dark Mode Support
   const renderStatusBadge = (filled: number, quota: number) => {
     if (filled >= quota) return <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">Penuh</Badge>;
     if (quota - filled <= 1) return <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">Terbatas</Badge>;
@@ -280,10 +259,15 @@ export default function AdminDashboard() {
   };
 
   const openAddModal = () => { resetForm(); setEditingId(null); setIsDialogOpen(true); };
-  const openEditModal = (pos: Position) => { setFormData({ title: pos.title, quota: pos.quota, filled: pos.filled }); setEditingId(pos.id); setIsDialogOpen(true); };
-  const resetForm = () => setFormData({ title: "", quota: 3, filled: 0 });
+  
+  const openEditModal = (pos: Position) => { 
+      setFormData({ title: pos.title, quota: pos.quota }); 
+      setEditingId(pos.id); 
+      setIsDialogOpen(true); 
+  };
+  
+  const resetForm = () => setFormData({ title: "", quota: 3 });
 
-  // Component untuk Item Sidebar
   const SidebarItem = ({ icon: Icon, label, active = false, onClick, className = "" }: any) => (
     <TooltipProvider>
       <Tooltip delayDuration={0}>
@@ -294,10 +278,7 @@ export default function AdminDashboard() {
             className={`
               w-full flex items-center transition-all duration-200
               ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"}
-              ${active 
-                ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" 
-                : "text-slate-300 hover:text-white hover:bg-slate-800"
-              }
+              ${active ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" : "text-slate-300 hover:text-white hover:bg-slate-800"}
               ${className}
             `}
           >
@@ -305,110 +286,45 @@ export default function AdminDashboard() {
             {!isSidebarCollapsed && <span>{label}</span>}
           </Button>
         </TooltipTrigger>
-        {isSidebarCollapsed && (
-          <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700 ml-2">
-            {label}
-          </TooltipContent>
-        )}
+        {isSidebarCollapsed && <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700 ml-2">{label}</TooltipContent>}
       </Tooltip>
     </TooltipProvider>
   );
 
   return (
-    // FIX LAYOUT
     <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
       
       {/* SIDEBAR */}
-      <aside 
-        className={`
-          fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-all duration-300 ease-in-out
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-          md:relative md:translate-x-0 
-          ${isSidebarCollapsed ? "w-20" : "w-64"}
-        `}
-      >
-        {/* Sidebar Header */}
+      <aside className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-all duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 ${isSidebarCollapsed ? "w-20" : "w-64"}`}>
         <div className={`h-16 flex items-center border-b border-slate-800 flex-none ${isSidebarCollapsed ? "justify-center px-0" : "px-6 gap-3"}`}>
-          
           <div className="flex items-center justify-center">
-             <Image 
-               src="/logo-disdikpora.png" 
-               alt="Logo Disdikpora" 
-               width={isSidebarCollapsed ? 28 : 32} 
-               height={isSidebarCollapsed ? 28 : 32} 
-               className="object-contain transition-all duration-300"
-             />
+             <Image src="/logo-disdikpora.png" alt="Logo Disdikpora" width={isSidebarCollapsed ? 28 : 32} height={isSidebarCollapsed ? 28 : 32} className="object-contain transition-all duration-300"/>
           </div>
-          
-          {!isSidebarCollapsed && (
-            <h1 className="font-bold text-xl tracking-wider truncate animate-in fade-in duration-300">
-              Dinas DIKPORA
-            </h1>
-          )}
-          
-          <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
-            <X className="h-6 w-6" />
-          </button>
+          {!isSidebarCollapsed && <h1 className="font-bold text-xl tracking-wider truncate animate-in fade-in duration-300">Dinas DIKPORA</h1>}
+          <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
-
-        {/* Sidebar Menu */}
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
-          <SidebarItem 
-            icon={LayoutDashboard} 
-            label="Dashboard" 
-            active={true}
-          />
-          <SidebarItem 
-            icon={FileText} 
-            label="Applicants" 
-            onClick={() => router.push("/admin/applicants")} 
-          />
-          <SidebarItem 
-            icon={Users} 
-            label="Admin Users" 
-            onClick={() => router.push("/admin/users")} 
-          />
-          <SidebarItem 
-            icon={Settings} 
-            label="Settings" 
-            onClick={() => router.push("/admin/pengaturan")} 
-          />
-          
+          <SidebarItem icon={LayoutDashboard} label="Dashboard" active={true} />
+          <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
+          <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
+          <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
+          <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
-            <SidebarItem 
-              icon={LogOut} 
-              label="Keluar" 
-              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-              onClick={() => setIsLogoutOpen(true)} 
-            />
+            <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
           </div>
         </nav>
       </aside>
 
       {/* CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* HEADER */}
         <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
           <div className="flex items-center gap-4">
-            
-            {/* Hamburger Mobile */}
-            <button className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}>
-                <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
-            </button>
-
-            {/* Tombol Minimize Sidebar (Desktop) */}
-            <button 
-                className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-                onClick={toggleSidebar} 
-                title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
+            <button className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" /></button>
+            <button className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors" onClick={toggleSidebar} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
                 {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
-
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Overview Kuota</h2>
           </div>
-          
           <div className="flex items-center gap-4">
             <ModeToggle />
             <div className="text-right hidden md:block">
@@ -421,7 +337,6 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
           {/* STATS CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -529,7 +444,6 @@ export default function AdminDashboard() {
                   <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500 dark:text-slate-400"><div className="flex justify-center items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /> Memuat data...</div></TableCell></TableRow>
                 ) : processedPositions.length > 0 ? (
                   processedPositions.map((pos, index) => (
-                    // TABLE ROW HOVER
                     <TableRow key={pos.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200 dark:border-slate-800">
                       <TableCell className="text-center text-slate-500 dark:text-slate-400">{index + 1}</TableCell>
                       <TableCell className="font-medium text-slate-900 dark:text-slate-100">
@@ -576,10 +490,15 @@ export default function AdminDashboard() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label className="dark:text-slate-300">Nama Bidang</Label><Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Contoh: Sub Bagian Keuangan" className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label className="dark:text-slate-300">Terisi</Label><Input type="number" value={formData.filled} onChange={(e) => setFormData({ ...formData, filled: parseInt(e.target.value) || 0 })} className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
-              <div className="grid gap-2"><Label className="dark:text-slate-300">Kuota</Label><Input type="number" value={formData.quota} onChange={(e) => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
-            </div>
+            
+            {/* Input Terisi DIHAPUS, ganti jadi INFO TEKS */}
+            {editingId && (
+               <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded text-sm text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold">Info:</span> Jumlah "Terisi" dihitung otomatis berdasarkan peserta aktif (Web + Manual).
+               </div>
+            )}
+
+            <div className="grid gap-2"><Label className="dark:text-slate-300">Kuota Maksimal</Label><Input type="number" value={formData.quota} onChange={(e) => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" /></div>
           </div>
           <DialogFooter>
             <Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all text-white">

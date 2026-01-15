@@ -19,7 +19,8 @@ import {
   Loader2,
   AlertTriangle,
   PanelLeftClose, 
-  PanelLeftOpen   
+  PanelLeftOpen,   
+  CalendarClock
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -291,6 +292,11 @@ export default function PengaturanPage() {
             icon={FileText} 
             label="Applicants" 
             onClick={() => router.push("/admin/applicants")}
+          />
+          <SidebarItem 
+            icon={CalendarClock} 
+            label="Daftar PKL" 
+            onClick={() => router.push("/admin/pkl")} 
           />
           <SidebarItem 
             icon={Users} 

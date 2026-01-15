@@ -23,7 +23,8 @@ import {
   Briefcase,
   AlertTriangle,
   PanelLeftClose, // Icon tutup sidebar
-  PanelLeftOpen   // Icon buka sidebar
+  PanelLeftOpen,   // Icon buka sidebar
+  CalendarClock
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -380,6 +381,11 @@ export default function AdminUsersPage() {
             icon={FileText} 
             label="Applicants" 
             onClick={() => router.push("/admin/applicants")}
+          />
+          <SidebarItem 
+            icon={CalendarClock} 
+            label="Daftar PKL" 
+            onClick={() => router.push("/admin/pkl")} 
           />
           <SidebarItem 
             icon={Users} 

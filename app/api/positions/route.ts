@@ -1,34 +1,59 @@
-// app/api/positions/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export const dynamic = "force-dynamic"; // Biar ga di-cache static sama Next.js
-
-// GET: Buat Landing Page & Admin Dashboard
 export async function GET() {
   try {
+    // 1. Ambil semua posisi
     const positions = await prisma.position.findMany({
       orderBy: { id: "asc" },
     });
-    return NextResponse.json(positions);
+
+    // 2. Hitung jumlah "Terisi" secara Real-time dari tabel Pendaftaran
+    // Syarat Terhitung: Status ACCEPTED & Belum Lewat Tanggal Selesai
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset jam biar fair
+
+    const positionsWithCount = await Promise.all(
+      positions.map(async (pos) => {
+        const activeCount = await prisma.pendaftaran.count({
+          where: {
+            positionId: pos.id,
+            status: "ACCEPTED",
+            tanggalSelesai: {
+              gte: today, // Tanggal Selesai LEBIH DARI ATAU SAMA DENGAN Hari Ini
+            },
+          },
+        });
+
+        // Return data gabungan (Data Posisi + Hitungan Real)
+        return {
+          ...pos,
+          filled: activeCount, // Override nilai 'filled' dari DB dengan hitungan asli
+        };
+      })
+    );
+
+    return NextResponse.json(positionsWithCount);
   } catch (error) {
-    return NextResponse.json({ error: "Gagal ambil data" }, { status: 500 });
+    return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
   }
 }
 
-// POST: Buat Admin Tambah Bidang
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const { title, quota } = body;
+
     const newPosition = await prisma.position.create({
       data: {
-        title: body.title,
-        quota: parseInt(body.quota),
-        filled: parseInt(body.filled) || 0,
+        title,
+        quota: parseInt(quota),
+        filled: 0, // Default 0, nanti di-override saat GET
       },
     });
+
     return NextResponse.json(newPosition);
   } catch (error) {
-    return NextResponse.json({ error: "Gagal simpan" }, { status: 500 });
+    return NextResponse.json({ error: "Gagal menambah posisi" }, { status: 500 });
   }
 }
