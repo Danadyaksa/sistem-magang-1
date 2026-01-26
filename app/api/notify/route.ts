@@ -2,19 +2,34 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 // --- KONFIGURASI ---
-// Ganti pake kredensial email pengirim lo
-const EMAIL_USER = process.env.EMAIL_USER || "email_lo@gmail.com";
-const EMAIL_PASS = process.env.EMAIL_PASS || "app_password_lo"; // Pake App Password Google ya
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const WA_API_URL = "https://api.fonnte.com/send"; // Atau URL provider WA kamu
+const WA_API_KEY = process.env.WA_API_KEY;
 
-// Ganti pake API Key WhatsApp lo (misal Fonnte/Wablas/Twilio)
-// Kalo belum ada, kosongin dulu gapapa, lognya bakal muncul di terminal.
-const WA_API_URL = "https://api.fonnte.com/send";
-const WA_API_KEY = process.env.WA_API_KEY || "TOKEN_WA_LO";
+// Helper untuk format tanggal Indonesia (contoh: 26 Januari 2026)
+const formatDateIndo = (dateString: string | Date) => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
 
 export async function POST(request: Request) {
   try {
-    const { email, nomorHp, namaLengkap, status, instansi } =
-      await request.json();
+    // 1. TERIMA DATA BARU DARI BODY REQUEST
+    const { 
+      email, 
+      nomorHp, 
+      namaLengkap, 
+      status, 
+      instansi,
+      tanggalMulai,   // Data baru
+      tanggalSelesai, // Data baru
+      position        // Data baru (Nama Bidang)
+    } = await request.json();
 
     if (!email && !nomorHp) {
       return NextResponse.json(
@@ -23,20 +38,49 @@ export async function POST(request: Request) {
       );
     }
 
-    // --- 1. SIAPKAN PESAN ---
+    // --- 2. SIAPKAN PESAN ---
     const isAccepted = status === "ACCEPTED";
     const subject = isAccepted
-      ? "SELAMAT! Anda Diterima Magang"
+      ? "SELAMAT! Anda Diterima Magang - Dinas DIKPORA DIY"
       : "Update Status Pendaftaran Magang";
 
-    // Template Pesan (Bisa lo custom lagi)
-    const messageBody = isAccepted
-      ? `Halo *${namaLengkap}*,\n\nSelamat! Pendaftaran magang kamu di *Dinas DIKPORA DIY* telah *DITERIMA*.\n\nSilakan cek dashboard website untuk detail penempatan dan jadwal.\nTerima kasih.`
-      : `Halo *${namaLengkap}*,\n\nMohon maaf, pendaftaran magang kamu di *Dinas DIKPORA DIY* belum dapat kami terima saat ini.\n\nTetap semangat dan terima kasih telah mendaftar.`;
+    let messageBody = "";
+
+    if (isAccepted) {
+      // Format Tanggal
+      const tglMulaiStr = formatDateIndo(tanggalMulai);
+      const tglSelesaiStr = formatDateIndo(tanggalSelesai);
+      const periode = `${tglMulaiStr} s.d. ${tglSelesaiStr}`;
+      const namaBidang = position || "Menunggu Penempatan";
+
+      // Template Pesan DITERIMA (Sesuai request kamu)
+      messageBody = 
+`Halo *${namaLengkap}*,
+
+Selamat! Anda *DITERIMA* magang di Dinas DIKPORA DIY.
+
+*Detail Penerimaan:*
+Nama: ${namaLengkap}
+Asal: ${instansi}
+Bidang: ${namaBidang}
+Tanggal Magang: ${periode}
+
+Silakan balas email ini untuk konfirmasi atau cek dashboard website untuk informasi lebih lanjut.
+Terima kasih.`;
+
+    } else {
+      // Template Pesan DITOLAK
+      messageBody = 
+`Halo *${namaLengkap}*,
+
+Mohon maaf, pendaftaran magang kamu di *Dinas DIKPORA DIY* belum dapat kami terima saat ini.
+
+Tetap semangat dan terima kasih telah mendaftar.`;
+    }
 
     const results = { email: "skipped", wa: "skipped" };
 
-    // --- 2. KIRIM EMAIL (Nodemailer) ---
+    // --- 3. KIRIM EMAIL (Nodemailer) ---
     if (email) {
       try {
         const transporter = nodemailer.createTransport({
@@ -44,16 +88,22 @@ export async function POST(request: Request) {
           auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         });
 
+        // Convert newlines to <br> for HTML email
+        const htmlBody = messageBody.replace(/\n/g, "<br>");
+
         await transporter.sendMail({
-          from: `"Admin Magang" <${EMAIL_USER}>`,
+          from: `"Admin Magang DIKPORA" <${EMAIL_USER}>`,
           to: email,
           subject: subject,
-          text: messageBody, // Versi text biasa
+          text: messageBody, 
           html: `
-            <h3>Halo ${namaLengkap},</h3>
-            <p>${messageBody.replace(/\n/g, "<br>")}</p>
+            <h3>${isAccepted ? "Pemberitahuan Penerimaan Magang" : "Status Pendaftaran"}</h3>
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <p>${htmlBody}</p>
+            </div>
             <br/>
-            <p><small>Pesan ini dikirim otomatis oleh sistem.</small></p>
+            <hr/>
+            <p style="font-size: 12px; color: #888;">Pesan ini dikirim otomatis oleh sistem.</p>
           `,
         });
         results.email = "sent";
@@ -63,10 +113,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // --- 3. KIRIM WHATSAPP (Via API) ---
-    if (nomorHp && WA_API_KEY !== "TOKEN_WA_LO") {
+    // --- 4. KIRIM WHATSAPP (Via API) ---
+    if (nomorHp && WA_API_KEY) {
       try {
-        // Format nomor HP (Ganti 08 jadi 628)
         let formattedHp = nomorHp.replace(/\D/g, "");
         if (formattedHp.startsWith("0"))
           formattedHp = "62" + formattedHp.slice(1);
@@ -81,6 +130,10 @@ export async function POST(request: Request) {
           body: formData,
         });
 
+        // Cek response text untuk debugging jika perlu
+        // const textRes = await resWa.text();
+        // console.log("WA Response:", textRes);
+
         if (!resWa.ok) throw new Error("WA API Error");
         results.wa = "sent";
       } catch (err) {
@@ -88,7 +141,8 @@ export async function POST(request: Request) {
         results.wa = "failed";
       }
     } else {
-      console.log("Mocking WA Send to:", nomorHp, messageBody);
+      console.log("Mocking WA Send (No API Key or Phone) to:", nomorHp);
+      console.log("Isi Pesan:", messageBody);
     }
 
     return NextResponse.json({ success: true, results });

@@ -34,8 +34,8 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarClock,
-  MessageCircle, // New Icon
-  Mail, // New Icon
+  MessageCircle, 
+  Mail, 
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -207,6 +207,16 @@ export default function ApplicantsPage() {
     fetchAdminSession();
   }, []);
 
+  // --- HELPER DATE INDONESIA ---
+  const formatDateIndo = (dateString: string) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   // --- NEW: NOTIFICATION LOGIC (DIRECT LINK) ---
   const getPositionName = (id: number | null) => {
     if (!id) return "-";
@@ -225,10 +235,30 @@ export default function ApplicantsPage() {
     const posName = getPositionName(p.positionId);
     let message = "";
 
+    // Format Tanggal
+    const tglMulai = formatDateIndo(p.tanggalMulai);
+    const tglSelesai = formatDateIndo(p.tanggalSelesai);
+
     if (p.status === "ACCEPTED") {
-      message = `Halo, *${p.namaLengkap}*,\n\nSelamat! Anda *DITERIMA* magang di Dinas DIKPORA DIY.\n\nAsal Kampus: ${p.instansi}\nBidang Diterima: *${posName}*\n\nMohon konfirmasi kesediaannya. Terima kasih.`;
+      message = 
+`Halo *${p.namaLengkap}*,
+
+Selamat! Anda *DITERIMA* magang di Dinas DIKPORA DIY.
+
+*Detail Penerimaan:*
+Nama: ${p.namaLengkap}
+Asal: ${p.instansi}
+Bidang: ${posName}
+Tanggal Magang: ${tglMulai} s.d. ${tglSelesai}
+
+Mohon balas pesan ini untuk konfirmasi kesediaannya. Terima kasih.`;
     } else if (p.status === "REJECTED") {
-      message = `Halo, *${p.namaLengkap}*,\n\nTerima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).\n\nMohon maaf, saat ini kami belum bisa menerima lamaran magang Anda karena kuota penuh atau kualifikasi belum sesuai. Tetap semangat!`;
+      message = 
+`Halo *${p.namaLengkap}*,
+
+Terima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).
+
+Mohon maaf, saat ini kami belum bisa menerima lamaran magang Anda. Tetap semangat!`;
     }
 
     const url = `https://wa.me/${hp}?text=${encodeURIComponent(message)}`;
@@ -242,12 +272,32 @@ export default function ApplicantsPage() {
     let subject = "";
     let body = "";
 
+    // Format Tanggal
+    const tglMulai = formatDateIndo(p.tanggalMulai);
+    const tglSelesai = formatDateIndo(p.tanggalSelesai);
+
     if (p.status === "ACCEPTED") {
-      subject = "PENGUMUMAN MAGANG DINAS DIKPORA DIY - DITERIMA";
-      body = `Halo ${p.namaLengkap},\n\nSelamat! Anda DITERIMA magang di Dinas DIKPORA DIY.\n\nDetail:\nNama: ${p.namaLengkap}\nAsal: ${p.instansi}\nBidang: ${posName}\n\nSilakan balas email ini untuk konfirmasi.`;
+      subject = "SELAMAT! Anda Diterima Magang - Dinas DIKPORA DIY";
+      body = 
+`Halo ${p.namaLengkap},
+
+Selamat! Anda DITERIMA magang di Dinas DIKPORA DIY.
+
+Detail Penerimaan:
+Nama: ${p.namaLengkap}
+Asal: ${p.instansi}
+Bidang: ${posName}
+Tanggal Magang: ${tglMulai} s.d. ${tglSelesai}
+
+Silakan balas email ini untuk konfirmasi.`;
     } else if (p.status === "REJECTED") {
-      subject = "UPDATE STATUS MAGANG DINAS DIKPORA DIY";
-      body = `Halo ${p.namaLengkap},\n\nMohon maaf, lamaran magang Anda di Dinas DIKPORA DIY belum dapat kami terima saat ini.\n\nTerima kasih telah mendaftar.`;
+      subject = "Update Status Pendaftaran Magang";
+      body = 
+`Halo ${p.namaLengkap},
+
+Mohon maaf, lamaran magang Anda di Dinas DIKPORA DIY belum dapat kami terima saat ini.
+
+Terima kasih telah mendaftar.`;
     }
 
     const url = `mailto:${p.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
