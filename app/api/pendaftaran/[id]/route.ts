@@ -1,63 +1,87 @@
+// app/api/pendaftaran/[id]/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
 
-// PATCH: Update Status, Posisi, ATAU Edit Data (Perpanjang/Stop)
+// Helper Auth
+async function checkAdminAuth() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("admin_session")?.value;
+  if (!token) return false;
+  try {
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || "rahasia-negara-bos",
+    );
+    await jwtVerify(token, secret);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// UPDATE DATA (PATCH)
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  // 1. Await params (Wajib di Next.js 15 biar ga error params promise)
+  const { id } = await params;
+
+  if (!(await checkAdminAuth()))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
-    const { id } = await params;
     const body = await request.json();
 
-    // 1. Validasi ID
-    if (!id) {
-      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
+    // 2. FIX UTAMA DISINI: Konversi positionId jadi Angka
+    // Karena dari dropdown frontend bentuknya string, database butuh integer.
+    if (body.positionId && typeof body.positionId === "string") {
+      body.positionId = parseInt(body.positionId);
     }
 
-    // 2. Siapkan Data Update Dynamic
-    // Kita gunakan object spread agar hanya field yang dikirim yang di-update
-    const updateData: any = {};
-
-    if (body.status) updateData.status = body.status;
-    if (body.positionId) updateData.positionId = parseInt(body.positionId);
-    if (body.namaLengkap) updateData.namaLengkap = body.namaLengkap;
-    if (body.instansi) updateData.instansi = body.instansi;
-    if (body.nomorHp) updateData.nomorHp = body.nomorHp;
-    
-    // Update Tanggal (Penting untuk Perpanjang / Stop Paksa)
-    if (body.tanggalMulai) updateData.tanggalMulai = new Date(body.tanggalMulai);
-    if (body.tanggalSelesai) updateData.tanggalSelesai = new Date(body.tanggalSelesai);
-
-    // 3. Lakukan Update ke Database
-    const updatedPelamar = await prisma.pendaftaran.update({
+    const updated = await prisma.pendaftaran.update({
       where: { id },
-      data: updateData,
+      data: body,
     });
-
-    // 4. (Optional) Update Kuota 'filled' jika status berubah jadi ACCEPTED baru
-    // Note: Logic kuota kompleks sebaiknya dihandle hati-hati. 
-    // Di sini kita asumsikan user hanya edit data peserta yang SUDAH diterima.
-
-    return NextResponse.json(updatedPelamar);
+    return NextResponse.json({ success: true, data: updated });
   } catch (error) {
-    console.error("Update Error:", error);
+    console.error("Error PATCH:", error); // Cek terminal kalo masih error
     return NextResponse.json({ error: "Gagal update data" }, { status: 500 });
   }
 }
 
-// DELETE: Hapus Data
+// DELETE DATA (HAPUS)
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  // Await params juga disini
+  const { id } = await params;
+
+  if (!(await checkAdminAuth())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const { id } = await params;
+    const existing = await prisma.pendaftaran.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Data tidak ditemukan" },
+        { status: 404 },
+      );
+    }
+
     await prisma.pendaftaran.delete({
       where: { id },
     });
-    return NextResponse.json({ message: "Data deleted" });
+
+    return NextResponse.json({ success: true, message: "Berhasil dihapus" });
   } catch (error) {
-    return NextResponse.json({ error: "Gagal hapus" }, { status: 500 });
+    console.error("Delete error:", error);
+    return NextResponse.json(
+      { error: "Gagal menghapus data" },
+      { status: 500 },
+    );
   }
 }
