@@ -226,9 +226,9 @@ export default function ApplicantsPage() {
     let message = "";
 
     if (p.status === "ACCEPTED") {
-      message = `Halo Kak *${p.namaLengkap}*,\n\nSelamat! Anda *DITERIMA* magang di Dinas DIKPORA DIY.\n\nAsal Sekolah/Kampus: ${p.instansi}\nBidang Diterima: *${posName}*\n\nMohon konfirmasi kesediaannya. Terima kasih.`;
+      message = `Halo, *${p.namaLengkap}*,\n\nSelamat! Anda *DITERIMA* magang di Dinas DIKPORA DIY.\n\nAsal Kampus: ${p.instansi}\nBidang Diterima: *${posName}*\n\nMohon konfirmasi kesediaannya. Terima kasih.`;
     } else if (p.status === "REJECTED") {
-      message = `Halo Kak *${p.namaLengkap}*,\n\nTerima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).\n\nMohon maaf, saat ini kami belum bisa menerima lamaran magang Anda karena kuota penuh atau kualifikasi belum sesuai. Tetap semangat!`;
+      message = `Halo, *${p.namaLengkap}*,\n\nTerima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).\n\nMohon maaf, saat ini kami belum bisa menerima lamaran magang Anda karena kuota penuh atau kualifikasi belum sesuai. Tetap semangat!`;
     }
 
     const url = `https://wa.me/${hp}?text=${encodeURIComponent(message)}`;
