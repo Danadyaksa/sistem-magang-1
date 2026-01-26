@@ -117,7 +117,7 @@ type Intern = {
   kontakPembimbing?: string;
 };
 
-// --- HELPER: LIBURAN 2026 (Copas dari /daftar) ---
+// --- HELPER: LIBURAN 2026 (Sesuai Request) ---
 const HOLIDAYS_2026 = [
   "2026-01-01",
   "2026-01-16",
@@ -159,9 +159,6 @@ const calculateEndDate = (startDate: string, duration: number) => {
   // Loop sampai kuota hari kerja terpenuhi
   while (count < duration) {
     const day = currentDate.getDay();
-    // Gunakan toLocaleDateString('en-CA') buat format YYYY-MM-DD lokal
-    // atau manual construct biar aman. toISOString() ambil UTC.
-    // Kita pake trick manual biar ngikutin tanggal objeknya.
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, "0");
     const d = String(currentDate.getDate()).padStart(2, "0");
@@ -184,6 +181,15 @@ const calculateEndDate = (startDate: string, duration: number) => {
   const month = String(currentDate.getMonth() + 1).padStart(2, "0");
   const d = String(currentDate.getDate()).padStart(2, "0");
   return `${year}-${month}-${d}`;
+};
+
+const formatDateForInput = (dateString: string) => {
+  if (!dateString) return "";
+  try {
+    return new Date(dateString).toISOString().split("T")[0];
+  } catch (e) {
+    return "";
+  }
 };
 
 // --- HELPER COMPONENTS ---
@@ -430,7 +436,10 @@ const PositionCard = ({
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-slate-400 hover:text-blue-600"
-                          onClick={() => onEditClick(intern)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditClick(intern);
+                          }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -438,7 +447,10 @@ const PositionCard = ({
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-slate-400 hover:text-red-600"
-                          onClick={() => onDeleteClick(intern)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteClick(intern);
+                          }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -738,6 +750,44 @@ export default function PKLMonitoringPage() {
     }
   };
 
+  // LOGIC EDIT (FIXED CRASH)
+  const onEditClick = (intern: Intern) => {
+    // Safety check biar ga crash kalo data tanggal aneh
+    const safeStart = formatDateForInput(intern.tanggalMulai);
+    const safeEnd = formatDateForInput(intern.tanggalSelesai);
+
+    setEditingIntern(intern);
+    setEditForm({
+      namaLengkap: intern.namaLengkap,
+      instansi: intern.instansi,
+      nomorHp: intern.nomorHp,
+      tanggalMulai: safeStart,
+      tanggalSelesai: safeEnd,
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingIntern) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/pendaftaran/${editingIntern.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        toast.success("Data diupdate");
+        setIsEditOpen(false);
+        fetchData();
+      } else toast.error("Gagal update");
+    } catch {
+      toast.error("Error server");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const SidebarItem = ({
     icon: Icon,
     label,
@@ -917,7 +967,7 @@ export default function PKLMonitoringPage() {
                 value="history"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none h-full px-6"
               >
-                Riwayat / Alumni
+                Magang Selesai
               </TabsTrigger>
             </TabsList>
             <TabsContent value="active" className="space-y-6">
@@ -939,17 +989,7 @@ export default function PKLMonitoringPage() {
                       pos={pos}
                       interns={activeInterns}
                       loading={loading}
-                      onEditClick={(i: any) => {
-                        setEditingIntern(i);
-                        setEditForm({
-                          namaLengkap: i.namaLengkap,
-                          instansi: i.instansi,
-                          nomorHp: i.nomorHp,
-                          tanggalMulai: i.tanggalMulai.split("T")[0],
-                          tanggalSelesai: i.tanggalSelesai.split("T")[0],
-                        });
-                        setIsEditOpen(true);
-                      }}
+                      onEditClick={onEditClick}
                       onDeleteClick={(i: any) => {
                         setDeletingIntern(i);
                         setIsDeleteOpen(true);
@@ -1275,6 +1315,76 @@ export default function PKLMonitoringPage() {
               ) : (
                 "Simpan Semua Data"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG EDIT (SINGLE) */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px] dark:bg-slate-950">
+          <DialogHeader>
+            <DialogTitle>Edit Data Peserta</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Nama Lengkap</Label>
+              <Input
+                value={editForm.namaLengkap}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, namaLengkap: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Instansi</Label>
+                <Input
+                  value={editForm.instansi}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, instansi: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>No HP</Label>
+                <Input
+                  value={editForm.nomorHp}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, nomorHp: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Mulai</Label>
+                <Input
+                  type="date"
+                  value={editForm.tanggalMulai}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, tanggalMulai: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Selesai</Label>
+                <Input
+                  type="date"
+                  value={editForm.tanggalSelesai}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, tanggalSelesai: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={isSubmitting}>
+              Update Data
             </Button>
           </DialogFooter>
         </DialogContent>
