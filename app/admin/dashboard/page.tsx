@@ -26,6 +26,7 @@ import {
   ArrowUpDown, 
   ArrowUp, 
   ArrowDown,
+  BookOpen,
   UserCheck
 } from "lucide-react";
 
@@ -308,6 +309,12 @@ export default function AdminDashboard() {
           <SidebarItem icon={LayoutDashboard} label="Dashboard" active={true} />
           <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
+          <SidebarItem
+  icon={BookOpen}
+  label="Penelitian"
+  onClick={() => router.push("/admin/penelitian")}
+  // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
+/>
           <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
           <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>

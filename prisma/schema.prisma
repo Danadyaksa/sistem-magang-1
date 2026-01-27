@@ -70,3 +70,36 @@ model Pendaftaran {
 
   createdAt     DateTime  @default(now())
 }
+
+// ... (Model Admin, Position, Pendaftaran biarkan saja)
+
+// --- TAMBAHAN: MODEL IZIN PENELITIAN ---
+model Penelitian {
+  id            String   @id @default(uuid())
+  
+  // Data Peneliti
+  namaLengkap   String
+  nomorInduk    String   // NIM / NIDN
+  universitas   String   // Asal Instansi
+  fakultas      String?
+  jurusan       String   // Jurusan + Jenjang
+  nomorHp       String
+  email         String   
+  
+  // Detail Penelitian
+  kategori      String   // Skripsi, Tesis, dll
+  judul         String   
+  subjek        String   
+  
+  // Surat Pengantar
+  pemohonSurat  String   
+  nomorSurat    String
+  tanggalSurat  DateTime
+  
+  // File
+  fileSuratPath String   
+  fileProposalPath String? 
+
+  status        String    @default("PENDING") 
+  createdAt     DateTime  @default(now())
+}

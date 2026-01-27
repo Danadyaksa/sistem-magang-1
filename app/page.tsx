@@ -1,6 +1,6 @@
 "use client";
 
-import { ModeToggle } from "@/components/mode-toggle"; // <-- Tambah Import Ini
+import { ModeToggle } from "@/components/mode-toggle";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,7 +12,19 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { SquarePen, FileText, CalendarCheck, ChevronDown, Menu, X, Loader2, Search, Filter, Square } from "lucide-react";
+import { 
+  SquarePen, 
+  FileText, 
+  CalendarCheck, 
+  ChevronDown, 
+  Menu, 
+  X, 
+  Loader2, 
+  Search, 
+  Filter, 
+  GraduationCap, 
+  BookOpen 
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,6 +35,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // TIPE DATA DARI DATABASE
 type Position = {
@@ -141,6 +162,54 @@ export default function Home() {
       }
     });
 
+  // --- KOMPONEN TOMBOL PILIHAN (DIALOG) DENGAN ANIMASI ADMIN DASHBOARD ---
+  const TombolDaftar = ({ mobile = false }) => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button 
+          size={mobile ? "default" : "lg"} 
+          className={`${mobile ? "w-full" : "h-12 w-full sm:w-auto px-8"} text-base rounded-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all text-white`}
+        >
+          Daftar Sekarang
+        </Button>
+      </DialogTrigger>
+      {/* ANIMASI DIALOG DISINI (Sama dengan Admin Dashboard):
+        - animate-in fade-in zoom-in-95 duration-200
+      */}
+      <DialogContent className="sm:max-w-md bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+        <DialogHeader>
+          <DialogTitle className="text-center text-xl">Pilih Layanan</DialogTitle>
+          <DialogDescription className="text-center">
+            Silakan pilih jenis pengajuan yang ingin Anda lakukan.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          {/* PILIHAN 1: MAGANG */}
+          <Link href="/daftar" className="group">
+            <div className="flex flex-col items-center justify-center p-6 border-2 border-slate-100 dark:border-slate-800 rounded-xl hover:border-blue-600 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all cursor-pointer h-full group-hover:shadow-md duration-300">
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                <GraduationCap className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 mb-1 text-center">Magang / PKL</h3>
+              <p className="text-xs text-center text-slate-500 dark:text-slate-400">Mahasiswa & Siswa SMK</p>
+            </div>
+          </Link>
+
+          {/* PILIHAN 2: PENELITIAN */}
+          <Link href="/daftar-penelitian" className="group">
+            <div className="flex flex-col items-center justify-center p-6 border-2 border-slate-100 dark:border-slate-800 rounded-xl hover:border-emerald-600 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all cursor-pointer h-full group-hover:shadow-md duration-300">
+              <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                <Search className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 mb-1 text-center">Izin Penelitian</h3>
+              <p className="text-xs text-center text-slate-500 dark:text-slate-400">Skripsi, Tesis, & Riset</p>
+            </div>
+          </Link>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     // WRAPPER UTAMA: Support Dark Mode Background
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 text-sm transition-colors duration-300">
@@ -157,8 +226,8 @@ export default function Home() {
           <Link 
             href="/" 
             onClick={(e) => {
-              e.preventDefault(); // Mencegah reload halaman
-              window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll ke paling atas
+              e.preventDefault(); 
+              window.scrollTo({ top: 0, behavior: 'smooth' }); 
             }}
           className="flex items-center gap-2 font-bold text-lg text-slate-800 dark:text-slate-100">
             <Image
@@ -168,7 +237,7 @@ export default function Home() {
               height={28}
               className="object-contain"
             />
-            <span>Magang Disdikpora</span>
+            <span>Magang & Riset</span>
           </Link>
           
           <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -185,12 +254,11 @@ export default function Home() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            {/* Dark Mode Toggle */}
             <ModeToggle />
-            
-            <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-full px-6 shadow-sm text-white">
-              <Link href="/daftar">Daftar Sekarang</Link>
-            </Button>
+            {/* Ganti Button Biasa dengan TombolDaftar (Dialog) */}
+            <div className="hidden md:block">
+               <TombolDaftar mobile={false} />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 md:hidden">
@@ -217,9 +285,8 @@ export default function Home() {
                   {item}
                 </Link>
               ))}
-              <Button asChild className="w-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-full text-white">
-                <Link href="/daftar">Daftar Sekarang</Link>
-              </Button>
+              {/* Tombol Mobile */}
+              <TombolDaftar mobile={true} />
             </div>
           </div>
         )}
@@ -234,7 +301,6 @@ export default function Home() {
                  backgroundSize: '24px 24px' 
                }}>
           </div>
-          {/* Gradient Overlay for Dark Mode */}
           <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent via-slate-50/50 to-slate-50 dark:via-slate-950/50 dark:to-slate-950"></div>
 
           <div className="relative z-10">
@@ -242,26 +308,24 @@ export default function Home() {
               <div className="space-y-6">
                 <Badge variant="outline" className="px-4 py-1.5 text-xs font-medium border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 mb-4 inline-flex">
                   <span className="flex h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400 mr-2 animate-pulse"></span>
-                  Pendaftaran Magang Periode 2026 Telah Dibuka
+                  Pendaftaran Periode 2026 Telah Dibuka
                 </Badge>
 
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-tight">
-                  Sistem Informasi Magang <br />
+                  Sistem Informasi Magang & Riset<br />
                   <span className="text-blue-700 dark:text-blue-500">Dinas Dikpora DIY</span>
                 </h1>
                 
                 <p className="text-base md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                  Bergabunglah dalam program magang Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta. 
+                  Layanan terintegrasi untuk pendaftaran Magang/PKL dan pengajuan Izin Penelitian mahasiswa/dosen secara online.
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 w-full max-w-md mx-auto sm:max-w-none">
-                  <Button size="lg" className="h-12 w-full sm:w-auto px-8 text-base rounded-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all text-white" asChild>
-                    <Link href="/daftar">
-                      Isi Formulir Pendaftaran
-                    </Link>
-                  </Button>
+                  {/* Tombol Hero */}
+                  <TombolDaftar mobile={false} />
+                  
                   <Button size="lg" variant="outline" className="h-12 w-full sm:w-auto px-8 text-base rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-950 dark:text-slate-200 dark:border-slate-700" asChild>
-                    <Link href="#alur" onClick={(e) => handleScroll(e, "alur")}>Pelajari Dulu</Link>
+                    <Link href="#alur" onClick={(e) => handleScroll(e, "alur")}>Lihat Prosedur</Link>
                   </Button>
                 </div>
               </div>
@@ -273,58 +337,110 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ALUR PENDAFTARAN */}
+        {/* ALUR PENDAFTARAN (DENGAN TABS) */}
         <section id="alur" className="py-20 bg-white dark:bg-slate-950 border-y border-slate-100 dark:border-slate-800 scroll-mt-20 transition-colors">
           <div className="container mx-auto px-4">
             <FadeInSection>
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800 dark:text-slate-100">
-                Alur Pendaftaran
+              <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-slate-800 dark:text-slate-100">
+                Alur & Prosedur
               </h2>
             </FadeInSection>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              <FadeInSection delay={100}>
-                <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                  <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
-                      <FileText className="h-6 w-6 text-blue-700 dark:text-blue-400" />
-                    </div>
-                    <CardTitle className="text-lg dark:text-slate-100">1. Siapkan Berkas</CardTitle>
-                    <CardDescription className="text-sm dark:text-slate-400">
-                      Scan surat pengantar resmi dari sekolah/kampus dan proposal kegiatan magang dalam format PDF.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </FadeInSection>
+            {/* TABS COMPONENT */}
+            <Tabs defaultValue="magang" className="max-w-4xl mx-auto">
+              <div className="flex justify-center mb-8">
+                <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 h-12 rounded-full">
+                  <TabsTrigger value="magang" className="rounded-full px-6 text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+                    Magang / PKL
+                  </TabsTrigger>
+                  <TabsTrigger value="penelitian" className="rounded-full px-6 text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+                    Izin Penelitian
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-              <FadeInSection delay={200}>
-                <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                  <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
-                      <SquarePen className="h-6 w-6 text-blue-700 dark:text-blue-400" />
-                    </div>
-                    <CardTitle className="text-lg dark:text-slate-100">2. Isi Formulir</CardTitle>
-                    <CardDescription className="text-sm dark:text-slate-400">
-                      Lengkapi data diri, durasi magang, dan upload berkas persyaratan melalui link Google Form yang tersedia.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </FadeInSection>
+              {/* TAB CONTENT: MAGANG */}
+              <TabsContent value="magang">
+                <div className="grid md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-2 duration-300">
+                  <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardHeader>
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                        <FileText className="h-6 w-6 text-blue-700 dark:text-blue-400" />
+                      </div>
+                      <CardTitle className="text-lg dark:text-slate-100">1. Siapkan Berkas</CardTitle>
+                      <CardDescription className="text-sm dark:text-slate-400">
+                        Scan surat pengantar resmi dari sekolah/kampus dan proposal kegiatan magang dalam format PDF.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
 
-              <FadeInSection delay={300}>
-                <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                  <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
-                      <CalendarCheck className="h-6 w-6 text-blue-700 dark:text-blue-400" />
-                    </div>
-                    <CardTitle className="text-lg dark:text-slate-100">3. Tunggu Konfirmasi</CardTitle>
-                    <CardDescription className="text-sm dark:text-slate-400">
-                      Tim kami akan memverifikasi berkas Anda. Konfirmasi penerimaan akan dikirim melalui WhatsApp/Email.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </FadeInSection>
-            </div>
+                  <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardHeader>
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                        <SquarePen className="h-6 w-6 text-blue-700 dark:text-blue-400" />
+                      </div>
+                      <CardTitle className="text-lg dark:text-slate-100">2. Isi Formulir</CardTitle>
+                      <CardDescription className="text-sm dark:text-slate-400">
+                        Lengkapi data diri, durasi magang, dan upload berkas persyaratan melalui website ini.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  <Card className="h-full hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardHeader>
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                        <CalendarCheck className="h-6 w-6 text-blue-700 dark:text-blue-400" />
+                      </div>
+                      <CardTitle className="text-lg dark:text-slate-100">3. Tunggu Konfirmasi</CardTitle>
+                      <CardDescription className="text-sm dark:text-slate-400">
+                        Konfirmasi penerimaan akan dikirim melalui WhatsApp/Email maksimal 3-7 hari kerja.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* TAB CONTENT: PENELITIAN (BARU) */}
+              <TabsContent value="penelitian">
+                <div className="grid md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-2 duration-300">
+                  <Card className="h-full hover:shadow-md transition-shadow border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
+                    <CardHeader>
+                      <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4">
+                        <FileText className="h-6 w-6 text-emerald-700 dark:text-emerald-400" />
+                      </div>
+                      <CardTitle className="text-lg dark:text-slate-100">1. Surat Pengantar</CardTitle>
+                      <CardDescription className="text-sm dark:text-slate-400">
+                        Wajib memiliki surat pengantar izin penelitian dari Kampus/Instansi asal yang ditujukan ke Dinas.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  <Card className="h-full hover:shadow-md transition-shadow border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
+                    <CardHeader>
+                      <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4">
+                        <Search className="h-6 w-6 text-emerald-700 dark:text-emerald-400" />
+                      </div>
+                      <CardTitle className="text-lg dark:text-slate-100">2. Ajukan Online</CardTitle>
+                      <CardDescription className="text-sm dark:text-slate-400">
+                        Klik tombol "Daftar Sekarang", pilih Izin Penelitian, dan isi detail judul serta subjek penelitian.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  <Card className="h-full hover:shadow-md transition-shadow border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
+                    <CardHeader>
+                      <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4">
+                        <BookOpen className="h-6 w-6 text-emerald-700 dark:text-emerald-400" />
+                      </div>
+                      <CardTitle className="text-lg dark:text-slate-100">3. Ambil Surat Izin</CardTitle>
+                      <CardDescription className="text-sm dark:text-slate-400">
+                        Jika disetujui, Anda akan diminta mengambil Surat Keterangan Izin Penelitian fisik di kantor.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </section>
 

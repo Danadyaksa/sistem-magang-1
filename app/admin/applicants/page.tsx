@@ -35,7 +35,8 @@ import {
   ArrowDown,
   CalendarClock,
   MessageCircle, 
-  Mail, 
+  Mail,
+  BookOpen, 
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -588,6 +589,12 @@ Terima kasih telah mendaftar.`;
             icon={CalendarClock}
             label="Daftar PKL"
             onClick={() => router.push("/admin/pkl")}
+          />
+          <SidebarItem
+            icon={BookOpen}
+            label="Penelitian"
+            onClick={() => router.push("/admin/penelitian")}
+            // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
           />
           <SidebarItem
             icon={Users}

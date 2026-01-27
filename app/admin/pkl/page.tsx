@@ -35,6 +35,7 @@ import {
   Users2,
   UploadCloud,
   CalendarDays,
+  BookOpen,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -865,6 +866,12 @@ export default function PKLMonitoringPage() {
             icon={Users}
             label="Admin Users"
             onClick={() => router.push("/admin/users")}
+          />
+          <SidebarItem
+            icon={BookOpen}
+            label="Penelitian"
+            onClick={() => router.push("/admin/penelitian")}
+            // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
           />
           <SidebarItem
             icon={Settings}

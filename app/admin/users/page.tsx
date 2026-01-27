@@ -24,7 +24,8 @@ import {
   AlertTriangle,
   PanelLeftClose, // Icon tutup sidebar
   PanelLeftOpen,   // Icon buka sidebar
-  CalendarClock
+  CalendarClock,
+  BookOpen
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -386,6 +387,12 @@ export default function AdminUsersPage() {
             icon={CalendarClock} 
             label="Daftar PKL" 
             onClick={() => router.push("/admin/pkl")} 
+          />
+          <SidebarItem
+            icon={BookOpen}
+            label="Penelitian"
+            onClick={() => router.push("/admin/penelitian")}
+            // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
           />
           <SidebarItem 
             icon={Users} 
