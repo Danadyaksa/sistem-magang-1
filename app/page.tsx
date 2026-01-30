@@ -661,9 +661,7 @@ export default function Home() {
                         Berapa lama durasi minimal magang?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
-                        Durasi magang menyesuaikan dengan kebijakan
-                        kampus/sekolah, namun umumnya minimal 1 bulan dan
-                        maksimal 6 bulan.
+                        Minimal durasi magang di Dinas DIKPORA DIY adalah 44 hari kerja.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem
@@ -742,6 +740,8 @@ export default function Home() {
                 <a
                   href="https://maps.app.goo.gl/N6XssWVfCqDph8uk9"
                   target="_blank"
+
+                  
                   rel="noopener noreferrer"
                   className="hover:text-blue-400 hover:underline block"
                 >

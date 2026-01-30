@@ -122,7 +122,6 @@ const MONTHS = [
 export default function ApplicantsPage() {
   const router = useRouter();
 
-  // --- STATE UTAMA ---
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [pendaftar, setPendaftar] = useState<Pendaftaran[]>([]);
