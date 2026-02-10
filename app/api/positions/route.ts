@@ -8,14 +8,15 @@ export async function GET() {
       orderBy: { id: "asc" },
     });
 
-    // 2. Hitung jumlah "Terisi" secara Real-time dari tabel Pendaftaran
-    // Syarat Terhitung: Status ACCEPTED & Belum Lewat Tanggal Selesai
+    // 2. Hitung jumlah "Terisi" & Ambil Jadwal secara Real-time
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset jam biar fair
 
-    const positionsWithCount = await Promise.all(
+    const positionsWithData = await Promise.all(
       positions.map(async (pos) => {
-        const activeCount = await prisma.pendaftaran.count({
+        // UBAH DISINI: Pakai findMany, bukan count
+        // Kita ambil data pendaftar yang statusnya ACCEPTED & Masih Aktif
+        const activeInterns = await prisma.pendaftaran.findMany({
           where: {
             positionId: pos.id,
             status: "ACCEPTED",
@@ -23,17 +24,26 @@ export async function GET() {
               gte: today, // Tanggal Selesai LEBIH DARI ATAU SAMA DENGAN Hari Ini
             },
           },
+          select: {
+            tanggalMulai: true,
+            tanggalSelesai: true,
+            // Kita TIDAK ambil namaLengkap demi privasi
+          },
+          orderBy: {
+            tanggalSelesai: 'asc', // Yang mau selesai duluan ditaruh atas
+          },
         });
 
-        // Return data gabungan (Data Posisi + Hitungan Real)
+        // Return data gabungan
         return {
           ...pos,
-          filled: activeCount, // Override nilai 'filled' dari DB dengan hitungan asli
+          filled: activeInterns.length, // Jumlah terisi diambil dari panjang array data
+          pendaftar: activeInterns,     // Sertakan data jadwal untuk dropdown di frontend
         };
       })
     );
 
-    return NextResponse.json(positionsWithCount);
+    return NextResponse.json(positionsWithData);
   } catch (error) {
     return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
   }
@@ -42,13 +52,14 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, quota } = body;
+    const { title, quota, description } = body; // Tambahkan description jika ada
 
     const newPosition = await prisma.position.create({
       data: {
         title,
         quota: parseInt(quota),
-        filled: 0, // Default 0, nanti di-override saat GET
+        description: description || "", // Handle description
+        filled: 0, 
       },
     });
 

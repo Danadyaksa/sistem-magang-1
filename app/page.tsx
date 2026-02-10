@@ -30,6 +30,8 @@ import {
   Filter,
   GraduationCap,
   BookOpen,
+  Clock, // New icon
+  CalendarDays // New icon
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -50,13 +52,19 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
-// TIPE DATA DARI DATABASE
+// UPDATE TIPE DATA (Tambahkan pendaftar)
 type Position = {
   id: number;
   title: string;
   filled: number;
   quota: number;
+  pendaftar: {
+    tanggalMulai: string;
+    tanggalSelesai: string;
+  }[];
 };
 
 // RESET SAAT SCROLL
@@ -157,7 +165,7 @@ export default function Home() {
     return "Dibuka";
   };
 
-  // --- LOGIC GUA BALIKIN (HITUNG TOTAL KUOTA) ---
+  // --- LOGIC TOTAL KUOTA ---
   const totalQuota = positions.reduce((acc, curr) => acc + curr.quota, 0);
   const totalFilled = positions.reduce((acc, curr) => acc + curr.filled, 0);
   const availableSlots = Math.max(0, totalQuota - totalFilled);
@@ -336,7 +344,6 @@ export default function Home() {
           <div className="relative z-10">
             <FadeInSection>
               <div className="space-y-6">
-                {/* --- BAGIAN BADGE (GUA UPDATE PAKE LOGIC TOTAL KUOTA) --- */}
                 <Badge
                   variant="outline"
                   className="px-4 py-1.5 text-xs font-medium border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 mb-4 inline-flex"
@@ -386,7 +393,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ALUR PENDAFTARAN (DENGAN TABS DARI TEMEN LU) */}
+        {/* ALUR PENDAFTARAN */}
         <section
           id="alur"
           className="py-20 bg-white dark:bg-slate-950 border-y border-slate-100 dark:border-slate-800 scroll-mt-20 transition-colors"
@@ -466,7 +473,7 @@ export default function Home() {
                 </div>
               </TabsContent>
 
-              {/* TAB CONTENT: PENELITIAN (DARI TEMEN LU) */}
+              {/* TAB CONTENT: PENELITIAN */}
               <TabsContent value="penelitian">
                 <div className="grid md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-2 duration-300">
                   <Card className="h-full hover:shadow-md transition-shadow border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
@@ -519,7 +526,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* KUOTA MAGANG */}
+        {/* KUOTA MAGANG (DENGAN DROPDOWN PEMAGANG AKTIF) */}
         <section
           id="kuota"
           className="py-20 bg-slate-50 dark:bg-slate-950 border-y border-slate-200 dark:border-slate-800 scroll-mt-20 transition-colors"
@@ -528,11 +535,10 @@ export default function Home() {
             <FadeInSection>
               <div className="text-center mb-8">
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-4">
-                  Kuota Magang
+                  Kuota & Jadwal Magang
                 </h2>
                 <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
-                  Cek ketersediaan kuota magang di setiap divisi Dinas
-                  Pendidikan, Pemuda, dan Olahraga DIY update terbaru hari ini.
+                  Cek ketersediaan kuota dan lihat jadwal estimasi selesai magang dari peserta yang sedang aktif.
                 </p>
               </div>
             </FadeInSection>
@@ -569,7 +575,7 @@ export default function Home() {
               </FadeInSection>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto">
               {isLoading ? (
                 <div className="text-center py-10">
                   <div className="inline-flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
@@ -578,54 +584,100 @@ export default function Home() {
                   </div>
                 </div>
               ) : filteredPositions.length > 0 ? (
-                filteredPositions.map((pos, index) => {
-                  const status = getStatus(pos.filled, pos.quota);
-                  return (
-                    <FadeInSection key={pos.id} delay={index * 50}>
-                      <Card
-                        className={`w-full border border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-400 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-900 ${pos.filled >= pos.quota ? "opacity-70 bg-slate-50 dark:bg-slate-950" : ""}`}
-                      >
-                        <CardHeader className="py-2 px-3 sm:px-4">
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <div className="flex-1">
-                              <CardTitle className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100">
-                                {pos.title}
-                              </CardTitle>
+                <Accordion type="single" collapsible className="w-full space-y-4">
+                  {filteredPositions.map((pos, index) => {
+                    const status = getStatus(pos.filled, pos.quota);
+                    
+                    return (
+                      <FadeInSection key={pos.id} delay={index * 50}>
+                        <AccordionItem value={`item-${pos.id}`} className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 overflow-hidden">
+                          <AccordionTrigger className="hover:no-underline px-4 py-4 w-full">
+                            <div className="flex flex-col w-full gap-4">
+                              {/* HEADER KARTU (SAMA SEPERTI DESIGN LAMA) */}
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
+                                <div className="text-left flex-1">
+                                  <div className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100">
+                                    {pos.title}
+                                  </div>
+                                </div>
+                                <Badge
+                                  variant="secondary"
+                                  className={`
+                                    border shrink-0 text-xs 
+                                    ${status === "Dibuka" ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800" : ""}
+                                    ${status === "Terbatas" ? "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800" : ""}
+                                    ${status === "Penuh" ? "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800" : ""}
+                                  `}
+                                >
+                                  {status}
+                                </Badge>
+                              </div>
+
+                              {/* PROGRESS BAR & INFO KUOTA */}
+                              <div className="space-y-2 w-full">
+                                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                                  <span>Terisi: {pos.filled} orang</span>
+                                  <span className="font-medium">
+                                    Kuota: {pos.quota}
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={(pos.filled / pos.quota) * 100}
+                                  className="h-2.5 bg-slate-100 dark:bg-slate-800"
+                                />
+                                <div className="flex justify-between items-center mt-1">
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                    *Update Real-time
+                                  </div>
+                                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                    Klik untuk lihat jadwal aktif ↓
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <Badge
-                              variant="secondary"
-                              className={`
-                                border shrink-0 text-xs 
-                                ${status === "Dibuka" ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800" : ""}
-                                ${status === "Terbatas" ? "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800" : ""}
-                                ${status === "Penuh" ? "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800" : ""}
-                              `}
-                            >
-                              {status}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pb-4 pt-0 px-3 sm:px-4">
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
-                              <span>Terisi: {pos.filled} orang</span>
-                              <span className="font-medium">
-                                Kuota: {pos.quota}
-                              </span>
+                          </AccordionTrigger>
+                          
+                          <AccordionContent className="px-4 pb-6 pt-0 border-t border-slate-100 dark:border-slate-800">
+                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-950/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                                <h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                                  <CalendarDays className="h-4 w-4 text-slate-500" />
+                                  Jadwal Pemagang Aktif Saat Ini
+                                </h4>
+
+                                {pos.pendaftar && pos.pendaftar.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {pos.pendaftar.map((p, idx) => (
+                                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm p-3 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                          
+                                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                                            Pemagang {idx + 1}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mt-2 sm:mt-0 text-xs sm:text-sm">
+                                          <Clock className="h-3 w-3" />
+                                          <span>
+                                            {format(new Date(p.tanggalMulai), "d MMM", { locale: id })} - {format(new Date(p.tanggalSelesai), "d MMM yyyy", { locale: id })}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <p className="text-[10px] text-slate-400 mt-2 italic">
+                                      *Nama disamarkan untuk privasi.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-4 text-slate-400 text-sm italic">
+                                    Belum ada pemagang aktif. Jadwal kosong.
+                                  </div>
+                                )}
                             </div>
-                            <Progress
-                              value={(pos.filled / pos.quota) * 100}
-                              className="h-2.5 bg-slate-100 dark:bg-slate-800"
-                            />
-                            <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                              *Update Real-time
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </FadeInSection>
-                  );
-                })
+                          </AccordionContent>
+                        </AccordionItem>
+                      </FadeInSection>
+                    );
+                  })}
+                </Accordion>
               ) : (
                 <div className="text-center py-10 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
                   {searchTerm
@@ -740,8 +792,6 @@ export default function Home() {
                 <a
                   href="https://maps.app.goo.gl/N6XssWVfCqDph8uk9"
                   target="_blank"
-
-                  
                   rel="noopener noreferrer"
                   className="hover:text-blue-400 hover:underline block"
                 >
