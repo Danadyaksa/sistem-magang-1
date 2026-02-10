@@ -591,7 +591,7 @@ export default function Home() {
                     return (
                       <FadeInSection key={pos.id} delay={index * 50}>
                         <AccordionItem value={`item-${pos.id}`} className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 overflow-hidden">
-                          <AccordionTrigger className="hover:no-underline px-4 py-4 w-full">
+                          <AccordionTrigger className="hover:no-underline px-4 py-4 w-full ">
                             <div className="flex flex-col w-full gap-4">
                               {/* HEADER KARTU (SAMA SEPERTI DESIGN LAMA) */}
                               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
@@ -647,7 +647,7 @@ export default function Home() {
                                 {pos.pendaftar && pos.pendaftar.length > 0 ? (
                                   <div className="space-y-3">
                                     {pos.pendaftar.map((p, idx) => (
-                                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm p-3 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
+                                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm p-3 bg-white ">
                                         <div className="flex items-center gap-3">
                                           
                                           <span className="font-medium text-slate-700 dark:text-slate-200">
