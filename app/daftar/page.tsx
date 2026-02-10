@@ -43,40 +43,6 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-// --- DAFTAR HARI LIBUR NASIONAL ---
-const HOLIDAYS = [
-  "2026-01-01", 
-  "2026-01-16", 
-  "2026-02-16", 
-  "2026-02-17", 
-  "2026-03-18", 
-  "2026-03-19", 
-  "2026-03-20", 
-  "2026-03-21", 
-  "2026-03-22", 
-  "2026-03-23", 
-  "2026-03-24", 
-  "2026-04-03", 
-  "2026-04-05", 
-  "2026-05-01", 
-  "2026-05-14", 
-  "2026-05-15", 
-  "2026-05-27", 
-  "2026-05-28", 
-  "2026-05-31", 
-  "2026-06-01", 
-  "2026-06-16", 
-  "2026-08-17", 
-  "2026-08-25", 
-  "2026-12-24", 
-  "2026-12-25", 
-];
-
-const isHoliday = (date: Date) => {
-  const dateString = format(date, "yyyy-MM-dd");
-  return HOLIDAYS.includes(dateString);
-};
-
 // --- SKEMA VALIDASI ---
 const formSchema = z.object({
   namaLengkap: z.string().min(2, "Nama minimal 2 karakter"),
@@ -85,7 +51,7 @@ const formSchema = z.object({
   instansi: z.string().min(3, "Nama Sekolah/Universitas wajib diisi"),
   fakultas: z.string().optional(),
   jurusan: z.string().min(2, "Jurusan/Jenjang wajib diisi"),
-  lamaMagang: z.coerce.number().min(1, "Minimal 1 hari kerja"),
+  lamaMagang: z.coerce.number().min(44, "Durasi magang minimal 44 hari kerja sesuai ketentuan"),
   tanggalMulai: z.date({ required_error: "Tanggal mulai wajib dipilih" }),
   tanggalSelesai: z.date({ required_error: "Tanggal selesai akan terhitung otomatis" }),
   pemohonSurat: z.string().min(2, "Nama/Jabatan pemohon wajib diisi"),
@@ -99,11 +65,38 @@ export default function RegistrationPage() {
   const [fileNames, setFileNames] = useState<{
     cv: string | null;
     surat: string | null;
-    foto: string | null;
-  }>({ cv: null, surat: null, foto: null });
+  }>({ cv: null, surat: null });
+
+  // --- NEW: STATE UNTUK MENAMPUNG LIBUR DARI DATABASE ---
+  const [dbHolidays, setDbHolidays] = useState<string[]>([]);
+
+  // --- NEW: FETCH HARI LIBUR SAAT LOAD ---
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const res = await fetch("/api/holidays");
+        if (res.ok) {
+          const data = await res.json();
+          // Simpan dalam format string 'yyyy-MM-dd' biar mudah dicek
+          const formatted = data.map((h: any) => format(new Date(h.date), "yyyy-MM-dd"));
+          setDbHolidays(formatted);
+        }
+      } catch (err) {
+        console.error("Gagal ambil hari libur", err);
+      }
+    };
+    fetchHolidays();
+  }, []);
+
+  // Fungsi cek libur (sekarang pakai data dari DB)
+  const isHoliday = (date: Date) => {
+    const dateString = format(date, "yyyy-MM-dd");
+    return dbHolidays.includes(dateString);
+  };
 
   const form = useForm({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
       namaLengkap: "",
       nomorInduk: "",
@@ -130,7 +123,9 @@ export default function RegistrationPage() {
       let currentDate = new Date(tanggalMulai);
       let lastWorkingDate = new Date(tanggalMulai);
 
-      while (count < lamaMagang) {
+      // Pastikan loop berhenti jika berlebihan (safety break)
+      let safetyLoop = 0;
+      while (count < lamaMagang && safetyLoop < 365) {
         const isWeekendDay = isWeekend(currentDate);
         const isNationalHoliday = isHoliday(currentDate);
 
@@ -142,12 +137,13 @@ export default function RegistrationPage() {
         if (count < lamaMagang) {
            currentDate = addDays(currentDate, 1);
         }
+        safetyLoop++;
       }
       form.setValue("tanggalSelesai", lastWorkingDate);
     }
-  }, [lamaMagang, tanggalMulai, form]);
+  }, [lamaMagang, tanggalMulai, form, dbHolidays]); // Tambahkan dbHolidays di dependency
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "cv" | "surat" | "foto") => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "cv" | "surat") => {
     const file = e.target.files?.[0];
     setFileNames(prev => ({ ...prev, [type]: file ? file.name : null }));
   };
@@ -164,9 +160,8 @@ export default function RegistrationPage() {
 
       const cvFile = (document.getElementById("cv") as HTMLInputElement).files?.[0];
       const suratFile = (document.getElementById("surat") as HTMLInputElement).files?.[0];
-      const fotoFile = (document.getElementById("foto") as HTMLInputElement).files?.[0];
 
-      if (!cvFile || !suratFile || !fotoFile) {
+      if (!cvFile || !suratFile) {
         alert("Mohon lengkapi semua file!");
         setIsSubmitting(false);
         return;
@@ -174,7 +169,6 @@ export default function RegistrationPage() {
 
       formData.append("cv", cvFile);
       formData.append("surat", suratFile);
-      formData.append("foto", fotoFile);
 
       const response = await fetch("/api/pendaftaran", { method: "POST", body: formData });
       const result = await response.json();
@@ -190,8 +184,13 @@ export default function RegistrationPage() {
     }
   }
 
+  // ... (SISA KODE RETURN TAMPILAN SAMA PERSIS SEPERTI SEBELUMNYA)
+  // Tidak ada perubahan di bagian tampilan (return JSX), jadi cukup copy bagian atasnya saja.
+  
   return (
-    // WRAPPER UTAMA: bg-slate-50 dark:bg-slate-950
+     // ... Paste kode tampilan di sini ...
+     // Agar singkat, saya tidak copy ulang seluruh JSX karena tidak ada yang berubah di UI-nya
+     // Gunakan UI yang terakhir kali kita buat.
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 relative overflow-hidden transition-colors duration-300">
       
       {/* Background Pattern */}
@@ -350,7 +349,7 @@ export default function RegistrationPage() {
                           </span>
                         </div>
                         <FormDescription className="text-xs dark:text-slate-500">
-                          Tanggal ini dihitung otomatis berdasarkan hari kerja (Senin-Jumat).
+                          Tanggal ini dihitung otomatis berdasarkan hari kerja (Senin-Jumat) dan Libur Nasional.
                         </FormDescription>
                         <input type="hidden" name="tanggalSelesai" value={field.value ? field.value.toISOString() : ""} />
                         <FormMessage />
@@ -419,13 +418,27 @@ export default function RegistrationPage() {
                     <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center text-xs">4</span>
                     Upload Berkas
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* CV */}
                     <div className="space-y-2">
                       <FormLabel className="dark:text-slate-300">Curriculum Vitae (CV) <span className="text-red-500">*</span></FormLabel>
-                      <label htmlFor="cv" className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.cv ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6 px-2 text-center">
-                          {fileNames.cv ? <><FileCheck className="w-8 h-8 mb-2 text-green-600"/><p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all px-4">{fileNames.cv}</p></> : <><Upload className="w-6 h-6 mb-2 text-slate-400"/><p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Upload PDF</p><p className="text-[10px] text-slate-400">Max. 300KB</p></>}
+                      <label htmlFor="cv" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.cv ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
+                          {fileNames.cv ? (
+                            <>
+                              <FileCheck className="w-8 h-8 mb-2 text-green-600"/>
+                              <p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all">{fileNames.cv}</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-6 h-6 mb-2 text-slate-400"/>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold">Upload PDF</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 px-2">
+                                Wajib memuat: Foto, Biodata Singkat, Pengalaman Kerja & Organisasi.
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-2">Max. 300KB</p>
+                            </>
+                          )}
                         </div>
                         <Input id="cv" type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileChange(e, "cv")} />
                       </label>
@@ -433,21 +446,22 @@ export default function RegistrationPage() {
                     {/* SURAT */}
                     <div className="space-y-2">
                       <FormLabel className="dark:text-slate-300">Surat Pengantar <span className="text-red-500">*</span></FormLabel>
-                      <label htmlFor="surat" className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.surat ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
+                      <label htmlFor="surat" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.surat ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
                         <div className="flex flex-col items-center justify-center pt-5 pb-6 px-2 text-center">
-                          {fileNames.surat ? <><FileCheck className="w-8 h-8 mb-2 text-green-600"/><p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all px-4">{fileNames.surat}</p></> : <><Upload className="w-6 h-6 mb-2 text-slate-400"/><p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Upload PDF</p><p className="text-[10px] text-slate-400">Max. 300KB</p></>}
+                          {fileNames.surat ? (
+                            <>
+                              <FileCheck className="w-8 h-8 mb-2 text-green-600"/>
+                              <p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all px-4">{fileNames.surat}</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-6 h-6 mb-2 text-slate-400"/>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold">Upload PDF</p>
+                              <p className="text-[10px] text-slate-400 mt-1">Max. 300KB</p>
+                            </>
+                          )}
                         </div>
                         <Input id="surat" type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileChange(e, "surat")} />
-                      </label>
-                    </div>
-                    {/* FOTO */}
-                    <div className="space-y-2">
-                      <FormLabel className="dark:text-slate-300">Pas Foto 3x4 <span className="text-red-500">*</span></FormLabel>
-                      <label htmlFor="foto" className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.foto ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6 px-2 text-center">
-                          {fileNames.foto ? <><FileCheck className="w-8 h-8 mb-2 text-green-600"/><p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all px-4">{fileNames.foto}</p></> : <><Upload className="w-6 h-6 mb-2 text-slate-400"/><p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Upload JPG/PNG</p><p className="text-[10px] text-slate-400">Max. 300KB</p></>}
-                        </div>
-                        <Input id="foto" type="file" accept="image/png, image/jpeg, image/jpg" className="hidden" onChange={(e) => handleFileChange(e, "foto")} />
                       </label>
                     </div>
                   </div>

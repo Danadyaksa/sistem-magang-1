@@ -348,13 +348,13 @@ export default function Home() {
                 </Badge>
 
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-tight">
-                  Sistem Informasi Magang & Riset
+                  Sistem Informasi Magang & Penelitian
                   <br />
                   <span className="text-blue-700 dark:text-blue-500">
                     Dinas Dikpora DIY
                   </span>
                   <p className="text-bold md:text-2xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                  (SINGSET DIKPORA DIY)
+                  (SIMPEL DIKPORA DIY)
                 </p>
                 </h1>
 

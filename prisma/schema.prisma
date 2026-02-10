@@ -103,3 +103,11 @@ model Penelitian {
   status        String    @default("PENDING") 
   createdAt     DateTime  @default(now())
 }
+
+// ... model lainnya
+
+model Holiday {
+  id          String   @id @default(uuid())
+  date        DateTime @unique // Tanggal libur
+  createdAt   DateTime @default(now())
+}
