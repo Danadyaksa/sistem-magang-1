@@ -30,8 +30,8 @@ import {
   Filter,
   GraduationCap,
   BookOpen,
-  Clock, // New icon
-  CalendarDays // New icon
+  Clock, 
+  CalendarDays 
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
-// UPDATE TIPE DATA (Tambahkan pendaftar)
 type Position = {
   id: number;
   title: string;
@@ -526,7 +525,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* KUOTA MAGANG (DENGAN DROPDOWN PEMAGANG AKTIF) */}
+        {/* KUOTA MAGANG*/}
         <section
           id="kuota"
           className="py-20 bg-slate-50 dark:bg-slate-950 border-y border-slate-200 dark:border-slate-800 scroll-mt-20 transition-colors"
@@ -593,7 +592,6 @@ export default function Home() {
                         <AccordionItem value={`item-${pos.id}`} className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 overflow-hidden">
                           <AccordionTrigger className="hover:no-underline px-4 py-4 w-full ">
                             <div className="flex flex-col w-full gap-4">
-                              {/* HEADER KARTU (SAMA SEPERTI DESIGN LAMA) */}
                               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
                                 <div className="text-left flex-1">
                                   <div className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100">
