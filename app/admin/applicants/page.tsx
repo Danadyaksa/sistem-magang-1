@@ -37,7 +37,8 @@ import {
   MessageCircle, 
   Mail,
   BookOpen, 
-  MoreHorizontal
+  MoreHorizontal,
+  ThumbsUp
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -74,9 +75,9 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  TooltipContent,
 } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -95,9 +96,10 @@ type Pendaftaran = {
   email: string;
   instansi: string;
   jurusan: string;
+  nomorInduk: string; // Tambahin ini buat template otomatis
   tanggalMulai: string;
   tanggalSelesai: string;
-  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "RECOMMENDED";
   cvPath: string;
   suratPath: string;
   fotoPath: string;
@@ -234,25 +236,6 @@ export default function ApplicantsPage() {
     );
   };
 
-  // --- LOGIC WA DIREKOMENDASIKAN (FORMAT KOSONG) ---
-  const openWARekomendasi = (p: Pendaftaran) => {
-    if (!p.nomorHp) return toast.error("Nomor HP tidak tersedia");
-
-    let hp = p.nomorHp.replace(/\D/g, "");
-    if (hp.startsWith("0")) hp = "62" + hp.slice(1);
-
-    // Template sesuai request: cuma Nama & Instansi, sisanya admin isi manual
-    const message = 
-`Halo Sdr/i *${p.namaLengkap}* dari *${p.instansi}*,
-
-... (isi pesan rekomendasi/langkah selanjutnya di sini) ...
-
-Terima kasih.`;
-
-    const url = `https://wa.me/${hp}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-  };
-
   const openWhatsApp = (p: Pendaftaran) => {
     if (!p.nomorHp) return toast.error("Nomor HP tidak tersedia");
 
@@ -285,6 +268,17 @@ Mohon balas pesan ini untuk konfirmasi kesediaannya. Terima kasih.`;
 Terima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).
 
 Mohon maaf, saat ini kami belum bisa menerima lamaran magang Anda. Tetap semangat!`;
+    } else if (p.status === "RECOMMENDED") {
+      message = 
+`Halo, *${p.namaLengkap}*
+NIM/NIS: ${p.nomorInduk || "-"}
+Jurusan: ${p.jurusan}
+Sekolah/Universitas: ${p.instansi}
+
+Selamat! Anda *DIREKOMENDASIKAN* untuk mengikuti proses magang pada:
+Mohon tunggu informasi selanjutnya terkait teknis penempatan.
+
+Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     }
 
     const url = `https://wa.me/${hp}?text=${encodeURIComponent(message)}`;
@@ -323,6 +317,21 @@ Silakan balas email ini untuk konfirmasi.`;
 Mohon maaf, lamaran magang Anda di Dinas DIKPORA DIY belum dapat kami terima saat ini.
 
 Terima kasih telah mendaftar.`;
+    } else if (p.status === "RECOMMENDED") {
+      subject = "Rekomendasi Pendaftaran Magang - Dinas DIKPORA DIY";
+      body = 
+`Halo ${p.namaLengkap},
+
+Berdasarkan hasil review berkas:
+Nama: ${p.namaLengkap}
+NIM/NIS: ${p.nomorInduk || "-"}
+Jurusan: ${p.jurusan}
+Sekolah/Universitas: ${p.instansi}
+
+Selamat! Anda DIREKOMENDASIKAN untuk mengikuti proses magang pada:
+Mohon tunggu informasi selanjutnya terkait teknis penempatan.
+
+Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     }
 
     const url = `mailto:${p.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -409,7 +418,7 @@ Terima kasih telah mendaftar.`;
     });
   };
 
-  const handleUpdateStatus = async (status: "ACCEPTED" | "REJECTED") => {
+  const handleUpdateStatus = async (status: "ACCEPTED" | "REJECTED" | "RECOMMENDED") => {
     if (!selectedPelamar) return;
     if (status === "ACCEPTED" && !selectedPosition) {
       toast.warning("Wajib pilih posisi/bidang penempatan terlebih dahulu!");
@@ -429,7 +438,7 @@ Terima kasih telah mendaftar.`;
         setIsDialogOpen(false);
         fetchData();
         toast.success(
-          `Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : "tolak"}.`,
+          `Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : status === "REJECTED" ? "tolak" : "rekomendasikan"}.`,
         );
       } else {
         toast.error("Gagal update status.");
@@ -486,6 +495,7 @@ Terima kasih telah mendaftar.`;
       let statusLabel = "PENDING";
       if (item.status === "ACCEPTED") statusLabel = "DITERIMA";
       if (item.status === "REJECTED") statusLabel = "DITOLAK";
+      if (item.status === "RECOMMENDED") statusLabel = "DIREKOMENDASIKAN";
 
       worksheet.addRow({
         no: index + 1,
@@ -927,6 +937,14 @@ Terima kasih telah mendaftar.`;
                               <XCircle className="h-3 w-3" /> Ditolak
                             </Badge>
                           )}
+                          {item.status === "RECOMMENDED" && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 text-blue-700 border-blue-200 gap-1 font-normal text-xs"
+                            >
+                              <ThumbsUp className="h-3 w-3" /> Direkomendasikan
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right pr-4 py-3">
                           <Dialog
@@ -1090,14 +1108,13 @@ Terima kasih telah mendaftar.`;
                                       Tolak
                                     </Button>
                                     
-                                    {/* ALUR BARU: TOMBOL REKOMENDASI (WA KOSONG) MUNCUL DI SINI */}
                                     <Button
                                       variant="outline"
                                       className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800"
-                                      onClick={() => openWARekomendasi(item)}
-                                      disabled={isProcessing}
+                                      onClick={() => handleUpdateStatus("RECOMMENDED")}
+                                      disabled={isProcessing || selectedPosition !== ""}
                                     >
-                                      <MessageCircle className="w-4 h-4 mr-2" />
+                                      <ThumbsUp className="w-4 h-4 mr-2" />
                                       Direkomendasikan
                                     </Button>
 
@@ -1118,10 +1135,12 @@ Terima kasih telah mendaftar.`;
                                     <div className="text-sm italic text-slate-500">
                                       Status:{" "}
                                       <span
-                                        className={`font-semibold ${item.status === "ACCEPTED" ? "text-green-600" : "text-red-600"}`}
+                                        className={`font-semibold ${item.status === "ACCEPTED" ? "text-green-600" : item.status === "RECOMMENDED" ? "text-blue-600" : "text-red-600"}`}
                                       >
                                         {item.status === "ACCEPTED"
                                           ? "Diterima"
+                                          : item.status === "RECOMMENDED"
+                                          ? "Direkomendasikan"
                                           : "Ditolak"}
                                       </span>
                                     </div>
