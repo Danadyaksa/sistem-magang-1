@@ -145,7 +145,19 @@ export default function RegistrationPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "cv" | "surat") => {
     const file = e.target.files?.[0];
-    setFileNames(prev => ({ ...prev, [type]: file ? file.name : null }));
+    const maxSize = 300 * 1024; // 300KB dalam bytes
+
+    if (file) {
+      if (file.size > maxSize) {
+        alert(`File ${type.toUpperCase()} memiliki ukuran yang terlalu besar! Maksimal 300KB. File anda berukuran ${(file.size / 1024).toFixed(2)}KB.`);
+        e.target.value = ""; // Reset input filenya biar kosong lagi
+        setFileNames(prev => ({ ...prev, [type]: null }));
+        return;
+      }
+      setFileNames(prev => ({ ...prev, [type]: file.name }));
+    } else {
+      setFileNames(prev => ({ ...prev, [type]: null }));
+    }
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -165,6 +177,12 @@ export default function RegistrationPage() {
         alert("Mohon lengkapi semua file!");
         setIsSubmitting(false);
         return;
+      }
+
+      if (cvFile.size > 300 * 1024 || suratFile.size > 300 * 1024) {
+      alert("Masih ada file yang lebih dari 300KB. Kompres dulu sana!");
+      setIsSubmitting(false);
+      return;
       }
 
       formData.append("cv", cvFile);

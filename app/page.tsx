@@ -31,7 +31,8 @@ import {
   GraduationCap,
   BookOpen,
   Clock, 
-  CalendarDays 
+  CalendarDays,
+  CalendarClock 
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -199,10 +200,10 @@ export default function Home() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
         <DialogHeader>
-          <DialogTitle className="text-center text-xl">
+          <DialogTitle className="text-center text-xl text-slate-900 dark:text-slate-100">
             Pilih Layanan
           </DialogTitle>
-          <DialogDescription className="text-center">
+          <DialogDescription className="text-center dark:text-slate-400">
             Silakan pilih jenis pengajuan yang ingin Anda lakukan.
           </DialogDescription>
         </DialogHeader>
@@ -636,25 +637,28 @@ export default function Home() {
                           </AccordionTrigger>
                           
                           <AccordionContent className="px-4 pb-6 pt-0 border-t border-slate-100 dark:border-slate-800">
-                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-950/50 rounded-lg border border-slate-100 dark:border-slate-800">
-                                <h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                  <CalendarDays className="h-4 w-4 text-slate-500" />
-                                  Jadwal Pemagang Aktif Saat Ini
+                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800 transition-colors duration-300">
+                                <h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                                  <CalendarDays className="h-4 w-4 text-blue-500" />
+                                  Jadwal Pemagang Aktif
                                 </h4>
 
                                 {pos.pendaftar && pos.pendaftar.length > 0 ? (
                                   <div className="space-y-3">
                                     {pos.pendaftar.map((p, idx) => (
-                                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm p-3 bg-white ">
+                                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-blue-300 dark:hover:border-blue-700">
                                         <div className="flex items-center gap-3">
-                                          
-                                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                                          <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                                            {idx + 1}
+                                          </div>
+                                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                                             Pemagang {idx + 1}
                                           </span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mt-2 sm:mt-0 text-xs sm:text-sm">
-                                          <Clock className="h-3 w-3" />
-                                          <span>
+                                        
+                                        <div className="mt-2 sm:mt-0 flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full border border-blue-100 dark:border-blue-800/50">
+                                          <CalendarClock className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                          <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 whitespace-nowrap">
                                             {format(new Date(p.tanggalMulai), "d MMM", { locale: id })} - {format(new Date(p.tanggalSelesai), "d MMM yyyy", { locale: id })}
                                           </span>
                                         </div>
@@ -665,8 +669,10 @@ export default function Home() {
                                     </p>
                                   </div>
                                 ) : (
-                                  <div className="text-center py-4 text-slate-400 text-sm italic">
-                                    Belum ada pemagang aktif. Jadwal kosong.
+                                  <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-medium italic">
+                                      Belum ada pemagang aktif di subbag ini.
+                                    </p>
                                   </div>
                                 )}
                             </div>
@@ -708,7 +714,7 @@ export default function Home() {
                       className="border-b-slate-200 dark:border-b-slate-800"
                     >
                       <AccordionTrigger className="text-base font-medium text-slate-700 dark:text-slate-200 text-left">
-                        Berapa lama durasi minimal magang?
+                        Berpa lama durasi minimal magang?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
                         Minimal durasi magang di Dinas DIKPORA DIY adalah 44 hari kerja.
@@ -788,7 +794,7 @@ export default function Home() {
               <h4 className="font-bold text-white mb-4 text-sm">Kontak Kami</h4>
               <div className="space-y-2 text-slate-400">
                 <a
-                  href="https://maps.app.goo.gl/N6XssWVfCqDph8uk9"
+                  href="#"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-blue-400 hover:underline block"

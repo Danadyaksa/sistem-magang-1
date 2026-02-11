@@ -37,6 +37,7 @@ import {
   MessageCircle, 
   Mail,
   BookOpen, 
+  MoreHorizontal
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -77,6 +78,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // --- TIPE DATA ---
 type Pendaftaran = {
@@ -217,7 +226,7 @@ export default function ApplicantsPage() {
     });
   };
 
-  // --- NEW: NOTIFICATION LOGIC (DIRECT LINK) ---
+  // --- NOTIFICATION LOGIC ---
   const getPositionName = (id: number | null) => {
     if (!id) return "-";
     return (
@@ -225,17 +234,34 @@ export default function ApplicantsPage() {
     );
   };
 
+  // --- LOGIC WA DIREKOMENDASIKAN (FORMAT KOSONG) ---
+  const openWARekomendasi = (p: Pendaftaran) => {
+    if (!p.nomorHp) return toast.error("Nomor HP tidak tersedia");
+
+    let hp = p.nomorHp.replace(/\D/g, "");
+    if (hp.startsWith("0")) hp = "62" + hp.slice(1);
+
+    // Template sesuai request: cuma Nama & Instansi, sisanya admin isi manual
+    const message = 
+`Halo Sdr/i *${p.namaLengkap}* dari *${p.instansi}*,
+
+... (isi pesan rekomendasi/langkah selanjutnya di sini) ...
+
+Terima kasih.`;
+
+    const url = `https://wa.me/${hp}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
+
   const openWhatsApp = (p: Pendaftaran) => {
     if (!p.nomorHp) return toast.error("Nomor HP tidak tersedia");
 
-    // Format HP 08xx -> 628xx
     let hp = p.nomorHp.replace(/\D/g, "");
     if (hp.startsWith("0")) hp = "62" + hp.slice(1);
 
     const posName = getPositionName(p.positionId);
     let message = "";
 
-    // Format Tanggal
     const tglMulai = formatDateIndo(p.tanggalMulai);
     const tglSelesai = formatDateIndo(p.tanggalSelesai);
 
@@ -272,7 +298,6 @@ Mohon maaf, saat ini kami belum bisa menerima lamaran magang Anda. Tetap semanga
     let subject = "";
     let body = "";
 
-    // Format Tanggal
     const tglMulai = formatDateIndo(p.tanggalMulai);
     const tglSelesai = formatDateIndo(p.tanggalSelesai);
 
@@ -305,7 +330,6 @@ Terima kasih telah mendaftar.`;
   };
 
   // --- LOGIC FILTERING & SORTING ---
-
   const requestSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (
@@ -414,6 +438,21 @@ Terima kasih telah mendaftar.`;
       toast.error("Server error.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Yakin hapus data ini? File fisik juga akan dihapus.")) return;
+    try {
+        const res = await fetch(`/api/pendaftaran/${id}`, { method: "DELETE" });
+        if(res.ok){
+            toast.success("Data berhasil dihapus");
+            fetchData(); 
+        } else {
+            toast.error("Gagal menghapus");
+        }
+    } catch (err) {
+        toast.error("Terjadi kesalahan server");
     }
   };
 
@@ -593,7 +632,6 @@ Terima kasih telah mendaftar.`;
             icon={BookOpen}
             label="Penelitian"
             onClick={() => router.push("/admin/penelitian")}
-            // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
           />
           <SidebarItem
             icon={Users}
@@ -970,7 +1008,7 @@ Terima kasih telah mendaftar.`;
                                     className="w-full justify-start text-slate-600"
                                     asChild
                                   >
-                                    <a href={item.cvPath} target="_blank">
+                                    <a href={`/uploads/${item.cvPath}`} target="_blank">
                                       <FileText className="mr-2 h-4 w-4 text-blue-600" />{" "}
                                       Lihat CV
                                     </a>
@@ -981,22 +1019,25 @@ Terima kasih telah mendaftar.`;
                                     className="w-full justify-start text-slate-600"
                                     asChild
                                   >
-                                    <a href={item.suratPath} target="_blank">
+                                    <a href={`/uploads/${item.suratPath}`} target="_blank">
                                       <FileText className="mr-2 h-4 w-4 text-orange-600" />{" "}
                                       Surat Pengantar
                                     </a>
                                   </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start text-slate-600"
-                                    asChild
-                                  >
-                                    <a href={item.fotoPath} target="_blank">
-                                      <ImageIcon className="mr-2 h-4 w-4 text-purple-600" />{" "}
-                                      Lihat Pas Foto
-                                    </a>
-                                  </Button>
+                                  {/* FOTO CUMA MUNCUL KALO ADA */}
+                                  {item.fotoPath && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start text-slate-600"
+                                      asChild
+                                    >
+                                      <a href={`/uploads/${item.fotoPath}`} target="_blank">
+                                        <ImageIcon className="mr-2 h-4 w-4 text-purple-600" />{" "}
+                                        Lihat Pas Foto
+                                      </a>
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                               <Separator className="dark:bg-slate-800" />
@@ -1048,6 +1089,18 @@ Terima kasih telah mendaftar.`;
                                     >
                                       Tolak
                                     </Button>
+                                    
+                                    {/* ALUR BARU: TOMBOL REKOMENDASI (WA KOSONG) MUNCUL DI SINI */}
+                                    <Button
+                                      variant="outline"
+                                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800"
+                                      onClick={() => openWARekomendasi(item)}
+                                      disabled={isProcessing}
+                                    >
+                                      <MessageCircle className="w-4 h-4 mr-2" />
+                                      Direkomendasikan
+                                    </Button>
+
                                     <Button
                                       className="bg-blue-600 hover:bg-blue-700 text-white"
                                       onClick={() =>
@@ -1061,7 +1114,6 @@ Terima kasih telah mendaftar.`;
                                     </Button>
                                   </>
                                 ) : (
-                                  // --- BUTTON WA & EMAIL DISINI ---
                                   <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4">
                                     <div className="text-sm italic text-slate-500">
                                       Status:{" "}
@@ -1098,6 +1150,22 @@ Terima kasih telah mendaftar.`;
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0 ml-1">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-red-600">
+                                    Hapus
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
                         </TableCell>
                       </TableRow>
                     ))
@@ -1106,6 +1174,7 @@ Terima kasih telah mendaftar.`;
               </Table>
             </CardContent>
 
+            {/* Pagination Footer */}
             <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                 <span>
@@ -1116,67 +1185,25 @@ Terima kasih telah mendaftar.`;
                   - <strong>{Math.min(endIndex, filteredData.length)}</strong>{" "}
                   dari <strong>{filteredData.length}</strong> data
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline">| Baris:</span>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(val) => {
-                      setItemsPerPage(Number(val));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[70px] bg-white dark:bg-slate-950">
-                      <SelectValue placeholder="10" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    let pNum = i + 1;
-                    if (totalPages > 5 && currentPage > 3) {
-                      pNum = currentPage - 2 + i;
-                    }
-                    if (pNum > totalPages) return null;
-                    return (
-                      <Button
-                        key={pNum}
-                        variant={currentPage === pNum ? "default" : "outline"}
-                        size="sm"
-                        className={`h-8 w-8 p-0 ${currentPage === pNum ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}`}
-                        onClick={() => setCurrentPage(pNum)}
-                      >
-                        {pNum}
-                      </Button>
-                    );
-                  })}
+                    <span className="text-sm px-2 dark:text-slate-400">Halaman {currentPage}</span>
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages || totalPages === 0}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -1189,34 +1216,25 @@ Terima kasih telah mendaftar.`;
 
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
         <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
-          <DialogHeader className="flex flex-col items-center text-center gap-2">
-            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
-              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-            <DialogTitle className="text-xl dark:text-slate-100">
-              Konfirmasi Keluar
-            </DialogTitle>
-            <DialogDescription className="text-center dark:text-slate-400">
-              Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus
-              login kembali untuk mengakses panel.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-            <Button
-              variant="outline"
-              className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700"
-              onClick={() => setIsLogoutOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold"
-              onClick={handleLogoutConfirm}
-            >
-              Ya, Keluar
-            </Button>
-          </DialogFooter>
+            <DialogHeader className="flex flex-col items-center text-center gap-2">
+                <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <DialogTitle className="text-xl dark:text-slate-100">
+                    Konfirmasi Keluar
+                </DialogTitle>
+                <DialogDescription className="text-center dark:text-slate-400">
+                    Anda harus login kembali untuk mengakses panel.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+                <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>
+                    Batal
+                </Button>
+                <Button variant="destructive" className="w-full sm:w-1/2" onClick={handleLogoutConfirm}>
+                    Ya, Keluar
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

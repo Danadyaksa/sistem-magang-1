@@ -1,89 +1,88 @@
-// app/api/pendaftaran/[id]/route.ts
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { PrismaClient } from "@prisma/client";
+import { unlink } from "fs/promises";
+import path from "path";
 
-// Helper Auth
-async function checkAdminAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("admin_session")?.value;
-  if (!token) return false;
+const prisma = new PrismaClient();
+
+// DELETE: Hapus Data Pelamar & File Fisik
+export async function DELETE(
+  req: Request,
+  // Perbaiki tipe params jadi Promise
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || "rahasia-negara-bos",
-    );
-    await jwtVerify(token, secret);
-    return true;
-  } catch {
-    return false;
+    // WAJIB AWAIT PARAMS DI NEXT.JS 15+
+    const { id } = await params;
+
+    const pendaftaran = await prisma.pendaftaran.findUnique({
+      where: { id },
+    });
+
+    if (!pendaftaran) {
+      return NextResponse.json({ error: "Data tidak ditemukan" }, { status: 404 });
+    }
+
+    const deleteFile = async (filename: string) => {
+      if (filename) {
+        const filepath = path.join(process.cwd(), "public/uploads", filename);
+        try {
+          await unlink(filepath);
+        } catch (err) {
+          // ignore error
+        }
+      }
+    };
+
+    await deleteFile(pendaftaran.cvPath);
+    await deleteFile(pendaftaran.suratPath);
+    if(pendaftaran.fotoPath) await deleteFile(pendaftaran.fotoPath);
+
+    await prisma.pendaftaran.delete({ where: { id } });
+
+    return NextResponse.json({ message: "Data berhasil dihapus" });
+  } catch (error) {
+    return NextResponse.json({ error: "Gagal menghapus data" }, { status: 500 });
   }
 }
 
-// UPDATE DATA (PATCH)
+// PATCH: Update Status & Posisi
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  req: Request,
+  // Perbaiki tipe params jadi Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // 1. Await params (WAJIB DI NEXT.JS 15)
-  const { id } = await params;
-
-  if (!(await checkAdminAuth()))
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   try {
-    const body = await request.json();
+    // WAJIB AWAIT PARAMS DI NEXT.JS 15+
+    const { id } = await params;
+    
+    const body = await req.json();
+    const { status, positionId } = body;
 
-    // 2. Cegah error prisma karena tipe data string masuk ke field Int
-    if (body.positionId && typeof body.positionId === "string") {
-      body.positionId = parseInt(body.positionId);
+    const updateData: any = { status };
+    
+    // Update posisi kalo dikirim
+    if (positionId !== undefined) {
+        updateData.positionId = positionId ? parseInt(positionId) : null;
     }
 
-    // Cegah error tanggal string masuk ke DateTime (kalo formatnya kacau)
-    if (body.tanggalMulai) body.tanggalMulai = new Date(body.tanggalMulai);
-    if (body.tanggalSelesai)
-      body.tanggalSelesai = new Date(body.tanggalSelesai);
-
+    // Update DB Pendaftaran
     const updated = await prisma.pendaftaran.update({
       where: { id },
-      data: body,
+      data: updateData,
     });
-    return NextResponse.json({ success: true, data: updated });
-  } catch (error) {
-    console.error("Update Error:", error);
-    return NextResponse.json({ error: "Gagal update data" }, { status: 500 });
-  }
-}
 
-// DELETE DATA
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params; // Await params juga disini
-
-  if (!(await checkAdminAuth())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const existing = await prisma.pendaftaran.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Data tidak ditemukan" },
-        { status: 404 },
-      );
+    // Update Kuota 'filled' di Tabel Position
+    if (status === "ACCEPTED" && positionId) {
+        await prisma.position.update({
+            where: { id: parseInt(positionId) },
+            data: { filled: { increment: 1 } }
+        });
     }
 
-    await prisma.pendaftaran.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true, message: "Berhasil dihapus" });
+    return NextResponse.json(updated);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Gagal menghapus data" },
-      { status: 500 },
-    );
+    console.error(error);
+    return NextResponse.json({ error: "Gagal update status" }, { status: 500 });
   }
 }
