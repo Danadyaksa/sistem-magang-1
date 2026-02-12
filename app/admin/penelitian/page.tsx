@@ -400,7 +400,7 @@ export default function AdminResearchPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-slate-500"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
                   ) : currentData.length === 0 ? (
                     <TableRow><TableCell colSpan={7} className="h-32 text-center text-slate-500">
                       <div className="flex flex-col items-center gap-2">

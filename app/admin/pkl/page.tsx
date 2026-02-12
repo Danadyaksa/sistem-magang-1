@@ -951,7 +951,7 @@ export default function PKLMonitoringPage() {
                 </div>
                 <Button
                   onClick={() => setIsManualOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-700/20 transition-all hover:scale-105"
                 >
                   <Users2 className="h-4 w-4 mr-2" /> Input Manual
                 </Button>
@@ -982,9 +982,9 @@ export default function PKLMonitoringPage() {
             </TabsList>
             <TabsContent value="active" className="space-y-6">
               {loading ? (
-                <div className="p-12 text-center">
-                  <Loader2 className="animate-spin h-6 w-6 mx-auto mb-2" />
-                  Loading data...
+                <div className="h-24 text-center text-slate-500">
+                  <Loader2 className="animate-spin h-4 w-4 inline mr-2" />{" "}
+                        Memuat data...
                 </div>
               ) : (
                 positions.map((pos) => {
