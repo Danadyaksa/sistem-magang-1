@@ -1,35 +1,34 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma"; // Import default sesuai perbaikan sebelumnya
-
-export async function GET() {
-  try {
-    const holidays = await prisma.holiday.findMany({
-      orderBy: { date: 'asc' }
-    });
-    return NextResponse.json(holidays);
-  } catch (error) {
-    return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
-  }
-}
+import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { date } = body; // Cuma ambil date
+    const { dates } = body; // Menerima array 'dates'
 
-    if (!date) {
-      return NextResponse.json({ error: "Tanggal wajib diisi" }, { status: 400 });
+    if (!dates || !Array.isArray(dates)) {
+      return NextResponse.json({ error: "Data tanggal tidak valid" }, { status: 400 });
     }
 
-    const newHoliday = await prisma.holiday.create({
-      data: {
-        date: new Date(date),
-        // Tidak ada description
-      },
+    // Simpan semua tanggal sekaligus menggunakan createMany
+    const result = await prisma.holiday.createMany({
+      data: dates.map((d: string) => ({
+        date: new Date(d),
+      })),
+      skipDuplicates: true, // Agar tidak error jika ada tanggal yang sama (duplikat)
     });
 
-    return NextResponse.json(newHoliday);
+    return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: "Gagal menyimpan (mungkin tanggal sudah ada)" }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Gagal menyimpan data" }, { status: 500 });
   }
+}
+
+// Tambahkan juga fungsi GET untuk fetch data (jika belum ada)
+export async function GET() {
+  const holidays = await prisma.holiday.findMany({
+    orderBy: { date: 'asc' }
+  });
+  return NextResponse.json(holidays);
 }

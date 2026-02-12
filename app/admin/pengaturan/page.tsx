@@ -87,9 +87,9 @@ export default function PengaturanPage() {
 
   const [currentAdmin, setCurrentAdmin] = useState({ username: "...", jabatan: "..." });
 
-  // --- STATE HARI LIBUR ---
+  // --- STATE HARI LIBUR (MODIFIKASI: MENGGUNAKAN ARRAY) ---
   const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [newHolidayDate, setNewHolidayDate] = useState<Date | undefined>(undefined);
+  const [newHolidayDates, setNewHolidayDates] = useState<Date[] | undefined>([]);
   const [loadingHoliday, setLoadingHoliday] = useState(false);
 
   // --- 1. INITIAL LOAD ---
@@ -136,32 +136,32 @@ export default function PengaturanPage() {
     }
   };
 
-  // --- ADD HOLIDAY ---
+  // --- ADD HOLIDAY (MODIFIKASI: PROSES BANYAK TANGGAL) ---
   const handleAddHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newHolidayDate) {
-      toast.warning("Pilih tanggal terlebih dahulu");
+    if (!newHolidayDates || newHolidayDates.length === 0) {
+      toast.warning("Pilih minimal satu tanggal terlebih dahulu");
       return;
     }
 
     setLoadingHoliday(true);
     try {
+      // Mengirim array tanggal ke API
       const res = await fetch("/api/holidays", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Keterangan dihapus, cuma kirim tanggal
         body: JSON.stringify({
-          date: newHolidayDate, 
+          dates: newHolidayDates, 
         }),
       });
 
       if (!res.ok) throw new Error("Gagal menyimpan");
 
-      toast.success("Tanggal libur berhasil ditambahkan");
-      setNewHolidayDate(undefined);
+      toast.success(`${newHolidayDates.length} Tanggal libur berhasil ditambahkan`);
+      setNewHolidayDates([]); // Reset pilihan
       fetchHolidays(); 
     } catch (error) {
-      toast.error("Gagal menambah data (Mungkin tanggal sudah ada)");
+      toast.error("Gagal menambah data (Beberapa tanggal mungkin sudah ada)");
     } finally {
       setLoadingHoliday(false);
     }
@@ -169,8 +169,6 @@ export default function PengaturanPage() {
 
   // --- DELETE HOLIDAY ---
   const handleDeleteHoliday = async (id: string) => {
-    // Confirm delete diganti jadi toast action atau langsung aja biar cepet (optional), 
-    // tapi biar aman pakai confirm window dulu standard.
     const confirm = window.confirm("Hapus tanggal libur ini?");
     if (!confirm) return;
 
@@ -471,7 +469,7 @@ export default function PengaturanPage() {
                 </Card>
               </TabsContent>
 
-              {/* CARD HARI LIBUR (WARNA BIRU + TANPA KETERANGAN) */}
+              {/* CARD HARI LIBUR (MODIFIKASI: MODE MULTIPLE) */}
               <TabsContent value="holidays" className="animate-in fade-in slide-in-from-right-4 duration-300">
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
@@ -480,7 +478,7 @@ export default function PengaturanPage() {
                       <CardHeader>
                         <CardTitle className="dark:text-slate-100 text-lg">Tambah Tanggal Merah</CardTitle>
                         <CardDescription className="dark:text-slate-400">
-                          Pilih tanggal yang diliburkan.
+                          Pilih satu atau lebih tanggal merah.
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -492,29 +490,41 @@ export default function PengaturanPage() {
                                 <Button
                                   variant={"outline"}
                                   className={cn(
-                                    "w-full justify-start text-left font-normal dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100",
-                                    !newHolidayDate && "text-muted-foreground"
+                                    "w-full justify-start text-left font-normal dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 h-auto min-h-[40px] py-2",
+                                    (!newHolidayDates || newHolidayDates.length === 0) && "text-muted-foreground"
                                   )}
                                 >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {newHolidayDate ? format(newHolidayDate, "PPP", { locale: idLocale }) : <span>Klik untuk pilih</span>}
+                                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                                  <div className="flex flex-wrap gap-1">
+                                    {newHolidayDates && newHolidayDates.length > 0 ? (
+                                      <span className="text-blue-600 dark:text-blue-400 font-bold">
+                                        {newHolidayDates.length} Tanggal terpilih
+                                      </span>
+                                    ) : (
+                                      <span>Klik untuk buka kalender</span>
+                                    )}
+                                  </div>
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0 dark:bg-slate-950 dark:border-slate-800" align="start">
                                 <Calendar
-                                  mode="single"
-                                  selected={newHolidayDate}
-                                  onSelect={setNewHolidayDate}
+                                  mode="multiple"
+                                  selected={newHolidayDates}
+                                  onSelect={setNewHolidayDates}
                                   initialFocus
                                   className="dark:bg-slate-950 dark:text-slate-100"
                                 />
                               </PopoverContent>
                             </Popover>
+                            {newHolidayDates && newHolidayDates.length > 0 && (
+                                <p className="text-[10px] text-slate-500 italic px-1">
+                                    *Klik tanggal yang sama untuk membatalkan.
+                                </p>
+                            )}
                           </div>
                           
-                          {/* TOMBOL JADI BIRU (bg-blue-700) */}
                           <Button type="submit" disabled={loadingHoliday} className="w-full bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700">
-                             {loadingHoliday ? <Loader2 className="animate-spin h-4 w-4"/> : <><Plus className="h-4 w-4 mr-2"/> Tambah ke Daftar</>}
+                             {loadingHoliday ? <Loader2 className="animate-spin h-4 w-4"/> : <><CheckCircle2 className="h-4 w-4 mr-2"/> Simpan {newHolidayDates?.length || 0} Tanggal </>}
                           </Button>
                         </form>
                       </CardContent>
@@ -539,7 +549,6 @@ export default function PengaturanPage() {
                             {holidays.map((item) => (
                               <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
                                 <div className="flex items-center gap-3">
-                                   {/* ICON JADI BIRU (bg-blue-100 text-blue-700) */}
                                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center flex-none group-hover:bg-blue-200 dark:group-hover:bg-blue-800 transition-colors">
                                       <CalendarIcon className="h-4 w-4"/>
                                    </div>

@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, addDays, isWeekend, isSameDay } from "date-fns";
+import { format, addDays, isWeekend } from "date-fns";
 import { id } from "date-fns/locale";
+import { toast } from "sonner"; // Pastikan import toast sudah ada
 import { 
   CalendarIcon, 
   Upload, 
@@ -16,6 +17,7 @@ import {
   CalendarClock 
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -61,23 +63,21 @@ const formSchema = z.object({
 });
 
 export default function RegistrationPage() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileNames, setFileNames] = useState<{
     cv: string | null;
     surat: string | null;
   }>({ cv: null, surat: null });
 
-  // --- NEW: STATE UNTUK MENAMPUNG LIBUR DARI DATABASE ---
   const [dbHolidays, setDbHolidays] = useState<string[]>([]);
 
-  // --- NEW: FETCH HARI LIBUR SAAT LOAD ---
   useEffect(() => {
     const fetchHolidays = async () => {
       try {
         const res = await fetch("/api/holidays");
         if (res.ok) {
           const data = await res.json();
-          // Simpan dalam format string 'yyyy-MM-dd' biar mudah dicek
           const formatted = data.map((h: any) => format(new Date(h.date), "yyyy-MM-dd"));
           setDbHolidays(formatted);
         }
@@ -88,7 +88,6 @@ export default function RegistrationPage() {
     fetchHolidays();
   }, []);
 
-  // Fungsi cek libur (sekarang pakai data dari DB)
   const isHoliday = (date: Date) => {
     const dateString = format(date, "yyyy-MM-dd");
     return dbHolidays.includes(dateString);
@@ -123,7 +122,6 @@ export default function RegistrationPage() {
       let currentDate = new Date(tanggalMulai);
       let lastWorkingDate = new Date(tanggalMulai);
 
-      // Pastikan loop berhenti jika berlebihan (safety break)
       let safetyLoop = 0;
       while (count < lamaMagang && safetyLoop < 365) {
         const isWeekendDay = isWeekend(currentDate);
@@ -141,20 +139,26 @@ export default function RegistrationPage() {
       }
       form.setValue("tanggalSelesai", lastWorkingDate);
     }
-  }, [lamaMagang, tanggalMulai, form, dbHolidays]); // Tambahkan dbHolidays di dependency
+  }, [lamaMagang, tanggalMulai, form, dbHolidays]);
 
+  // --- HANDLER FILE DENGAN TOAST ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "cv" | "surat") => {
     const file = e.target.files?.[0];
-    const maxSize = 300 * 1024; // 300KB dalam bytes
+    const maxSize = 300 * 1024; // 300KB
 
     if (file) {
       if (file.size > maxSize) {
-        alert(`File ${type.toUpperCase()} memiliki ukuran yang terlalu besar! Maksimal 300KB. File anda berukuran ${(file.size / 1024).toFixed(2)}KB.`);
-        e.target.value = ""; // Reset input filenya biar kosong lagi
+        toast.error(`File ${type.toUpperCase()} Terlalu Besar!`, {
+          description: `Ukuran file Anda ${(file.size / 1024).toFixed(2)}KB. Maksimal yang diperbolehkan adalah 300KB.`,
+        });
+        e.target.value = ""; 
         setFileNames(prev => ({ ...prev, [type]: null }));
         return;
       }
       setFileNames(prev => ({ ...prev, [type]: file.name }));
+      toast.success(`${type.toUpperCase()} terpilih`, {
+        description: file.name
+      });
     } else {
       setFileNames(prev => ({ ...prev, [type]: null }));
     }
@@ -174,15 +178,11 @@ export default function RegistrationPage() {
       const suratFile = (document.getElementById("surat") as HTMLInputElement).files?.[0];
 
       if (!cvFile || !suratFile) {
-        alert("Mohon lengkapi semua file!");
+        toast.warning("Berkas Belum Lengkap", {
+          description: "Silakan upload file CV dan Surat Pengantar terlebih dahulu."
+        });
         setIsSubmitting(false);
         return;
-      }
-
-      if (cvFile.size > 300 * 1024 || suratFile.size > 300 * 1024) {
-      alert("Masih ada file yang lebih dari 300KB. Kompres dulu sana!");
-      setIsSubmitting(false);
-      return;
       }
 
       formData.append("cv", cvFile);
@@ -193,22 +193,22 @@ export default function RegistrationPage() {
 
       if (!response.ok) throw new Error(result.error || "Gagal mengirim data");
 
-      alert("Pendaftaran Berhasil! Silahkan tunggu info selanjutnya.");
-      window.location.href = "/";
+      toast.success("Pendaftaran Berhasil!", {
+        description: "Data Anda telah masuk ke sistem. Silakan tunggu info selanjutnya melalui WhatsApp/Email.",
+        duration: 5000,
+      });
+      
+      router.push("/");
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      toast.error("Terjadi Kesalahan", {
+        description: error.message
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  // ... (SISA KODE RETURN TAMPILAN SAMA PERSIS SEPERTI SEBELUMNYA)
-  // Tidak ada perubahan di bagian tampilan (return JSX), jadi cukup copy bagian atasnya saja.
-  
   return (
-     // ... Paste kode tampilan di sini ...
-     // Agar singkat, saya tidak copy ulang seluruh JSX karena tidak ada yang berubah di UI-nya
-     // Gunakan UI yang terakhir kali kita buat.
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 relative overflow-hidden transition-colors duration-300">
       
       {/* Background Pattern */}
@@ -219,7 +219,6 @@ export default function RegistrationPage() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda
         </Link>
 
-        {/* CARD FORM: dark:bg-slate-900 dark:border-slate-800 */}
         <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900 transition-colors">
           <CardHeader className="bg-blue-700 dark:bg-blue-800 text-white rounded-t-lg px-6 py-8">
             <CardTitle className="text-2xl font-bold">Formulir Pendaftaran Magang</CardTitle>

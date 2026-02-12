@@ -104,7 +104,6 @@ model Penelitian {
   createdAt     DateTime  @default(now())
 }
 
-// ... model lainnya
 
 model Holiday {
   id          String   @id @default(uuid())
