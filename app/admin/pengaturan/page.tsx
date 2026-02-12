@@ -409,7 +409,7 @@ export default function PengaturanPage() {
               Konfigurasi Admin
             </h1>
             <p className="text-slate-500 dark:text-slate-400">
-              Kelola profil, keamanan akun, dan pengaturan sistem (hari libur).
+              Kelola profil, keamanan akun, dan hari libur.
             </p>
           </div>
 
@@ -434,8 +434,8 @@ export default function PengaturanPage() {
                     {/* FORM TAMBAH */}
                     <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-1 h-fit">
                       <CardHeader>
-                        <CardTitle className="text-lg dark:text-slate-100">Tambah Tanggal Merah</CardTitle>
-                        <CardDescription className="dark:text-slate-400">Pilih satu atau lebih tanggal merah.</CardDescription>
+                        <CardTitle className="text-lg dark:text-slate-100">Tambah Hari Libur & Cuti</CardTitle>
+                        <CardDescription className="dark:text-slate-400">Pilih satu atau lebih hari libur & cuti.</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <form onSubmit={handleAddHoliday} className="space-y-4">
@@ -465,7 +465,7 @@ export default function PengaturanPage() {
                       <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800">
                         <div>
                           <CardTitle className="text-lg dark:text-slate-100">Daftar Libur & Cuti</CardTitle>
-                          <CardDescription className="dark:text-slate-400">Pilih tanggal untuk menghapus massal.</CardDescription>
+                          <CardDescription className="dark:text-slate-400">Sortir berdasarkan tahun dan bulan</CardDescription>
                         </div>
                         <div className="flex flex-wrap gap-2">
                            {/* Filter Tahun */}

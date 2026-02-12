@@ -862,16 +862,17 @@ export default function PKLMonitoringPage() {
             onClick={() => router.push("/admin/applicants")}
           />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" active={true} />
-          <SidebarItem
-            icon={Users}
-            label="Admin Users"
-            onClick={() => router.push("/admin/users")}
-          />
+          
           <SidebarItem
             icon={BookOpen}
             label="Penelitian"
             onClick={() => router.push("/admin/penelitian")}
             // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
+          />
+          <SidebarItem
+            icon={Users}
+            label="Admin Users"
+            onClick={() => router.push("/admin/users")}
           />
           <SidebarItem
             icon={Settings}
