@@ -34,9 +34,9 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarClock,
-  MessageCircle, 
+  MessageCircle,
   Mail,
-  BookOpen, 
+  BookOpen,
   MoreHorizontal,
   ThumbsUp
 } from "lucide-react";
@@ -96,7 +96,7 @@ type Pendaftaran = {
   email: string;
   instansi: string;
   jurusan: string;
-  nomorInduk: string; // Tambahin ini buat template otomatis
+  nomorInduk: string;
   tanggalMulai: string;
   tanggalSelesai: string;
   status: "PENDING" | "ACCEPTED" | "REJECTED" | "RECOMMENDED";
@@ -130,6 +130,15 @@ const MONTHS = [
   { value: "11", label: "Desember" },
 ];
 
+// --- DUMMY DATA UPT (Untuk Dropdown) ---
+const UPT_LIST = [
+  "Balai Pemuda & Olahraga (BPO)",
+  "Balai Tekkomdik",
+  "Museum Sonobudoyo",
+  "Taman Budaya Yogyakarta",
+  "Balai Latihan Pendidikan Teknik (BLPT)"
+];
+
 export default function ApplicantsPage() {
   const router = useRouter();
 
@@ -156,12 +165,16 @@ export default function ApplicantsPage() {
   // State Lainnya
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
-  const [selectedPelamar, setSelectedPelamar] = useState<Pendaftaran | null>(
-    null,
-  );
-  const [selectedPosition, setSelectedPosition] = useState<string>("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPelamar, setSelectedPelamar] = useState<Pendaftaran | null>(null);
+  
+  // State Form Keputusan
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // State Dropdown Dinamis
+  const [actionStatus, setActionStatus] = useState<string>(""); 
+  const [selectedPosition, setSelectedPosition] = useState<string>("");
+  const [selectedUpt, setSelectedUpt] = useState<string>("");
 
   // --- 1. CEK LOCAL STORAGE ---
   useEffect(() => {
@@ -269,6 +282,7 @@ Terima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).
 
 Mohon maaf, saat ini kami belum bisa menerima lamaran magang Anda. Tetap semangat!`;
     } else if (p.status === "RECOMMENDED") {
+      // NOTE: UPT tidak tersimpan di database saat ini, jadi pesan bersifat umum atau perlu diisi manual.
       message = 
 `Halo, *${p.namaLengkap}*
 NIM/NIS: ${p.nomorInduk || "-"}
@@ -418,33 +432,55 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     });
   };
 
-  const handleUpdateStatus = async (status: "ACCEPTED" | "REJECTED" | "RECOMMENDED") => {
-    if (!selectedPelamar) return;
-    if (status === "ACCEPTED" && !selectedPosition) {
-      toast.warning("Wajib pilih posisi/bidang penempatan terlebih dahulu!");
+  // --- LOGIC PROSES KEPUTUSAN (REVISI) ---
+  const handleProcess = async () => {
+    if (!selectedPelamar || !actionStatus) {
+      toast.warning("Pilih status keputusan terlebih dahulu!");
       return;
     }
+
+    // Validasi input berdasarkan status
+    if (actionStatus === "ACCEPTED" && !selectedPosition) {
+      toast.warning("Wajib pilih posisi/bidang penempatan!");
+      return;
+    }
+    if (actionStatus === "RECOMMENDED" && !selectedUpt) {
+      toast.warning("Wajib pilih UPT tujuan!");
+      return;
+    }
+
     try {
       setIsProcessing(true);
+      
+      // Siapkan payload
+      const payload = {
+        status: actionStatus,
+        positionId: actionStatus === "ACCEPTED" ? parseInt(selectedPosition) : null,
+        // NOTE: 'UPT' tidak disimpan ke database karena keterbatasan schema,
+        // tapi statusnya akan terupdate jadi 'RECOMMENDED'.
+      };
+
       const res = await fetch(`/api/pendaftaran/${selectedPelamar.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          positionId: status === "ACCEPTED" ? selectedPosition : null,
-        }),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
         setIsDialogOpen(false);
-        fetchData();
-        toast.success(
-          `Sukses! Pelamar berhasil di-${status === "ACCEPTED" ? "terima" : status === "REJECTED" ? "tolak" : "rekomendasikan"}.`,
-        );
+        fetchData(); // Refresh table
+        
+        let msg = "Status berhasil diperbarui.";
+        if (actionStatus === "ACCEPTED") msg = "Sukses! Pelamar DITERIMA.";
+        if (actionStatus === "REJECTED") msg = "Sukses! Pelamar DITOLAK.";
+        if (actionStatus === "RECOMMENDED") msg = `Sukses! Pelamar DIREKOMENDASIKAN ke ${selectedUpt}.`;
+        
+        toast.success(msg);
       } else {
         toast.error("Gagal update status.");
       }
     } catch (error) {
-      toast.error("Server error.");
+      toast.error("Server error, coba lagi nanti.");
     } finally {
       setIsProcessing(false);
     }
@@ -465,7 +501,7 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     }
   };
 
-  // --- MODIFIKASI FUNGSI EXPORT EXCEL ---
+  // --- FUNGSI EXPORT EXCEL ---
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
       toast.warning("Tidak ada data untuk diexport.");
@@ -475,10 +511,7 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Data Pelamar");
 
-    // 1. BUAT JUDUL HEADER LAPORAN DI BARIS 1
     let titleText = "LAPORAN PENDAFTAR MAGANG - DINAS DIKPORA DIY";
-    
-    // Tambahkan keterangan Bulan & Tahun jika difilter
     if (filterMonth !== "all" && filterYear !== "all") {
         const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
         titleText += ` (PERIODE: ${monthName?.toUpperCase()} ${filterYear})`;
@@ -491,7 +524,6 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
         titleText += " (SEMUA DATA)";
     }
 
-    // Merge Cell untuk Judul
     worksheet.mergeCells('A1:J1');
     const titleRow = worksheet.getCell('A1');
     titleRow.value = titleText;
@@ -500,40 +532,36 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     titleRow.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF1e3a8a' } // Warna Biru Gelap
+        fgColor: { argb: 'FF1e3a8a' }
     };
-    worksheet.getRow(1).height = 40; // Tinggi Baris Judul
+    worksheet.getRow(1).height = 40;
 
-    // 2. HEADER KOLOM DATA (Mulai Baris 3 biar ada jarak)
     const headerRow = worksheet.getRow(3);
     headerRow.values = [
       "No", "Nama Lengkap", "Instansi", "Jurusan", "Nomor HP", 
       "Tgl Daftar", "Mulai Magang", "Selesai Magang", "Status", "Penempatan"
     ];
 
-    // Styling Header Kolom
-    headerRow.font = { bold: true, color: { argb: "FF000000" }, size: 11 }; // Text Hitam
+    headerRow.font = { bold: true, color: { argb: "FF000000" }, size: 11 };
     headerRow.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FFbfdbfe" }, // Biru Muda
+      fgColor: { argb: "FFbfdbfe" },
     };
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
     headerRow.height = 25;
     
-    // Set Lebar Kolom Manual
-    worksheet.getColumn(1).width = 5;  // No
-    worksheet.getColumn(2).width = 30; // Nama
-    worksheet.getColumn(3).width = 25; // Instansi
-    worksheet.getColumn(4).width = 25; // Jurusan
-    worksheet.getColumn(5).width = 18; // HP
-    worksheet.getColumn(6).width = 15; // Tgl Daftar
-    worksheet.getColumn(7).width = 15; // Tgl Mulai
-    worksheet.getColumn(8).width = 15; // Tgl Selesai
-    worksheet.getColumn(9).width = 15; // Status
-    worksheet.getColumn(10).width = 25; // Penempatan
+    worksheet.getColumn(1).width = 5;
+    worksheet.getColumn(2).width = 30;
+    worksheet.getColumn(3).width = 25;
+    worksheet.getColumn(4).width = 25;
+    worksheet.getColumn(5).width = 18;
+    worksheet.getColumn(6).width = 15;
+    worksheet.getColumn(7).width = 15;
+    worksheet.getColumn(8).width = 15;
+    worksheet.getColumn(9).width = 15;
+    worksheet.getColumn(10).width = 25;
 
-    // 3. ISI DATA (Mulai Baris 4)
     filteredData.forEach((item, index) => {
       const posisi = positions.find((p) => p.id === item.positionId)?.title || "-";
       let statusLabel = "PENDING";
@@ -554,7 +582,6 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
         posisi,
       ]);
 
-      // Styling Border Tiap Cell
       row.eachCell((cell) => {
         cell.border = {
           top: { style: "thin" },
@@ -565,15 +592,13 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
         cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       });
       
-      // Center untuk kolom tertentu
-      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' }; // No
-      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' }; // Tgl
+      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' }; // Status
+      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
     });
 
-    // 4. GENERATE NAMA FILE YANG DINAMIS
     let fileName = "Rekap_Magang";
     if (filterMonth !== "all" && filterYear !== "all") {
         const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
@@ -585,7 +610,6 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     }
     fileName += ".xlsx";
 
-    // 5. DOWNLOAD FILE
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -985,9 +1009,20 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
                               setIsDialogOpen(open);
                               if (open) {
                                 setSelectedPelamar(item);
-                                setSelectedPosition(
-                                  item.positionId?.toString() || "",
-                                );
+                                // Reset form saat dialog dibuka
+                                setActionStatus(""); 
+                                setSelectedUpt("");
+                                setSelectedPosition("");
+
+                                // Jika data sudah ada sebelumnya, isi ulang untuk UX
+                                if (item.status === "ACCEPTED" && item.positionId) {
+                                   setActionStatus("ACCEPTED");
+                                   setSelectedPosition(item.positionId.toString());
+                                } else if (item.status === "RECOMMENDED") {
+                                   setActionStatus("RECOMMENDED");
+                                } else if (item.status === "REJECTED") {
+                                   setActionStatus("REJECTED");
+                                }
                               }
                             }}
                           >
@@ -1088,75 +1123,116 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
                                 </div>
                               </div>
                               <Separator className="dark:bg-slate-800" />
-                              <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50">
-                                <div className="mb-3 flex items-center gap-2">
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                              
+                              {/* --- UI KEPUTUSAN ADMIN (MODIFIED) --- */}
+                              <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                                <div className="mb-4 flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4 text-blue-600" />
                                   <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     Keputusan Admin
                                   </span>
                                 </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs text-slate-500">
-                                    Tempatkan di Bidang (Wajib jika diterima)
-                                  </Label>
-                                  <Select
-                                    value={selectedPosition}
-                                    onValueChange={setSelectedPosition}
-                                    disabled={item.status !== "PENDING"}
-                                  >
-                                    <SelectTrigger className="bg-white dark:bg-slate-950">
-                                      <SelectValue placeholder="-- Pilih Posisi Magang --" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {positions.map((pos) => (
-                                        <SelectItem
-                                          key={pos.id}
-                                          value={pos.id.toString()}
-                                        >
-                                          {pos.title}{" "}
-                                          <span className="text-slate-400 text-xs ml-2">
-                                            (Sisa: {pos.quota - pos.filled})
-                                          </span>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+
+                                <div className="grid gap-4">
+                                  {/* 1. DROPDOWN STATUS UTAMA */}
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">Status Keputusan</Label>
+                                    <Select
+                                      value={actionStatus}
+                                      onValueChange={(val) => {
+                                          setActionStatus(val);
+                                          // Reset sub-dropdown kalo ganti status biar ga rancu
+                                          if (val !== "ACCEPTED") setSelectedPosition("");
+                                          if (val !== "RECOMMENDED") setSelectedUpt("");
+                                      }}
+                                      disabled={isProcessing}
+                                    >
+                                      <SelectTrigger className="bg-white dark:bg-slate-950">
+                                        <SelectValue placeholder="-- Tentukan Status --" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="ACCEPTED">Diterima (Masuk Bidang)</SelectItem>
+                                        <SelectItem value="RECOMMENDED">Direkomendasikan (Pindah UPT)</SelectItem>
+                                        <SelectItem value="REJECTED">Ditolak</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {/* 2. DROPDOWN KEDUA (DINAMIS) */}
+                                  
+                                  {/* CASE: TERIMA -> MUNCUL LIST BIDANG */}
+                                  {actionStatus === "ACCEPTED" && (
+                                    <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                                      <Label className="text-xs text-slate-500">Penempatan Bidang <span className="text-red-500">*</span></Label>
+                                      <Select
+                                        value={selectedPosition}
+                                        onValueChange={setSelectedPosition}
+                                        disabled={isProcessing}
+                                      >
+                                        <SelectTrigger className="bg-white dark:bg-slate-950 border-blue-200 ring-offset-blue-50">
+                                          <SelectValue placeholder="Pilih Posisi Magang" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {positions.map((pos) => (
+                                            <SelectItem key={pos.id} value={pos.id.toString()}>
+                                              {pos.title} <span className="text-slate-400 text-xs ml-2">(Sisa: {pos.quota - pos.filled})</span>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+
+                                  {/* CASE: REKOMENDASI -> MUNCUL LIST UPT (DUMMY) */}
+                                  {actionStatus === "RECOMMENDED" && (
+                                    <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                                      <Label className="text-xs text-slate-500">Tujuan UPT <span className="text-red-500">*</span></Label>
+                                      <Select
+                                        value={selectedUpt}
+                                        onValueChange={setSelectedUpt}
+                                        disabled={isProcessing}
+                                      >
+                                        <SelectTrigger className="bg-white dark:bg-slate-950 border-orange-200 ring-offset-orange-50">
+                                          <SelectValue placeholder="Pilih UPT Tujuan" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {UPT_LIST.map((upt, idx) => (
+                                            <SelectItem key={idx} value={upt}>
+                                              {upt}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+
+                                  {/* CASE: TOLAK -> FREEZE / INFO */}
+                                  {actionStatus === "REJECTED" && (
+                                     <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 rounded text-xs text-red-600 animate-in fade-in">
+                                        <span className="font-semibold">Konfirmasi:</span> Pelamar akan ditolak dan tidak masuk kuota manapun.
+                                     </div>
+                                  )}
                                 </div>
                               </div>
+
+                              {/* --- FOOTER (MODIFIED) --- */}
                               <DialogFooter className="p-4 bg-slate-100/50 dark:bg-slate-900/50 border-t border-slate-200 gap-2 sm:gap-0">
                                 {item.status === "PENDING" ? (
                                   <>
-                                    <Button
-                                      variant="ghost"
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      onClick={() =>
-                                        handleUpdateStatus("REJECTED")
-                                      }
-                                      disabled={isProcessing}
-                                    >
-                                      Tolak
+                                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isProcessing}>
+                                      Batal
                                     </Button>
                                     
-                                    <Button
-                                      variant="outline"
-                                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800"
-                                      onClick={() => handleUpdateStatus("RECOMMENDED")}
-                                      disabled={isProcessing || selectedPosition !== ""}
+                                    <Button 
+                                      className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]"
+                                      onClick={handleProcess}
+                                      disabled={isProcessing || !actionStatus}
                                     >
-                                      <ThumbsUp className="w-4 h-4 mr-2" />
-                                      Direkomendasikan
-                                    </Button>
-
-                                    <Button
-                                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                                      onClick={() =>
-                                        handleUpdateStatus("ACCEPTED")
-                                      }
-                                      disabled={isProcessing}
-                                    >
-                                      {isProcessing
-                                        ? "Menyimpan..."
-                                        : "Terima & Simpan"}
+                                      {isProcessing ? (
+                                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</>
+                                      ) : (
+                                          "Simpan Keputusan"
+                                      )}
                                     </Button>
                                   </>
                                 ) : (

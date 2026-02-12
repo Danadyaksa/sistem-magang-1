@@ -110,3 +110,10 @@ model Holiday {
   date        DateTime @unique // Tanggal libur
   createdAt   DateTime @default(now())
 }
+
+model Upt {
+  id        Int      @id @default(autoincrement())
+  name      String   // Nama UPT (misal: Balai Tekkomdik)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
