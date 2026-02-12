@@ -963,18 +963,20 @@ export default function PKLMonitoringPage() {
             className="w-full"
             onValueChange={setActiveTab}
           >
-            <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-12 p-0 mb-6">
+            <TabsList className="grid w-full grid-cols-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
               <TabsTrigger
                 value="active"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none h-full px-6"
+                className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400"
               >
-                Sedang Magang
+                <Briefcase className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Sedang Magang</span>
               </TabsTrigger>
               <TabsTrigger
                 value="history"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none h-full px-6"
+                className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400"
               >
-                Magang Selesai
+                <History className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Magang Selesai</span>
               </TabsTrigger>
             </TabsList>
             <TabsContent value="active" className="space-y-6">
@@ -995,6 +997,37 @@ export default function PKLMonitoringPage() {
                       key={pos.id}
                       pos={pos}
                       interns={activeInterns}
+                      loading={loading}
+                      onEditClick={onEditClick}
+                      onDeleteClick={(i: any) => {
+                        setDeletingIntern(i);
+                        setIsDeleteOpen(true);
+                      }}
+                    />
+                  );
+                })
+              )}
+            </TabsContent>
+            <TabsContent value="history" className="space-y-6">
+              {loading ? (
+                <div className="p-12 text-center">
+                  <Loader2 className="animate-spin h-6 w-6 mx-auto mb-2" />
+                  Loading data...
+                </div>
+              ) : (
+                positions.map((pos) => {
+                  const historyInterns =
+                    groupedData[pos.id]?.filter(
+                      (i) => i.statusWaktu === "FINISHED",
+                    ) || [];
+                  // Jangan tampilkan card kalau kosong, kecuali user lagi searching (biar ga bingung)
+                  if (historyInterns.length === 0) return null;
+
+                  return (
+                    <PositionCard
+                      key={pos.id}
+                      pos={pos}
+                      interns={historyInterns}
                       loading={loading}
                       onEditClick={onEditClick}
                       onDeleteClick={(i: any) => {
@@ -1032,8 +1065,7 @@ export default function PKLMonitoringPage() {
                 <div className="space-y-3 p-5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="space-y-1">
                     <Label>
-                      Nama Sekolah / Kampus{" "}
-                      <span className="text-red-500">*</span>
+                      Nama Sekolah / Kampus <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       placeholder="Contoh: SMK N 2 Depok"
@@ -1118,8 +1150,7 @@ export default function PKLMonitoringPage() {
                     </div>
                     <div className="space-y-1">
                       <Label>
-                        Lama Magang (Hari){" "}
-                        <span className="text-red-500">*</span>
+                        Lama Magang (Hari) <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
                         <Input

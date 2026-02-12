@@ -465,6 +465,7 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     }
   };
 
+  // --- MODIFIKASI FUNGSI EXPORT EXCEL ---
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
       toast.warning("Tidak ada data untuk diexport.");
@@ -474,95 +475,124 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Data Pelamar");
 
-    const columns = [
-      { header: "No", key: "no", width: 5 },
-      { header: "Nama Lengkap", key: "nama", width: 30 },
-      { header: "Instansi", key: "instansi", width: 25 },
-      { header: "Jurusan", key: "jurusan", width: 25 },
-      { header: "Nomor HP", key: "hp", width: 18 },
-      { header: "Tgl Daftar", key: "tgl_daftar", width: 15 },
-      { header: "Mulai Magang", key: "tgl_mulai", width: 15 },
-      { header: "Selesai Magang", key: "tgl_selesai", width: 15 },
-      { header: "Status", key: "status", width: 15 },
-      { header: "Penempatan", key: "penempatan", width: 25 },
+    // 1. BUAT JUDUL HEADER LAPORAN DI BARIS 1
+    let titleText = "LAPORAN PENDAFTAR MAGANG - DINAS DIKPORA DIY";
+    
+    // Tambahkan keterangan Bulan & Tahun jika difilter
+    if (filterMonth !== "all" && filterYear !== "all") {
+        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
+        titleText += ` (PERIODE: ${monthName?.toUpperCase()} ${filterYear})`;
+    } else if (filterYear !== "all") {
+        titleText += ` (TAHUN: ${filterYear})`;
+    } else if (filterMonth !== "all") {
+        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
+        titleText += ` (BULAN: ${monthName?.toUpperCase()})`;
+    } else {
+        titleText += " (SEMUA DATA)";
+    }
+
+    // Merge Cell untuk Judul
+    worksheet.mergeCells('A1:J1');
+    const titleRow = worksheet.getCell('A1');
+    titleRow.value = titleText;
+    titleRow.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    titleRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1e3a8a' } // Warna Biru Gelap
+    };
+    worksheet.getRow(1).height = 40; // Tinggi Baris Judul
+
+    // 2. HEADER KOLOM DATA (Mulai Baris 3 biar ada jarak)
+    const headerRow = worksheet.getRow(3);
+    headerRow.values = [
+      "No", "Nama Lengkap", "Instansi", "Jurusan", "Nomor HP", 
+      "Tgl Daftar", "Mulai Magang", "Selesai Magang", "Status", "Penempatan"
     ];
 
-    worksheet.columns = columns;
+    // Styling Header Kolom
+    headerRow.font = { bold: true, color: { argb: "FF000000" }, size: 11 }; // Text Hitam
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFbfdbfe" }, // Biru Muda
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 25;
+    
+    // Set Lebar Kolom Manual
+    worksheet.getColumn(1).width = 5;  // No
+    worksheet.getColumn(2).width = 30; // Nama
+    worksheet.getColumn(3).width = 25; // Instansi
+    worksheet.getColumn(4).width = 25; // Jurusan
+    worksheet.getColumn(5).width = 18; // HP
+    worksheet.getColumn(6).width = 15; // Tgl Daftar
+    worksheet.getColumn(7).width = 15; // Tgl Mulai
+    worksheet.getColumn(8).width = 15; // Tgl Selesai
+    worksheet.getColumn(9).width = 15; // Status
+    worksheet.getColumn(10).width = 25; // Penempatan
 
+    // 3. ISI DATA (Mulai Baris 4)
     filteredData.forEach((item, index) => {
-      const posisi =
-        positions.find((p) => p.id === item.positionId)?.title || "-";
+      const posisi = positions.find((p) => p.id === item.positionId)?.title || "-";
       let statusLabel = "PENDING";
       if (item.status === "ACCEPTED") statusLabel = "DITERIMA";
       if (item.status === "REJECTED") statusLabel = "DITOLAK";
       if (item.status === "RECOMMENDED") statusLabel = "DIREKOMENDASIKAN";
 
-      worksheet.addRow({
-        no: index + 1,
-        nama: item.namaLengkap,
-        instansi: item.instansi,
-        jurusan: item.jurusan,
-        hp: item.nomorHp || "-",
-        tgl_daftar: new Date(item.createdAt).toLocaleDateString("id-ID"),
-        tgl_mulai: new Date(item.tanggalMulai).toLocaleDateString("id-ID"),
-        tgl_selesai: new Date(item.tanggalSelesai).toLocaleDateString("id-ID"),
-        status: statusLabel,
-        penempatan: posisi,
-      });
-    });
+      const row = worksheet.addRow([
+        index + 1,
+        item.namaLengkap,
+        item.instansi,
+        item.jurusan,
+        item.nomorHp || "-",
+        new Date(item.createdAt).toLocaleDateString("id-ID"),
+        new Date(item.tanggalMulai).toLocaleDateString("id-ID"),
+        new Date(item.tanggalSelesai).toLocaleDateString("id-ID"),
+        statusLabel,
+        posisi,
+      ]);
 
-    const headerRow = worksheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
-    headerRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF1e40af" },
-    };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-    headerRow.height = 30;
-
-    worksheet.eachRow((row, rowNumber) => {
-      row.eachCell((cell, colNumber) => {
+      // Styling Border Tiap Cell
+      row.eachCell((cell) => {
         cell.border = {
           top: { style: "thin" },
           left: { style: "thin" },
           bottom: { style: "thin" },
           right: { style: "thin" },
         };
-        if ([1, 5, 6, 7, 8, 9].includes(colNumber)) {
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: "center",
-            wrapText: true,
-          };
-        } else {
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: "left",
-            wrapText: true,
-          };
-        }
+        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       });
-      if (rowNumber > 1) {
-        row.eachCell((cell, colNumber) => {
-          const column = worksheet.getColumn(colNumber);
-          const cellLength = cell.value ? cell.value.toString().length : 10;
-          const currentWidth = column.width || 10;
-          if (cellLength > currentWidth && cellLength < 50) {
-            column.width = cellLength + 2;
-          }
-        });
-      }
+      
+      // Center untuk kolom tertentu
+      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' }; // No
+      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' }; // Tgl
+      row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' }; // Status
     });
 
+    // 4. GENERATE NAMA FILE YANG DINAMIS
+    let fileName = "Rekap_Magang";
+    if (filterMonth !== "all" && filterYear !== "all") {
+        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
+        fileName += `_${monthName}_${filterYear}`;
+    } else if (filterYear !== "all") {
+        fileName += `_Tahun_${filterYear}`;
+    } else {
+        fileName += `_All_Data`;
+    }
+    fileName += ".xlsx";
+
+    // 5. DOWNLOAD FILE
     const buffer = await workbook.xlsx.writeBuffer();
-    const fileName = `Rekap_Magang_${new Date().toISOString().split("T")[0]}.xlsx`;
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
     saveAs(blob, fileName);
 
-    toast.success("Data berhasil diexport dengan format rapi!");
+    toast.success("Data berhasil diexport!");
   };
 
   const SidebarItem = ({
@@ -768,11 +798,11 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
                     </SelectContent>
                   </Select>
                   <Select value={filterYear} onValueChange={setFilterYear}>
-                    <SelectTrigger className="w-[100px] bg-white dark:bg-slate-950">
+                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
                       <SelectValue placeholder="Tahun" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Semua</SelectItem>
+                      <SelectItem value="all">Semua Tahun</SelectItem>
                       {availableYears.map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -1042,7 +1072,6 @@ Atas perhatian dan partisipasi Anda, kami ucapkan Terima kasih.`;
                                       Surat Pengantar
                                     </a>
                                   </Button>
-                                  {/* FOTO CUMA MUNCUL KALO ADA */}
                                   {item.fotoPath && (
                                     <Button
                                       variant="outline"
