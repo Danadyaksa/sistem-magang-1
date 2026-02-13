@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma"; // <--- INI YG BENER (Tanpa { })
+import prisma from "@/lib/prisma";
 
-// PUT: Edit nama UPT
+// PUT: Edit nama UPT & Address
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  // Perhatikan tipe datanya, params adalah Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    // 1. Await params dulu sebelum ambil ID
+    const { id: idStr } = await params; 
+    const id = parseInt(idStr);
+
     const body = await req.json();
-    const { name } = body;
+    const { name, address } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Nama UPT wajib diisi" }, { status: 400 });
@@ -17,7 +21,7 @@ export async function PUT(
 
     const updatedUpt = await prisma.upt.update({
       where: { id },
-      data: { name },
+      data: { name, address },
     });
 
     return NextResponse.json(updatedUpt);
@@ -29,10 +33,13 @@ export async function PUT(
 // DELETE: Hapus UPT
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  // Perhatikan tipe datanya, params adalah Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    // 1. Await params dulu sebelum ambil ID
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
 
     await prisma.upt.delete({
       where: { id },

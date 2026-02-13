@@ -5,61 +5,26 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
-  Users,
-  Briefcase,
-  LogOut,
-  Menu,
-  Settings,
-  X,
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-  CalendarClock,
-  FileText,
-  User,
-  Loader2,
-  AlertTriangle,
-  PanelLeftClose, 
-  PanelLeftOpen,
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  BookOpen,
-  UserCheck,
-  Building2,
-  CalendarDays
+  LayoutDashboard, Users, Briefcase, LogOut, Menu, Settings, X, Plus,
+  Search, Pencil, Trash2, CalendarClock, FileText, User, Loader2,
+  AlertTriangle, PanelLeftClose, PanelLeftOpen, ArrowUpDown, ArrowUp, ArrowDown,
+  BookOpen, UserCheck, Building2, CalendarDays, MapPin
 } from "lucide-react";
 
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card"; // CardContainer dihapus, pake div biasa aja biar fleksibel
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar"; 
@@ -79,10 +44,11 @@ type Position = {
 type UPT = {
   id: number;
   name: string;
+  address?: string; // Tambahin address biar typescript ga marah
 };
 
 type Holiday = {
-  id: string; // UUID di Prisma string
+  id: string; 
   date: string; 
   description: string;
 };
@@ -117,7 +83,8 @@ export default function AdminDashboard() {
 
   // --- FORMS ---
   const [positionForm, setPositionForm] = useState({ title: "", quota: 3 });
-  const [uptForm, setUptForm] = useState({ name: "" });
+  // Update form UPT biar nampung address
+  const [uptForm, setUptForm] = useState({ name: "", address: "" });
   const [holidayForm, setHolidayForm] = useState<{ date: Date | undefined; description: string }>({ date: undefined, description: "" });
 
   // --- 1. SETUP & FETCH ---
@@ -125,7 +92,6 @@ export default function AdminDashboard() {
     const savedState = localStorage.getItem("sidebarCollapsed");
     if (savedState === "true") setIsSidebarCollapsed(true);
     
-    // Fetch Initial Data
     Promise.all([
         fetchAdminProfile(),
         fetchPositions(),
@@ -161,7 +127,6 @@ export default function AdminDashboard() {
 
   const fetchUpts = async () => {
     try {
-      // NOTE: Pastikan buat file route api/upt/route.ts nanti
       const res = await fetch("/api/upt", { cache: "no-store" }); 
       if(res.ok) {
           const data = await res.json();
@@ -180,7 +145,7 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
   };
 
-  // --- LOGIC SORTING (Positions Only) ---
+  // --- LOGIC SORTING ---
   const getStatusWeight = (filled: number, quota: number) => {
     if (filled >= quota) return 3; 
     if (quota - filled <= 1) return 2;
@@ -268,7 +233,7 @@ export default function AdminDashboard() {
         await fetchUpts();
         setIsUptDialogOpen(false);
         toast.success(editingId ? "UPT diperbarui" : "UPT ditambahkan");
-    } catch (e) { toast.error("Gagal menyimpan UPT (Pastikan API Route ada)"); }
+    } catch (e) { toast.error("Gagal menyimpan UPT"); }
     finally { setIsSubmitting(false); }
   };
 
@@ -408,7 +373,7 @@ export default function AdminDashboard() {
                     </Button>
                 )}
                 {activeTab === "upt" && (
-                    <Button onClick={() => { setUptForm({name: ""}); setEditingId(null); setIsUptDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg">
+                    <Button onClick={() => { setUptForm({name: "", address: ""}); setEditingId(null); setIsUptDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg">
                         <Plus className="mr-2 h-4 w-4" /> Tambah UPT
                     </Button>
                 )}
@@ -466,6 +431,8 @@ export default function AdminDashboard() {
                             <TableRow className="border-b dark:border-slate-800">
                                 <TableHead className="w-[50px] text-center dark:text-slate-400">No</TableHead>
                                 <TableHead className="dark:text-slate-400">Nama Unit Pelaksana Teknis (UPT)</TableHead>
+                                {/* Tambahan kolom Alamat */}
+                                <TableHead className="dark:text-slate-400">Alamat</TableHead>
                                 <TableHead className="text-right pr-6 dark:text-slate-400">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -474,14 +441,15 @@ export default function AdminDashboard() {
                                 <TableRow key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b dark:border-slate-800">
                                     <TableCell className="text-center text-slate-500 dark:text-slate-500">{i + 1}</TableCell>
                                     <TableCell className="font-medium dark:text-slate-200"><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-orange-400"/> {u.name}</div></TableCell>
+                                    <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{u.address || "-"}</TableCell>
                                     <TableCell className="text-right pr-4">
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setUptForm({name: u.name}); setEditingId(u.id); setIsUptDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setUptForm({name: u.name, address: u.address || ""}); setEditingId(u.id); setIsUptDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 dark:hover:text-red-400" onClick={() => handleDeleteUpt(u.id)}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            )) : <TableRow><TableCell colSpan={3} className="h-32 text-center text-slate-500 dark:text-slate-400">Belum ada data UPT.</TableCell></TableRow>}
+                            )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-500 dark:text-slate-400">Belum ada data UPT.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </Card>
@@ -539,12 +507,20 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* 2. UPT DIALOG */}
+      {/* 2. UPT DIALOG (FIXED WITH ADDRESS) */}
       <Dialog open={isUptDialogOpen} onOpenChange={setIsUptDialogOpen}>
         <DialogContent className="dark:bg-slate-950 dark:border-slate-800">
             <DialogHeader><DialogTitle className="dark:text-slate-100">{editingId ? "Edit UPT" : "Tambah UPT Baru"}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-                <div className="grid gap-2"><Label className="dark:text-slate-300">Nama UPT</Label><Input className="dark:bg-slate-900 dark:border-slate-700" value={uptForm.name} onChange={(e) => setUptForm({...uptForm, name: e.target.value})} placeholder="Contoh: Balai Tekkomdik"/></div>
+                <div className="grid gap-2">
+                    <Label className="dark:text-slate-300">Nama UPT</Label>
+                    <Input className="dark:bg-slate-900 dark:border-slate-700" value={uptForm.name} onChange={(e) => setUptForm({...uptForm, name: e.target.value})} placeholder="Contoh: Balai Tekkomdik"/>
+                </div>
+                {/* Tambahan Input Address */}
+                <div className="grid gap-2">
+                    <Label className="dark:text-slate-300">Alamat Lengkap</Label>
+                    <Input className="dark:bg-slate-900 dark:border-slate-700" value={uptForm.address} onChange={(e) => setUptForm({...uptForm, address: e.target.value})} placeholder="Jl. Kenari No. xyz..."/>
+                </div>
             </div>
             <DialogFooter><Button onClick={handleSaveUpt} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>

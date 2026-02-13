@@ -113,7 +113,8 @@ model Holiday {
 
 model Upt {
   id        Int      @id @default(autoincrement())
-  name      String   // Nama UPT (misal: Balai Tekkomdik)
+  name      String   
+  address   String?  // <--- Tambahin ini bro
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
