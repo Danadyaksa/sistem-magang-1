@@ -77,7 +77,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
-  // Filter Hari Libur (Advanced)
+  // Filter Hari Libur (Settings Style)
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [selectedHolidayIds, setSelectedHolidayIds] = useState<string[]>([]);
@@ -86,14 +86,13 @@ export default function AdminDashboard() {
   // --- MODAL STATE ---
   const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
   const [isUptDialogOpen, setIsUptDialogOpen] = useState(false);
-  
   const [editingId, setEditingId] = useState<number | null>(null);
 
   // --- FORMS ---
   const [positionForm, setPositionForm] = useState({ title: "", quota: 3 });
   const [uptForm, setUptForm] = useState({ name: "", address: "" });
   
-  // Form Hari Libur (Multi Select Calendar)
+  // Form Hari Libur (Advanced Multi-select)
   const [newHolidayDates, setNewHolidayDates] = useState<Date[] | undefined>([]);
   const [holidayDescription, setHolidayDescription] = useState("");
 
@@ -108,7 +107,6 @@ export default function AdminDashboard() {
         fetchUpts(),
         fetchHolidays()
     ]).finally(() => setIsLoading(false));
-
   }, []);
 
   const toggleSidebar = () => {
@@ -152,10 +150,10 @@ export default function AdminDashboard() {
           const data = await res.json();
           if (Array.isArray(data)) setHolidays(data);
       }
-    } catch (e) { console.error(e); }
+    } catch (error) { console.error("Gagal ambil hari libur", error); }
   };
 
-  // --- LOGIC POSITIONS ---
+  // --- LOGIC SORTING POSISI ---
   const getStatusWeight = (filled: number, quota: number) => {
     if (filled >= quota) return 3; 
     if (quota - filled <= 1) return 2;
@@ -164,12 +162,10 @@ export default function AdminDashboard() {
 
   const processedPositions = useMemo(() => {
     let data = positions.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
-
     if (sortConfig !== null) {
       data.sort((a, b) => {
         let aValue: any;
         let bValue: any;
-
         if (sortConfig.key === 'title') {
             aValue = a.title.toLowerCase();
             bValue = b.title.toLowerCase();
@@ -180,7 +176,6 @@ export default function AdminDashboard() {
             aValue = getStatusWeight(a.filled, a.quota);
             bValue = getStatusWeight(b.filled, b.quota);
         }
-
         if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
@@ -197,7 +192,7 @@ export default function AdminDashboard() {
     setSortConfig({ key, direction });
   };
 
-  // --- LOGIC HOLIDAYS (SETTINGS STYLE) ---
+  // --- LOGIC FILTERING HARI LIBUR ---
   const filteredHolidays = useMemo(() => {
     return holidays
       .filter((h) => {
@@ -231,7 +226,6 @@ export default function AdminDashboard() {
 
   // --- CRUD HANDLERS ---
   
-  // 1. POSITIONS
   const handleSavePosition = async () => {
     if (!positionForm.title.trim()) return toast.warning("Nama bidang wajib diisi");
     setIsSubmitting(true);
@@ -259,7 +253,6 @@ export default function AdminDashboard() {
       } catch(e) { toast.error("Gagal menghapus"); }
   };
 
-  // 2. UPT
   const handleSaveUpt = async () => {
     if (!uptForm.name.trim()) return toast.warning("Nama UPT wajib diisi");
     setIsSubmitting(true);
@@ -287,68 +280,55 @@ export default function AdminDashboard() {
       } catch(e) { toast.error("Gagal menghapus"); }
   };
 
-  // 3. HOLIDAYS (MULTI-SAVE LOGIC)
+  // HANDLER HARI LIBUR (MULTI DATE)
   const handleAddHolidays = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHolidayDates || newHolidayDates.length === 0) {
       toast.warning("Pilih minimal satu tanggal di kalender!");
       return;
     }
-    
-    // Keterangan opsional kalo mau simpel, tapi kalo mau wajib:
-    // if (!holidayDescription.trim()) { toast.warning("Keterangan wajib!"); return; }
-    
-    // Default description kalo kosong
-    const desc = holidayDescription.trim() || "Libur Nasional / Cuti Bersama";
-
     setIsSubmitting(true);
     try {
-        // Loop request biar aman
-        const promises = newHolidayDates.map(date => 
-            fetch("/api/holidays", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    date: date.toISOString(),
-                    description: desc
-                }),
-            })
-        );
-
-        await Promise.all(promises);
-        
-        await fetchHolidays();
-        setNewHolidayDates([]);
-        setHolidayDescription("");
-        toast.success(`${newHolidayDates.length} Hari libur berhasil ditambahkan!`);
-    } catch (e) { 
-        toast.error("Gagal menyimpan hari libur"); 
-    } finally { 
-        setIsSubmitting(false); 
+      // Backend api/holidays kita minta buat handle list tanggal (sesuai logic settings lu)
+      const res = await fetch("/api/holidays", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          dates: newHolidayDates,
+          description: holidayDescription || "Hari Libur" 
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`${newHolidayDates.length} Tanggal libur berhasil ditambahkan`);
+      setNewHolidayDates([]);
+      setHolidayDescription("");
+      fetchHolidays(); 
+    } catch (error) {
+      toast.error("Gagal menambah data");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteMassHolidays = async () => {
     if (selectedHolidayIds.length === 0) return;
-    
     setIsSubmitting(true);
     try {
       const deletePromises = selectedHolidayIds.map(id => 
         fetch(`/api/holidays/${id}`, { method: "DELETE" })
       );
       await Promise.all(deletePromises);
-      await fetchHolidays();
+      toast.success(`${selectedHolidayIds.length} Data berhasil dihapus`);
+      fetchHolidays();
       setSelectedHolidayIds([]);
-      setIsDeleteMassOpen(false);
-      toast.success("Data terpilih berhasil dihapus");
     } catch (error) {
       toast.error("Gagal menghapus data");
     } finally {
       setIsSubmitting(false);
+      setIsDeleteMassOpen(false);
     }
   };
 
-  // --- HELPERS ---
   const handleLogoutConfirm = async () => {
     setIsLogoutOpen(false);
     toast.promise(fetch("/api/auth/logout", { method: "POST" }), {
@@ -356,12 +336,6 @@ export default function AdminDashboard() {
       success: () => { router.push("/admin/login"); return 'Berhasil logout'; },
       error: 'Gagal logout',
     });
-  };
-
-  const renderStatusBadge = (filled: number, quota: number) => {
-    if (filled >= quota) return <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 shadow-none">Penuh</Badge>;
-    if (quota - filled <= 1) return <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200 shadow-none">Terbatas</Badge>;
-    return <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-none">Dibuka</Badge>;
   };
 
   const SidebarItem = ({ icon: Icon, label, active = false, onClick, className = "" }: any) => (
@@ -391,7 +365,7 @@ export default function AdminDashboard() {
           <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
-          <SidebarItem icon={LayoutDashboard} label="Master Data" active={true} />
+          <SidebarItem icon={LayoutDashboard} label="Master Data" active={activeTab !== "settings"} />
           <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")} />
@@ -403,7 +377,7 @@ export default function AdminDashboard() {
         </nav>
       </aside>
 
-      {/* CONTENT WRAPPER */}
+      {/* CONTENT */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
           <div className="flex items-center gap-4">
@@ -411,7 +385,7 @@ export default function AdminDashboard() {
             <button className="hidden md:flex p-2 text-slate-500 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800" onClick={toggleSidebar}>
                {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Master Data & Kuota</h2>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Master Data Sistem</h2>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
@@ -428,222 +402,193 @@ export default function AdminDashboard() {
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 animate-in fade-in duration-500">
           
           <div className="w-full">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Master Data</h1>
-            <p className="text-slate-500 dark:text-slate-400">Kelola data referensi utama sistem magang.</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Konfigurasi Master Data</h1>
+            <p className="text-slate-500 dark:text-slate-400">Kelola kuota posisi, unit UPT, dan kalender hari libur.</p>
           </div>
 
           <div className="w-full">
-            <Tabs defaultValue="positions" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                
-                {/* --- STYLE TABS HORIZONTAL (SETTINGS STYLE) --- */}
-                <TabsList className="grid w-full grid-cols-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
-                    <TabsTrigger value="positions" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                        <Briefcase className="w-4 h-4 mr-2" /> Posisi Magang
-                    </TabsTrigger>
-                    <TabsTrigger value="upt" className="data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-orange-900/20 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                        <Building2 className="w-4 h-4 mr-2" /> Unit UPT
-                    </TabsTrigger>
-                    <TabsTrigger value="holidays" className="data-[state=active]:bg-red-50 dark:data-[state=active]:bg-red-900/20 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                        <CalendarDays className="w-4 h-4 mr-2" /> Hari Libur
-                    </TabsTrigger>
-                </TabsList>
+            <Tabs defaultValue="positions" onValueChange={setActiveTab} className="w-full">
+              
+              {/* TAB LIST SETTINGS STYLE (HORIZONTAL) */}
+              <TabsList className="grid w-full grid-cols-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
+                <TabsTrigger value="positions" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
+                  <Briefcase className="w-4 h-4 mr-2" /> Posisi
+                </TabsTrigger>
+                <TabsTrigger value="upt" className="data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-orange-900/20 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
+                  <Building2 className="w-4 h-4 mr-2" /> Unit UPT
+                </TabsTrigger>
+                <TabsTrigger value="holidays" className="data-[state=active]:bg-red-50 dark:data-[state=active]:bg-red-900/20 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
+                  <CalendarDays className="w-4 h-4 mr-2" /> Hari Libur
+                </TabsTrigger>
+              </TabsList>
 
-                {/* TAB 1: POSITIONS */}
-                <TabsContent value="positions" className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => { setPositionForm({title: "", quota: 3}); setEditingId(null); setIsPositionDialogOpen(true); }} className="bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-sm">
-                            <Plus className="mr-2 h-4 w-4" /> Tambah Posisi
-                        </Button>
+              {/* TABS CONTENT 1: POSITIONS */}
+              <TabsContent value="positions" className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex justify-end mb-4">
+                  <Button onClick={() => { setPositionForm({title: "", quota: 3}); setEditingId(null); setIsPositionDialogOpen(true); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-sm">
+                    <Plus className="mr-2 h-4 w-4" /> Tambah Posisi
+                  </Button>
+                </div>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 overflow-hidden">
+                  <div className="p-4 bg-slate-50/50 dark:bg-slate-950 border-b dark:border-slate-800 flex items-center">
+                    <div className="relative w-full max-w-sm">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                      <Input placeholder="Cari posisi..." className="pl-9 h-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
-                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900">
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
-                            <div className="relative w-full max-w-sm">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                                <Input placeholder="Cari nama bidang..." className="pl-9 bg-white dark:bg-slate-950 dark:border-slate-700" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            </div>
+                  </div>
+                  <Table>
+                    <TableHeader className="bg-slate-50/80 dark:bg-slate-950">
+                      <TableRow className="border-slate-200 dark:border-slate-800">
+                        <TableHead className="w-[50px] text-center">No</TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => requestSort('title')}>Nama Bidang</TableHead>
+                        <TableHead className="text-center cursor-pointer" onClick={() => requestSort('filled')}>Terisi/Kuota</TableHead>
+                        <TableHead className="text-right pr-6">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {processedPositions.map((pos, i) => (
+                        <TableRow key={pos.id} className="border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                          <TableCell className="text-center text-slate-500">{i + 1}</TableCell>
+                          <TableCell className="font-medium">{pos.title}</TableCell>
+                          <TableCell className="text-center"><b>{pos.filled}</b> / {pos.quota}</TableCell>
+                          <TableCell className="text-right pr-4">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => { setPositionForm({title: pos.title, quota: pos.quota}); setEditingId(pos.id); setIsPositionDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => handleDeletePosition(pos.id)}><Trash2 className="h-4 w-4"/></Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
+
+              {/* TABS CONTENT 2: UPT */}
+              <TabsContent value="upt" className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex justify-end mb-4">
+                  <Button onClick={() => { setUptForm({name: "", address: ""}); setEditingId(null); setIsUptDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                    <Plus className="mr-2 h-4 w-4" /> Tambah UPT
+                  </Button>
+                </div>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900">
+                  <Table>
+                    <TableHeader className="bg-slate-50/80 dark:bg-slate-950">
+                      <TableRow className="border-slate-200 dark:border-slate-800">
+                        <TableHead className="w-[50px] text-center">No</TableHead>
+                        <TableHead>Nama Unit UPT</TableHead>
+                        <TableHead>Alamat</TableHead>
+                        <TableHead className="text-right pr-6">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {upts.map((u, i) => (
+                        <TableRow key={u.id} className="border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                          <TableCell className="text-center text-slate-500">{i + 1}</TableCell>
+                          <TableCell className="font-medium">{u.name}</TableCell>
+                          <TableCell className="text-sm text-slate-500">{u.address || "-"}</TableCell>
+                          <TableCell className="text-right pr-4">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => { setUptForm({name: u.name, address: u.address || ""}); setEditingId(u.id); setIsUptDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => handleDeleteUpt(u.id)}><Trash2 className="h-4 w-4"/></Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
+
+              {/* TABS CONTENT 3: HARI LIBUR (THE ADVANCED SETTINGS STYLE) */}
+              <TabsContent value="holidays" className="animate-in fade-in slide-in-from-right-4 duration-300">
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    {/* FORM INPUT SETTINGS STYLE */}
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 h-fit lg:col-span-1">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Tambah Libur & Cuti</CardTitle>
+                        <CardDescription>Pilih satu/banyak tanggal di kalender.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <form onSubmit={handleAddHolidays} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Pilih Tanggal</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal dark:bg-slate-950 dark:border-slate-700")}>
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {newHolidayDates?.length ? `${newHolidayDates.length} Tanggal terpilih` : "Klik Kalender"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0 dark:bg-slate-950" align="start">
+                                <Calendar mode="multiple" selected={newHolidayDates} onSelect={setNewHolidayDates} initialFocus className="dark:bg-slate-950" />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Keterangan</Label>
+                            <Input value={holidayDescription} onChange={(e) => setHolidayDescription(e.target.value)} placeholder="Contoh: Cuti Bersama" className="dark:bg-slate-950"/>
+                          </div>
+                          <Button type="submit" disabled={isSubmitting} className="w-full bg-red-600 hover:bg-red-700 text-white">
+                             {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Simpan Hari Libur"}
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+
+                    {/* TABLE LIST SETTINGS STYLE */}
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-2">
+                      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b dark:border-slate-800">
+                        <div><CardTitle className="text-lg">Daftar Tanggal Merah</CardTitle></div>
+                        <div className="flex gap-2">
+                           <Select value={filterYear} onValueChange={setFilterYear}>
+                              <SelectTrigger className="w-[90px] h-9 dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                              <SelectContent className="dark:bg-slate-950">
+                                <SelectItem value="all">Semua</SelectItem>
+                                {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                              </SelectContent>
+                           </Select>
+                           <Select value={filterMonth} onValueChange={setFilterMonth}>
+                              <SelectTrigger className="w-[110px] h-9 dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                              <SelectContent className="dark:bg-slate-950">
+                                <SelectItem value="all">Semua</SelectItem>
+                                {Array.from({ length: 12 }, (_, i) => (
+                                  <SelectItem key={i + 1} value={(i + 1).toString()}>{format(new Date(2000, i, 1), "MMMM", { locale: idLocale })}</SelectItem>
+                                ))}
+                              </SelectContent>
+                           </Select>
+                           {selectedHolidayIds.length > 0 && (
+                             <Button variant="destructive" size="sm" className="h-9" onClick={() => setIsDeleteMassOpen(true)}>
+                                <Trash2 className="w-4 h-4 mr-1" /> ({selectedHolidayIds.length})
+                             </Button>
+                           )}
                         </div>
-                        <Table>
-                            <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
-                                <TableRow className="border-b dark:border-slate-800">
-                                    <TableHead className="w-[50px] text-center dark:text-slate-400">No</TableHead>
-                                    <TableHead onClick={() => requestSort('title')} className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"><div className="flex items-center gap-2">Nama Bidang {sortConfig?.key === 'title' && (sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3"/> : <ArrowDown className="h-3 w-3"/>)}</div></TableHead>
-                                    <TableHead onClick={() => requestSort('filled')} className="text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"><div className="flex items-center justify-center gap-2">Terisi / Kuota {sortConfig?.key === 'filled' && (sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3"/> : <ArrowDown className="h-3 w-3"/>)}</div></TableHead>
-                                    <TableHead className="text-center dark:text-slate-400">Status</TableHead>
-                                    <TableHead className="text-right pr-6 dark:text-slate-400">Aksi</TableHead>
-                                </TableRow>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <div className="max-h-[400px] overflow-auto">
+                          <Table>
+                            <TableHeader className="bg-slate-50 dark:bg-slate-950 sticky top-0 z-10">
+                              <TableRow className="border-slate-200 dark:border-slate-800">
+                                <TableHead className="w-[40px] text-center">
+                                  <input type="checkbox" className="accent-red-600" checked={selectedHolidayIds.length === filteredHolidays.length && filteredHolidays.length > 0} onChange={toggleSelectAllHolidays} />
+                                </TableHead>
+                                <TableHead>Tanggal</TableHead>
+                                <TableHead>Keterangan</TableHead>
+                              </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {processedPositions.length > 0 ? processedPositions.map((pos, i) => (
-                                    <TableRow key={pos.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b dark:border-slate-800">
-                                        <TableCell className="text-center text-slate-500 dark:text-slate-500">{i + 1}</TableCell>
-                                        <TableCell className="font-medium dark:text-slate-200"><div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-slate-400"/> {pos.title}</div></TableCell>
-                                        <TableCell className="text-center dark:text-slate-200"><span className="font-bold">{pos.filled}</span> <span className="text-slate-400">/</span> {pos.quota}</TableCell>
-                                        <TableCell className="text-center">{renderStatusBadge(pos.filled, pos.quota)}</TableCell>
-                                        <TableCell className="text-right pr-4">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setPositionForm({title: pos.title, quota: pos.quota}); setEditingId(pos.id); setIsPositionDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 dark:hover:text-red-400" onClick={() => handleDeletePosition(pos.id)}><Trash2 className="h-4 w-4"/></Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )) : <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-500 dark:text-slate-400">Data tidak ditemukan.</TableCell></TableRow>}
-                            </TableBody>
-                        </Table>
-                    </Card>
-                </TabsContent>
-
-                {/* TAB 2: UPT */}
-                <TabsContent value="upt" className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => { setUptForm({name: "", address: ""}); setEditingId(null); setIsUptDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-600 dark:hover:bg-orange-700 shadow-sm">
-                            <Plus className="mr-2 h-4 w-4" /> Tambah UPT
-                        </Button>
-                    </div>
-                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900">
-                        <Table>
-                            <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
-                                <TableRow className="border-b dark:border-slate-800">
-                                    <TableHead className="w-[50px] text-center dark:text-slate-400">No</TableHead>
-                                    <TableHead className="dark:text-slate-400">Nama Unit Pelaksana Teknis (UPT)</TableHead>
-                                    <TableHead className="dark:text-slate-400">Alamat</TableHead>
-                                    <TableHead className="text-right pr-6 dark:text-slate-400">Aksi</TableHead>
+                              {filteredHolidays.map((item) => (
+                                <TableRow key={item.id} className="border-slate-100 dark:border-slate-800 hover:bg-slate-50">
+                                  <TableCell className="text-center"><input type="checkbox" className="accent-red-600" checked={selectedHolidayIds.includes(item.id)} onChange={() => toggleSelectHoliday(item.id)} /></TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{format(new Date(item.date), "EEEE, d MMM yyyy", { locale: idLocale })}</TableCell>
+                                  <TableCell className="text-slate-500 text-sm">{item.description}</TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {upts.length > 0 ? upts.map((u, i) => (
-                                    <TableRow key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b dark:border-slate-800">
-                                        <TableCell className="text-center text-slate-500 dark:text-slate-500">{i + 1}</TableCell>
-                                        <TableCell className="font-medium dark:text-slate-200"><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-orange-400"/> {u.name}</div></TableCell>
-                                        <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{u.address || "-"}</TableCell>
-                                        <TableCell className="text-right pr-4">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setUptForm({name: u.name, address: u.address || ""}); setEditingId(u.id); setIsUptDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 dark:hover:text-red-400" onClick={() => handleDeleteUpt(u.id)}><Trash2 className="h-4 w-4"/></Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-500 dark:text-slate-400">Belum ada data UPT.</TableCell></TableRow>}
+                              ))}
+                              {filteredHolidays.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center text-slate-400">Data tidak ditemukan.</TableCell></TableRow>}
                             </TableBody>
-                        </Table>
+                          </Table>
+                        </div>
+                      </CardContent>
                     </Card>
-                </TabsContent>
-
-                {/* TAB 3: HOLIDAYS (THE ADVANCED SETTINGS STYLE) */}
-                <TabsContent value="holidays" className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      
-                      {/* FORM TAMBAH (MULTI SELECT) */}
-                      <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-1 h-fit">
-                        <CardHeader>
-                          <CardTitle className="text-lg dark:text-slate-100">Tambah Hari Libur</CardTitle>
-                          <CardDescription className="dark:text-slate-400">Pilih satu atau lebih tanggal.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <form onSubmit={handleAddHolidays} className="space-y-4">
-                            <div className="space-y-2">
-                              <Label className="dark:text-slate-300">Pilih Tanggal</Label>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                                    {newHolidayDates?.length ? `${newHolidayDates.length} Tanggal terpilih` : "Klik untuk buka kalender"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 dark:bg-slate-950 dark:border-slate-800" align="start">
-                                  <Calendar mode="multiple" selected={newHolidayDates} onSelect={setNewHolidayDates} initialFocus className="dark:bg-slate-950 dark:text-slate-100" />
-                                </PopoverContent>
-                              </Popover>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="dark:text-slate-300">Keterangan</Label>
-                                <Input className="dark:bg-slate-950 dark:border-slate-700" value={holidayDescription} onChange={(e) => setHolidayDescription(e.target.value)} placeholder="Contoh: Cuti Bersama"/>
-                            </div>
-                            <Button type="submit" disabled={isSubmitting} className="w-full bg-red-600 hover:bg-red-700 text-white dark:bg-red-600 dark:hover:bg-red-700">
-                               {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Simpan Tanggal"}
-                            </Button>
-                          </form>
-                        </CardContent>
-                      </Card>
-
-                      {/* TABEL LIST (WITH FILTERS & BULK DELETE) */}
-                      <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-2 transition-colors">
-                        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800">
-                          <div>
-                            <CardTitle className="text-lg dark:text-slate-100">Daftar Libur</CardTitle>
-                            <CardDescription className="dark:text-slate-400">Kelola daftar tanggal merah.</CardDescription>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                             <Select value={filterYear} onValueChange={setFilterYear}>
-                                <SelectTrigger className="w-[100px] h-9 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"><SelectValue placeholder="Thn" /></SelectTrigger>
-                                <SelectContent className="dark:bg-slate-950 dark:border-slate-800">
-                                  <SelectItem value="all">Semua</SelectItem>
-                                  {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                             <Select value={filterMonth} onValueChange={setFilterMonth}>
-                                <SelectTrigger className="w-[120px] h-9 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"><SelectValue placeholder="Bulan" /></SelectTrigger>
-                                <SelectContent className="dark:bg-slate-950 dark:border-slate-800">
-                                  <SelectItem value="all">Semua</SelectItem>
-                                  {Array.from({ length: 12 }, (_, i) => (
-                                    <SelectItem key={i + 1} value={(i + 1).toString()}>{format(new Date(2000, i, 1), "MMMM", { locale: idLocale })}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                             </Select>
-                             {selectedHolidayIds.length > 0 && (
-                               <Button variant="destructive" size="sm" className="h-9" onClick={() => setIsDeleteMassOpen(true)}>
-                                  <Trash2 className="w-4 h-4 mr-2" /> Hapus ({selectedHolidayIds.length})
-                               </Button>
-                             )}
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                          <div className="relative w-full overflow-auto max-h-[500px]">
-                            <Table>
-                              <TableHeader className="bg-slate-50 dark:bg-slate-950 sticky top-0 z-10">
-                                <TableRow className="border-slate-200 dark:border-slate-800">
-                                  <TableHead className="w-[50px] text-center">
-                                    <input 
-                                      type="checkbox" 
-                                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 cursor-pointer accent-red-600"
-                                      checked={selectedHolidayIds.length === filteredHolidays.length && filteredHolidays.length > 0}
-                                      onChange={toggleSelectAllHolidays}
-                                    />
-                                  </TableHead>
-                                  <TableHead className="dark:text-slate-300">Tanggal</TableHead>
-                                  <TableHead className="dark:text-slate-300">Keterangan</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {filteredHolidays.length === 0 ? (
-                                  <TableRow><TableCell colSpan={3} className="h-32 text-center text-slate-500 dark:text-slate-400">Tidak ada data.</TableCell></TableRow>
-                                ) : (
-                                  filteredHolidays.map((item) => (
-                                    <TableRow key={item.id} className="group border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                      <TableCell className="text-center">
-                                        <input 
-                                          type="checkbox" 
-                                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 cursor-pointer accent-red-600"
-                                          checked={selectedHolidayIds.includes(item.id)}
-                                          onChange={() => toggleSelectHoliday(item.id)}
-                                        />
-                                      </TableCell>
-                                      <TableCell className="font-medium text-slate-800 dark:text-slate-200">
-                                        <div className="flex items-center gap-2">
-                                            <CalendarDays className="h-4 w-4 text-red-500"/>
-                                            {format(new Date(item.date), "EEEE, d MMMM yyyy", { locale: idLocale })}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-slate-600 dark:text-slate-400">{item.description}</TableCell>
-                                    </TableRow>
-                                  ))
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                   </div>
-                </TabsContent>
+                 </div>
+              </TabsContent>
 
             </Tabs>
           </div>
@@ -652,68 +597,51 @@ export default function AdminDashboard() {
       </div>
 
       {/* DIALOGS */}
-      
-      {/* 1. POSITION DIALOG */}
       <Dialog open={isPositionDialogOpen} onOpenChange={setIsPositionDialogOpen}>
         <DialogContent className="dark:bg-slate-950 dark:border-slate-800">
-            <DialogHeader><DialogTitle className="dark:text-slate-100">{editingId ? "Edit Posisi" : "Tambah Posisi"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit Posisi" : "Tambah Posisi"}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-                <div className="grid gap-2"><Label className="dark:text-slate-300">Nama Bidang</Label><Input className="dark:bg-slate-900 dark:border-slate-700" value={positionForm.title} onChange={(e) => setPositionForm({...positionForm, title: e.target.value})} placeholder="Contoh: Sub Bagian Keuangan"/></div>
-                <div className="grid gap-2"><Label className="dark:text-slate-300">Kuota</Label><Input className="dark:bg-slate-900 dark:border-slate-700" type="number" value={positionForm.quota} onChange={(e) => setPositionForm({...positionForm, quota: parseInt(e.target.value) || 0})}/></div>
+                <div className="grid gap-2"><Label>Nama Bidang</Label><Input value={positionForm.title} onChange={(e) => setPositionForm({...positionForm, title: e.target.value})} placeholder="Contoh: IT Support"/></div>
+                <div className="grid gap-2"><Label>Kuota</Label><Input type="number" value={positionForm.quota} onChange={(e) => setPositionForm({...positionForm, quota: parseInt(e.target.value) || 0})}/></div>
             </div>
             <DialogFooter><Button onClick={handleSavePosition} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 2. UPT DIALOG */}
       <Dialog open={isUptDialogOpen} onOpenChange={setIsUptDialogOpen}>
         <DialogContent className="dark:bg-slate-950 dark:border-slate-800">
-            <DialogHeader><DialogTitle className="dark:text-slate-100">{editingId ? "Edit UPT" : "Tambah UPT Baru"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit UPT" : "Tambah UPT"}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                    <Label className="dark:text-slate-300">Nama UPT</Label>
-                    <Input className="dark:bg-slate-900 dark:border-slate-700" value={uptForm.name} onChange={(e) => setUptForm({...uptForm, name: e.target.value})} placeholder="Contoh: Balai Tekkomdik"/>
-                </div>
-                <div className="grid gap-2">
-                    <Label className="dark:text-slate-300">Alamat Lengkap</Label>
-                    <Input className="dark:bg-slate-900 dark:border-slate-700" value={uptForm.address} onChange={(e) => setUptForm({...uptForm, address: e.target.value})} placeholder="Jl. Kenari No. xyz..."/>
-                </div>
+                <div className="grid gap-2"><Label>Nama UPT</Label><Input value={uptForm.name} onChange={(e) => setUptForm({...uptForm, name: e.target.value})} placeholder="Nama Balai..."/></div>
+                <div className="grid gap-2"><Label>Alamat</Label><Input value={uptForm.address} onChange={(e) => setUptForm({...uptForm, address: e.target.value})} placeholder="Jl. Raya..."/></div>
             </div>
             <DialogFooter><Button onClick={handleSaveUpt} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 3. MASS DELETE CONFIRM */}
-      <Dialog open={isDeleteMassOpen} onOpenChange={(open) => { setIsDeleteMassOpen(open); if(!open) setSelectedHolidayIds([]); }}>
-        <DialogContent className="sm:max-w-[400px] border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+      <Dialog open={isDeleteMassOpen} onOpenChange={setIsDeleteMassOpen}>
+        <DialogContent className="sm:max-w-[400px] dark:bg-slate-950 border-slate-800">
           <DialogHeader className="flex flex-col items-center text-center gap-2">
-            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
-              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-            <DialogTitle className="text-xl dark:text-slate-100">Hapus {selectedHolidayIds.length} Data?</DialogTitle>
-            <DialogDescription className="text-center dark:text-slate-400">
-               Data yang dihapus tidak bisa dikembalikan.
-            </DialogDescription>
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2"><AlertTriangle className="h-6 w-6 text-red-600" /></div>
+            <DialogTitle>Hapus {selectedHolidayIds.length} Data?</DialogTitle>
+            <DialogDescription>Tindakan ini tidak bisa dibatalkan.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-            <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:border-slate-700 dark:text-slate-100" onClick={() => { setIsDeleteMassOpen(false); setSelectedHolidayIds([]); }}>Batal</Button>
-            <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white" onClick={handleDeleteMassHolidays} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : "Ya, Hapus Semua"}
-            </Button>
+            <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsDeleteMassOpen(false)}>Batal</Button>
+            <Button variant="destructive" className="w-full sm:w-1/2" onClick={handleDeleteMassHolidays} disabled={isSubmitting}>Hapus Semua</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* LOGOUT CONFIRM */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
         <DialogContent className="sm:max-w-[400px] dark:bg-slate-950 dark:border-slate-800">
           <DialogHeader className="items-center text-center">
              <AlertTriangle className="h-10 w-10 text-red-500 mb-2"/>
-             <DialogTitle className="dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
-             <DialogDescription className="dark:text-slate-400">Anda harus login kembali untuk mengakses panel.</DialogDescription>
+             <DialogTitle>Konfirmasi Keluar</DialogTitle>
+             <DialogDescription>Anda harus login kembali untuk mengakses panel.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-             <Button variant="outline" onClick={() => setIsLogoutOpen(false)} className="dark:bg-transparent dark:border-slate-700 dark:text-slate-300">Batal</Button>
+             <Button variant="outline" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
              <Button variant="destructive" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
           </DialogFooter>
         </DialogContent>
