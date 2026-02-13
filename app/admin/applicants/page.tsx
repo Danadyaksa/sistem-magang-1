@@ -594,7 +594,7 @@ Admin Dinas DIKPORA DIY`;
           </button>
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" onClick={() => router.push("/admin/dashboard")} />
+          <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")} />
           <SidebarItem icon={FileText} label="Applicants" active={true} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")} />
@@ -641,7 +641,7 @@ Admin Dinas DIKPORA DIY`;
               <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                 <Download className="h-4 w-4 mr-2" /> Export Excel
               </Button>
-              <Button onClick={() => { setLoading(true); fetchData(); }} className="bg-blue-700 hover:bg-blue-800 text-white">
+              <Button onClick={() => { setLoading(true); fetchData(); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-700/20 transition-all hover:scale-105">
                 <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
               </Button>
             </div>

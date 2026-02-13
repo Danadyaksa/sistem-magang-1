@@ -2,7 +2,7 @@
 
 import { ModeToggle } from "@/components/mode-toggle";
 import { useState, useEffect } from "react";
-import Image from "next/image"; // Import Image
+import Image from "next/image"; 
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -22,8 +22,8 @@ import {
   Pencil,
   Briefcase,
   AlertTriangle,
-  PanelLeftClose, // Icon tutup sidebar
-  PanelLeftOpen,   // Icon buka sidebar
+  PanelLeftClose, 
+  PanelLeftOpen, 
   CalendarClock,
   BookOpen
 } from "lucide-react";
@@ -65,6 +65,13 @@ type AdminUser = {
   createdAt: string;
 };
 
+// Tipe state untuk dialog hapus
+type DeleteState = {
+    isOpen: boolean;
+    id: string | null;
+    username: string;
+};
+
 export default function AdminUsersPage() {
   const router = useRouter();
 
@@ -80,9 +87,16 @@ export default function AdminUsersPage() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [currentAdmin, setCurrentAdmin] = useState({ username: "...", jabatan: "..." });
 
-  // --- STATE MODAL ---
+  // --- STATE MODAL FORM ---
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // --- STATE MODAL DELETE (NEW) ---
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteState>({
+      isOpen: false,
+      id: null,
+      username: ""
+  });
   
   // Form Data
   const [formData, setFormData] = useState({
@@ -185,7 +199,7 @@ export default function AdminUsersPage() {
       setFormError("Username wajib diisi.");
       toast.warning("Mohon isi username terlebih dahulu.");
       return;
-    }
+        }
 
     if (!editingId) {
        if (!formData.newPassword) {
@@ -271,31 +285,29 @@ export default function AdminUsersPage() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    toast("Yakin ingin menghapus admin ini?", {
-        description: "Tindakan ini tidak bisa dibatalkan.",
-        action: {
-            label: "Ya, Hapus",
-            onClick: async () => {
-                try {
-                    const res = await fetch(`/api/admins/${id}`, { method: "DELETE" });
-                    if(res.ok) {
-                        toast.success("Admin berhasil dihapus");
-                        fetchAdmins();
-                    } else {
-                        toast.error("Gagal menghapus admin");
-                    }
-                } catch (error) {
-                    toast.error("Terjadi kesalahan sistem");
-                }
-            }
-        },
-        cancel: {
-            label: "Batal",
-            onClick: () => {}
-        },
-        duration: 5000,
-    });
+  // --- TRIGGER DELETE DIALOG (NEW) ---
+  const openDeleteDialog = (id: string, username: string) => {
+      setDeleteConfirm({ isOpen: true, id, username });
+  };
+
+  // --- EKSEKUSI DELETE (NEW) ---
+  const confirmDelete = async () => {
+      if (!deleteConfirm.id) return;
+      setIsSubmitting(true);
+      try {
+          const res = await fetch(`/api/admins/${deleteConfirm.id}`, { method: "DELETE" });
+          if(res.ok) {
+              toast.success("Admin berhasil dihapus");
+              fetchAdmins();
+          } else {
+              toast.error("Gagal menghapus admin");
+          }
+      } catch (error) {
+          toast.error("Terjadi kesalahan sistem");
+      } finally {
+          setIsSubmitting(false);
+          setDeleteConfirm({ isOpen: false, id: null, username: "" });
+      }
   };
 
   const filteredAdmins = admins.filter((admin) =>
@@ -375,7 +387,7 @@ export default function AdminUsersPage() {
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarItem 
             icon={LayoutDashboard} 
-            label="Dashboard" 
+            label="Master Data" 
             onClick={() => router.push("/admin/dashboard")}
           />
           <SidebarItem 
@@ -509,7 +521,13 @@ export default function AdminUsersPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors" onClick={() => openEditModal(admin)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" onClick={() => handleDelete(admin.id)}>
+                          {/* TOMBOL DELETE (TRIGGER DIALOG) */}
+                          <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" 
+                             onClick={() => openDeleteDialog(admin.id, admin.username)}
+                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -616,6 +634,42 @@ export default function AdminUsersPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
+      </Dialog>
+      
+      {/* --- DIALOG KONFIRMASI HAPUS (BARU & CANTIK) --- */}
+      <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}>
+         <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+               <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+               </div>
+               <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                  Hapus Admin?
+               </DialogTitle>
+               <DialogDescription className="text-center dark:text-slate-400">
+                  Anda akan menghapus akun admin <span className="font-semibold text-slate-900 dark:text-slate-200">"{deleteConfirm.username}"</span>. 
+                  <br/>Tindakan ini tidak dapat dibatalkan.
+               </DialogDescription>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+               <Button 
+                 variant="outline" 
+                 className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                 onClick={() => setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}
+                 disabled={isSubmitting}
+               >
+                 Batal
+               </Button>
+               <Button 
+                 variant="destructive" 
+                 className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                 onClick={confirmDelete}
+                 disabled={isSubmitting}
+               >
+                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
       </Dialog>
 
       {/* MODAL LOGOUT */}

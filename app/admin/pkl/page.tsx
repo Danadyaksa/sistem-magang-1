@@ -20,9 +20,6 @@ import {
   PanelLeftOpen,
   CalendarClock,
   History,
-  Clock,
-  CheckCircle2,
-  Hourglass,
   Plus,
   School,
   ChevronDown,
@@ -33,7 +30,7 @@ import {
   ArrowDown,
   Trash2,
   Users2,
-  UploadCloud,
+  CheckCircle2,
   CalendarDays,
   BookOpen,
 } from "lucide-react";
@@ -45,8 +42,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -81,16 +76,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
 // --- TIPE DATA ---
@@ -505,8 +490,11 @@ export default function PKLMonitoringPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingIntern, setEditingIntern] = useState<Intern | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  
+  // --- DELETE STATE (REVISI) ---
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingIntern, setDeletingIntern] = useState<Intern | null>(null);
+  
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   useEffect(() => {
@@ -789,6 +777,29 @@ export default function PKLMonitoringPage() {
     }
   };
 
+  // --- LOGIC HAPUS DATA (NEW) ---
+  const confirmDelete = async () => {
+    if (!deletingIntern) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/pendaftaran/${deletingIntern.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Data peserta dihapus");
+        fetchData();
+      } else {
+        toast.error("Gagal menghapus data");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem");
+    } finally {
+      setIsSubmitting(false);
+      setIsDeleteOpen(false);
+      setDeletingIntern(null);
+    }
+  };
+
   const SidebarItem = ({
     icon: Icon,
     label,
@@ -853,7 +864,7 @@ export default function PKLMonitoringPage() {
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto">
           <SidebarItem
             icon={LayoutDashboard}
-            label="Dashboard"
+            label="Master Data"
             onClick={() => router.push("/admin/dashboard")}
           />
           <SidebarItem
@@ -1458,34 +1469,41 @@ export default function PKLMonitoringPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG DELETE */}
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <AlertDialogContent className="dark:bg-slate-950 dark:border-slate-800">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Data?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Data <b>{deletingIntern?.namaLengkap}</b> akan dihapus permanen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (!deletingIntern) return;
-                await fetch(`/api/pendaftaran/${deletingIntern.id}`, {
-                  method: "DELETE",
-                });
-                fetchData();
-                setIsDeleteOpen(false);
-                toast.success("Data dihapus");
-              }}
-              className="bg-red-600 text-white"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* --- DIALOG KONFIRMASI HAPUS (BARU & CANTIK) --- */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+         <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+               <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+               </div>
+               <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                  Hapus Data Peserta?
+               </DialogTitle>
+               <DialogDescription className="text-center dark:text-slate-400">
+                  Anda akan menghapus data <b>"{deletingIntern?.namaLengkap}"</b>.
+                  <br/>Tindakan ini tidak dapat dibatalkan.
+               </DialogDescription>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+               <Button 
+                 variant="outline" 
+                 className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                 onClick={() => setIsDeleteOpen(false)}
+                 disabled={isSubmitting}
+               >
+                 Batal
+               </Button>
+               <Button 
+                 variant="destructive" 
+                 className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                 onClick={confirmDelete}
+                 disabled={isSubmitting}
+               >
+                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }

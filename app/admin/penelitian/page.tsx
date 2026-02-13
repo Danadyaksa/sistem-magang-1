@@ -327,7 +327,7 @@ export default function AdminResearchPage() {
           <button className="ml-auto md:hidden text-slate-400" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" onClick={() => router.push("/admin/dashboard")} />
+          <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")} />
           <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" active={true} /> {/* MENU AKTIF */}

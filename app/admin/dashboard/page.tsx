@@ -56,6 +56,14 @@ type Holiday = {
   description: string;
 };
 
+// Tipe untuk konfirmasi hapus
+type DeleteState = {
+    isOpen: boolean;
+    type: "position" | "upt" | "holiday" | null;
+    id: string | number | null;
+    title: string; // Untuk menampilkan nama item yang akan dihapus di dialog
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
 
@@ -88,13 +96,20 @@ export default function AdminDashboard() {
   const [isUptDialogOpen, setIsUptDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  // --- DELETE CONFIRMATION STATE (NEW) ---
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteState>({
+    isOpen: false,
+    type: null,
+    id: null,
+    title: "",
+  });
+
   // --- FORMS ---
   const [positionForm, setPositionForm] = useState({ title: "", quota: 3 });
   const [uptForm, setUptForm] = useState({ name: "", address: "" });
   
   // Form Hari Libur (Advanced Multi-select)
   const [newHolidayDates, setNewHolidayDates] = useState<Date[] | undefined>([]);
-  const [holidayDescription, setHolidayDescription] = useState("");
 
   // --- 1. SETUP & FETCH ---
   useEffect(() => {
@@ -245,12 +260,47 @@ export default function AdminDashboard() {
     finally { setIsSubmitting(false); }
   };
 
-  const handleDeletePosition = async (id: number) => {
-      if(!confirm("Hapus posisi ini?")) return;
+  // TRIGGER DELETE (Membuka Dialog)
+  const openDeleteDialog = (type: "position" | "upt" | "holiday", id: string | number, title: string) => {
+      setDeleteConfirm({ isOpen: true, type, id, title });
+  };
+
+  // EKSEKUSI HAPUS (Dipanggil dari dalam Dialog)
+  const confirmDelete = async () => {
+      if (!deleteConfirm.id || !deleteConfirm.type) return;
+      
+      setIsSubmitting(true);
       try {
-          const res = await fetch(`/api/positions/${id}`, { method: "DELETE" });
-          if(res.ok) { fetchPositions(); toast.success("Posisi dihapus"); }
-      } catch(e) { toast.error("Gagal menghapus"); }
+          let url = "";
+          let successMsg = "";
+          
+          if (deleteConfirm.type === "position") {
+              url = `/api/positions/${deleteConfirm.id}`;
+              successMsg = "Posisi berhasil dihapus";
+          } else if (deleteConfirm.type === "upt") {
+              url = `/api/upt/${deleteConfirm.id}`;
+              successMsg = "Unit UPT berhasil dihapus";
+          } else if (deleteConfirm.type === "holiday") {
+              url = `/api/holidays/${deleteConfirm.id}`;
+              successMsg = "Tanggal libur berhasil dihapus";
+          }
+
+          const res = await fetch(url, { method: "DELETE" });
+          if (!res.ok) throw new Error("Gagal menghapus");
+
+          toast.success(successMsg);
+          
+          // Refresh Data
+          if (deleteConfirm.type === "position") fetchPositions();
+          else if (deleteConfirm.type === "upt") fetchUpts();
+          else if (deleteConfirm.type === "holiday") fetchHolidays();
+          
+      } catch (error) {
+          toast.error("Terjadi kesalahan saat menghapus data");
+      } finally {
+          setIsSubmitting(false);
+          setDeleteConfirm({ isOpen: false, type: null, id: null, title: "" });
+      }
   };
 
   const handleSaveUpt = async () => {
@@ -272,14 +322,6 @@ export default function AdminDashboard() {
     finally { setIsSubmitting(false); }
   };
 
-  const handleDeleteUpt = async (id: number) => {
-      if(!confirm("Hapus UPT ini?")) return;
-      try {
-          const res = await fetch(`/api/upt/${id}`, { method: "DELETE" });
-          if(res.ok) { fetchUpts(); toast.success("UPT dihapus"); }
-      } catch(e) { toast.error("Gagal menghapus"); }
-  };
-
   // HANDLER HARI LIBUR (MULTI DATE)
   const handleAddHolidays = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,19 +331,17 @@ export default function AdminDashboard() {
     }
     setIsSubmitting(true);
     try {
-      // Backend api/holidays kita minta buat handle list tanggal (sesuai logic settings lu)
       const res = await fetch("/api/holidays", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           dates: newHolidayDates,
-          description: holidayDescription || "Hari Libur" 
+          description: "-" 
         }),
       });
       if (!res.ok) throw new Error();
       toast.success(`${newHolidayDates.length} Tanggal libur berhasil ditambahkan`);
       setNewHolidayDates([]);
-      setHolidayDescription("");
       fetchHolidays(); 
     } catch (error) {
       toast.error("Gagal menambah data");
@@ -414,10 +454,10 @@ export default function AdminDashboard() {
                 <TabsTrigger value="positions" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
                   <Briefcase className="w-4 h-4 mr-2" /> Posisi
                 </TabsTrigger>
-                <TabsTrigger value="upt" className="data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-orange-900/20 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
+                <TabsTrigger value="upt" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
                   <Building2 className="w-4 h-4 mr-2" /> Unit UPT
                 </TabsTrigger>
-                <TabsTrigger value="holidays" className="data-[state=active]:bg-red-50 dark:data-[state=active]:bg-red-900/20 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
+                <TabsTrigger value="holidays" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
                   <CalendarDays className="w-4 h-4 mr-2" /> Hari Libur
                 </TabsTrigger>
               </TabsList>
@@ -425,7 +465,7 @@ export default function AdminDashboard() {
               {/* TABS CONTENT 1: POSITIONS */}
               <TabsContent value="positions" className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex justify-end mb-4">
-                  <Button onClick={() => { setPositionForm({title: "", quota: 3}); setEditingId(null); setIsPositionDialogOpen(true); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-sm">
+                  <Button onClick={() => { setPositionForm({title: "", quota: 3}); setEditingId(null); setIsPositionDialogOpen(true); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-700/20 transition-all hover:scale-105">
                     <Plus className="mr-2 h-4 w-4" /> Tambah Posisi
                   </Button>
                 </div>
@@ -453,7 +493,15 @@ export default function AdminDashboard() {
                           <TableCell className="text-center"><b>{pos.filled}</b> / {pos.quota}</TableCell>
                           <TableCell className="text-right pr-4">
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => { setPositionForm({title: pos.title, quota: pos.quota}); setEditingId(pos.id); setIsPositionDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => handleDeletePosition(pos.id)}><Trash2 className="h-4 w-4"/></Button>
+                            {/* TOMBOL DELETE PAKE DIALOG */}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-400 hover:text-red-600" 
+                              onClick={() => openDeleteDialog("position", pos.id, pos.title)}
+                            >
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -465,7 +513,7 @@ export default function AdminDashboard() {
               {/* TABS CONTENT 2: UPT */}
               <TabsContent value="upt" className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex justify-end mb-4">
-                  <Button onClick={() => { setUptForm({name: "", address: ""}); setEditingId(null); setIsUptDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                  <Button onClick={() => { setUptForm({name: "", address: ""}); setEditingId(null); setIsUptDialogOpen(true); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-700/20 transition-all hover:scale-105">
                     <Plus className="mr-2 h-4 w-4" /> Tambah UPT
                   </Button>
                 </div>
@@ -487,7 +535,15 @@ export default function AdminDashboard() {
                           <TableCell className="text-sm text-slate-500">{u.address || "-"}</TableCell>
                           <TableCell className="text-right pr-4">
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => { setUptForm({name: u.name, address: u.address || ""}); setEditingId(u.id); setIsUptDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => handleDeleteUpt(u.id)}><Trash2 className="h-4 w-4"/></Button>
+                            {/* TOMBOL DELETE PAKE DIALOG */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-slate-400 hover:text-red-600" 
+                                onClick={() => openDeleteDialog("upt", u.id, u.name)}
+                            >
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -522,11 +578,12 @@ export default function AdminDashboard() {
                               </PopoverContent>
                             </Popover>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Keterangan</Label>
-                            <Input value={holidayDescription} onChange={(e) => setHolidayDescription(e.target.value)} placeholder="Contoh: Cuti Bersama" className="dark:bg-slate-950"/>
-                          </div>
-                          <Button type="submit" disabled={isSubmitting} className="w-full bg-red-600 hover:bg-red-700 text-white">
+                          
+                          <Button 
+                            type="submit" 
+                            disabled={isSubmitting} 
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4" 
+                          >
                              {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Simpan Hari Libur"}
                           </Button>
                         </form>
@@ -563,25 +620,84 @@ export default function AdminDashboard() {
                       </CardHeader>
                       <CardContent className="p-0">
                         <div className="max-h-[400px] overflow-auto">
+                          {/* TABEL DIPERBAIKI DISINI */}
                           <Table>
                             <TableHeader className="bg-slate-50 dark:bg-slate-950 sticky top-0 z-10">
                               <TableRow className="border-slate-200 dark:border-slate-800">
-                                <TableHead className="w-[40px] text-center">
-                                  <input type="checkbox" className="accent-red-600" checked={selectedHolidayIds.length === filteredHolidays.length && filteredHolidays.length > 0} onChange={toggleSelectAllHolidays} />
+                                {/* Kolom 1: Checkbox */}
+                                <TableHead className="w-[60px] text-center bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm">
+                                  <input 
+                                    type="checkbox" 
+                                    className="accent-red-600 w-4 h-4 mt-1 cursor-pointer" 
+                                    checked={selectedHolidayIds.length === filteredHolidays.length && filteredHolidays.length > 0} 
+                                    onChange={toggleSelectAllHolidays} 
+                                  />
                                 </TableHead>
-                                <TableHead>Tanggal</TableHead>
-                                <TableHead>Keterangan</TableHead>
+                                
+                                {/* Kolom 2: Tanggal */}
+                                <TableHead className="bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm">
+                                    Tanggal
+                                </TableHead>
+
+                                {/* Kolom 3: Aksi (Ditambahkan) */}
+                                <TableHead className="text-right pr-6 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm w-[100px]">
+                                    Aksi
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {filteredHolidays.map((item) => (
-                                <TableRow key={item.id} className="border-slate-100 dark:border-slate-800 hover:bg-slate-50">
-                                  <TableCell className="text-center"><input type="checkbox" className="accent-red-600" checked={selectedHolidayIds.includes(item.id)} onChange={() => toggleSelectHoliday(item.id)} /></TableCell>
-                                  <TableCell className="font-medium whitespace-nowrap">{format(new Date(item.date), "EEEE, d MMM yyyy", { locale: idLocale })}</TableCell>
-                                  <TableCell className="text-slate-500 text-sm">{item.description}</TableCell>
+                                <TableRow 
+                                    key={item.id} 
+                                    className={cn(
+                                        "border-slate-100 dark:border-slate-800 transition-colors",
+                                        selectedHolidayIds.includes(item.id) ? "bg-red-50 dark:bg-red-900/10" : "hover:bg-slate-50/50"
+                                    )}
+                                >
+                                  {/* Cell 1: Checkbox */}
+                                  <TableCell className="text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        className="accent-red-600 w-4 h-4 mt-1 cursor-pointer" 
+                                        checked={selectedHolidayIds.includes(item.id)} 
+                                        onChange={() => toggleSelectHoliday(item.id)} 
+                                    />
+                                  </TableCell>
+
+                                  {/* Cell 2: Tanggal (Dengan Format Lengkap) */}
+                                  <TableCell className="font-medium text-slate-700 dark:text-slate-200 py-3">
+                                    <div className="flex items-center gap-2">
+                                        <CalendarDays className="h-4 w-4 text-slate-400"/>
+                                        {format(new Date(item.date), "EEEE, d MMMM yyyy", { locale: idLocale })}
+                                    </div>
+                                  </TableCell>
+
+                                  {/* Cell 3: Tombol Aksi Hapus */}
+                                  <TableCell className="text-right pr-4">
+                                     <Button 
+                                       variant="ghost" 
+                                       size="icon" 
+                                       className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" 
+                                       // Trigger Dialog, format tanggal untuk judul
+                                       onClick={() => openDeleteDialog("holiday", item.id, format(new Date(item.date), "d MMM yyyy", { locale: idLocale }))}
+                                     >
+                                       <Trash2 className="h-4 w-4"/>
+                                     </Button>
+                                  </TableCell>
                                 </TableRow>
                               ))}
-                              {filteredHolidays.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center text-slate-400">Data tidak ditemukan.</TableCell></TableRow>}
+                              
+                              {/* State Kosong */}
+                              {filteredHolidays.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-32 text-center text-slate-400">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <CalendarIcon className="h-8 w-8 opacity-20"/>
+                                            <p>Tidak ada data hari libur ditemukan.</p>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                              )}
                             </TableBody>
                           </Table>
                         </div>
@@ -596,7 +712,8 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* DIALOGS */}
+      {/* --- DIALOGS --- */}
+
       <Dialog open={isPositionDialogOpen} onOpenChange={setIsPositionDialogOpen}>
         <DialogContent className="dark:bg-slate-950 dark:border-slate-800">
             <DialogHeader><DialogTitle>{editingId ? "Edit Posisi" : "Tambah Posisi"}</DialogTitle></DialogHeader>
@@ -604,7 +721,7 @@ export default function AdminDashboard() {
                 <div className="grid gap-2"><Label>Nama Bidang</Label><Input value={positionForm.title} onChange={(e) => setPositionForm({...positionForm, title: e.target.value})} placeholder="Contoh: IT Support"/></div>
                 <div className="grid gap-2"><Label>Kuota</Label><Input type="number" value={positionForm.quota} onChange={(e) => setPositionForm({...positionForm, quota: parseInt(e.target.value) || 0})}/></div>
             </div>
-            <DialogFooter><Button onClick={handleSavePosition} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
+            <DialogFooter><Button className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 w-full sm:w-auto transition-all text-white" onClick={handleSavePosition} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -615,24 +732,68 @@ export default function AdminDashboard() {
                 <div className="grid gap-2"><Label>Nama UPT</Label><Input value={uptForm.name} onChange={(e) => setUptForm({...uptForm, name: e.target.value})} placeholder="Nama Balai..."/></div>
                 <div className="grid gap-2"><Label>Alamat</Label><Input value={uptForm.address} onChange={(e) => setUptForm({...uptForm, address: e.target.value})} placeholder="Jl. Raya..."/></div>
             </div>
-            <DialogFooter><Button onClick={handleSaveUpt} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
+            <DialogFooter><Button className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 w-full sm:w-auto transition-all text-white" onClick={handleSaveUpt} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* --- DIALOG KONFIRMASI HAPUS MASSAL (HARI LIBUR) --- */}
       <Dialog open={isDeleteMassOpen} onOpenChange={setIsDeleteMassOpen}>
         <DialogContent className="sm:max-w-[400px] dark:bg-slate-950 border-slate-800">
           <DialogHeader className="flex flex-col items-center text-center gap-2">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2"><AlertTriangle className="h-6 w-6 text-red-600" /></div>
-            <DialogTitle>Hapus {selectedHolidayIds.length} Data?</DialogTitle>
-            <DialogDescription>Tindakan ini tidak bisa dibatalkan.</DialogDescription>
+            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <DialogTitle>Hapus {selectedHolidayIds.length} Data Terpilih?</DialogTitle>
+            <DialogDescription>
+                Tindakan ini tidak bisa dibatalkan. Data tanggal merah yang dipilih akan dihapus permanen.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
             <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsDeleteMassOpen(false)}>Batal</Button>
-            <Button variant="destructive" className="w-full sm:w-1/2" onClick={handleDeleteMassHolidays} disabled={isSubmitting}>Hapus Semua</Button>
+            <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700" onClick={handleDeleteMassHolidays} disabled={isSubmitting}>
+                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Hapus Semua"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* --- DIALOG KONFIRMASI HAPUS SATUAN (BARU & CANTIK) --- */}
+      <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}>
+         <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+               <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+               </div>
+               <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                  Hapus Data?
+               </DialogTitle>
+               <DialogDescription className="text-center dark:text-slate-400">
+                  Anda akan menghapus data <span className="font-semibold text-slate-900 dark:text-slate-200">"{deleteConfirm.title}"</span>. 
+                  <br/>Tindakan ini tidak dapat dibatalkan.
+               </DialogDescription>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+               <Button 
+                 variant="outline" 
+                 className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                 onClick={() => setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}
+                 disabled={isSubmitting}
+               >
+                 Batal
+               </Button>
+               <Button 
+                 variant="destructive" 
+                 className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                 onClick={confirmDelete}
+                 disabled={isSubmitting}
+               >
+                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* --- DIALOG LOGOUT --- */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
         <DialogContent className="sm:max-w-[400px] dark:bg-slate-950 dark:border-slate-800">
           <DialogHeader className="items-center text-center">
