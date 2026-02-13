@@ -2,10 +2,8 @@
 
 import Image from "next/image"; 
 import { ModeToggle } from "@/components/mode-toggle";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { format, getYear, getMonth } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -23,10 +21,7 @@ import {
   PanelLeftClose, 
   PanelLeftOpen,   
   CalendarClock,
-  BookOpen,
-  CalendarDays,
-  CalendarIcon,
-  Trash2
+  BookOpen
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -51,29 +46,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-// Tipe data Holiday
-type Holiday = {
-  id: string;
-  date: string; 
-};
 
 export default function PengaturanPage() {
   const router = useRouter();
@@ -84,30 +56,16 @@ export default function PengaturanPage() {
   const [loading, setLoading] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   
-  // State Delete massal
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  
   // --- STATE DATA ---
   const [profile, setProfile] = useState({ id: "", username: "", jabatan: "" });
   const [pass, setPass] = useState({ current: "", new: "", confirm: "" });
   const [currentAdmin, setCurrentAdmin] = useState({ username: "...", jabatan: "..." });
-
-  // --- STATE HARI LIBUR ---
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [newHolidayDates, setNewHolidayDates] = useState<Date[] | undefined>([]);
-  const [loadingHoliday, setLoadingHoliday] = useState(false);
-
-  // --- FILTER STATES ---
-  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
-  const [filterMonth, setFilterMonth] = useState<string>("all");
 
   // --- INITIAL LOAD ---
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
     if (savedState === "true") setIsSidebarCollapsed(true);
     fetchSession();
-    fetchHolidays();
   }, []);
 
   const toggleSidebar = () => {
@@ -129,93 +87,7 @@ export default function PengaturanPage() {
     } catch (error) { console.error("Auth error:", error); }
   };
 
-  const fetchHolidays = async () => {
-    try {
-      const res = await fetch("/api/holidays");
-      if (res.ok) {
-        const data = await res.json();
-        setHolidays(data);
-      }
-    } catch (error) { console.error("Gagal ambil hari libur", error); }
-  };
-
-  // --- LOGIKA FILTERING ---
-  const filteredHolidays = useMemo(() => {
-    return holidays
-      .filter((h) => {
-        const date = new Date(h.date);
-        const matchYear = filterYear === "all" || getYear(date).toString() === filterYear;
-        const matchMonth = filterMonth === "all" || (getMonth(date) + 1).toString() === filterMonth;
-        return matchYear && matchMonth;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [holidays, filterYear, filterMonth]);
-
-  const availableYears = useMemo(() => {
-    const years = holidays.map(h => getYear(new Date(h.date)).toString());
-    const uniqueYears = Array.from(new Set([...years, new Date().getFullYear().toString()]));
-    return uniqueYears.sort((a, b) => b.localeCompare(a));
-  }, [holidays]);
-
   // --- HANDLERS ---
-  const handleAddHoliday = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHolidayDates || newHolidayDates.length === 0) {
-      toast.warning("Pilih minimal satu tanggal terlebih dahulu");
-      return;
-    }
-    setLoadingHoliday(true);
-    try {
-      const res = await fetch("/api/holidays", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dates: newHolidayDates }),
-      });
-      if (!res.ok) throw new Error("Gagal menyimpan");
-      toast.success(`${newHolidayDates.length} Tanggal libur berhasil ditambahkan`);
-      setNewHolidayDates([]);
-      fetchHolidays(); 
-    } catch (error) {
-      toast.error("Gagal menambah data");
-    } finally {
-      setLoadingHoliday(false);
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredHolidays.length && filteredHolidays.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredHolidays.map(h => h.id));
-    }
-  };
-
-  const handleDeleteHolidays = async () => {
-    if (selectedIds.length === 0) return;
-    
-    setLoading(true);
-    try {
-      const deletePromises = selectedIds.map(id => 
-        fetch(`/api/holidays/${id}`, { method: "DELETE" })
-      );
-      await Promise.all(deletePromises);
-      toast.success(`${selectedIds.length} Data berhasil dihapus`);
-      setHolidays(prev => prev.filter(h => !selectedIds.includes(h.id)));
-      setSelectedIds([]);
-    } catch (error) {
-      toast.error("Gagal menghapus data");
-    } finally {
-      setLoading(false);
-      setIsDeleteOpen(false);
-    }
-  };
-
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!profile.username) {
@@ -331,7 +203,7 @@ export default function PengaturanPage() {
   return (
     <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
       
-      {/* SIDEBAR (Z-Index disesuaikan ke 40) */}
+      {/* SIDEBAR */}
       <aside 
         className={`
           fixed inset-y-0 left-0 z-40 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-all duration-300 ease-in-out
@@ -409,148 +281,20 @@ export default function PengaturanPage() {
               Konfigurasi Admin
             </h1>
             <p className="text-slate-500 dark:text-slate-400">
-              Kelola profil, keamanan akun, dan hari libur.
+              Kelola profil dan keamanan akun Anda.
             </p>
           </div>
 
           <div className="w-full">
-            <Tabs defaultValue="holidays" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
+            <Tabs defaultValue="profil" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
                 <TabsTrigger value="profil" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
                   <UserCircle className="w-4 h-4 mr-2" /> Profil
                 </TabsTrigger>
                 <TabsTrigger value="password" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
                   <Shield className="w-4 h-4 mr-2" /> Password
                 </TabsTrigger>
-                <TabsTrigger value="holidays" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                  <CalendarDays className="w-4 h-4 mr-2" /> Hari Libur
-                </TabsTrigger>
               </TabsList>
-
-              {/* TABS HARI LIBUR (UTAMA) */}
-              <TabsContent value="holidays" className="animate-in fade-in slide-in-from-right-4 duration-300">
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    {/* FORM TAMBAH */}
-                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-1 h-fit">
-                      <CardHeader>
-                        <CardTitle className="text-lg dark:text-slate-100">Tambah Hari Libur & Cuti</CardTitle>
-                        <CardDescription className="dark:text-slate-400">Pilih satu atau lebih hari libur & cuti.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <form onSubmit={handleAddHoliday} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label className="dark:text-slate-300">Pilih Tanggal</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100")}>
-                                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                                  {newHolidayDates?.length ? `${newHolidayDates.length} Tanggal terpilih` : "Klik untuk buka kalender"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0 dark:bg-slate-950 dark:border-slate-800" align="start">
-                                <Calendar mode="multiple" selected={newHolidayDates} onSelect={setNewHolidayDates} initialFocus className="dark:bg-slate-950 dark:text-slate-100" />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <Button type="submit" disabled={loadingHoliday} className="w-full bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700">
-                             {loadingHoliday ? <Loader2 className="animate-spin h-4 w-4"/> : "Simpan Tanggal"}
-                          </Button>
-                        </form>
-                      </CardContent>
-                    </Card>
-
-                    {/* TABEL LIST */}
-                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-2 transition-colors">
-                      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800">
-                        <div>
-                          <CardTitle className="text-lg dark:text-slate-100">Daftar Libur & Cuti</CardTitle>
-                          <CardDescription className="dark:text-slate-400">Sortir berdasarkan tahun dan bulan</CardDescription>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                           {/* Filter Tahun */}
-                           <Select value={filterYear} onValueChange={setFilterYear}>
-                              <SelectTrigger className="w-[100px] h-9 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100">
-                                <SelectValue placeholder="Thn" />
-                              </SelectTrigger>
-                              <SelectContent className="dark:bg-slate-950 dark:border-slate-800">
-                                <SelectItem value="all">Semua</SelectItem>
-                                {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                              </SelectContent>
-                           </Select>
-                           {/* Filter Bulan */}
-                           <Select value={filterMonth} onValueChange={setFilterMonth}>
-                              <SelectTrigger className="w-[120px] h-9 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100">
-                                <SelectValue placeholder="Bulan" />
-                              </SelectTrigger>
-                              <SelectContent className="dark:bg-slate-950 dark:border-slate-800">
-                                <SelectItem value="all">Semua</SelectItem>
-                                {Array.from({ length: 12 }, (_, i) => (
-                                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                                    {format(new Date(2000, i, 1), "MMMM", { locale: idLocale })}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                           </Select>
-                           {/* Tombol Hapus Massal */}
-                           {selectedIds.length > 0 && (
-                             <Button variant="destructive" size="sm" className="h-9" onClick={() => setIsDeleteOpen(true)}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Hapus ({selectedIds.length})
-                             </Button>
-                           )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <div className="relative w-full overflow-auto max-h-[500px]">
-                          <Table>
-                            <TableHeader className="bg-slate-50 dark:bg-slate-950 sticky top-0 z-10">
-                              <TableRow className="border-slate-200 dark:border-slate-800">
-                                <TableHead className="w-[50px] text-center">
-                                  <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 cursor-pointer accent-blue-600"
-                                    checked={selectedIds.length === filteredHolidays.length && filteredHolidays.length > 0}
-                                    onChange={toggleSelectAll}
-                                  />
-                                </TableHead>
-                                <TableHead className="dark:text-slate-300">Hari & Tanggal</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredHolidays.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={3} className="h-32 text-center text-slate-500 dark:text-slate-400">Belum ada data tanggal merah.</TableCell>
-                                </TableRow>
-                              ) : (
-                                filteredHolidays.map((item) => (
-                                  <TableRow key={item.id} className="group border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                    <TableCell className="text-center">
-                                      <input 
-                                        type="checkbox" 
-                                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 cursor-pointer accent-blue-600"
-                                        checked={selectedIds.includes(item.id)}
-                                        onChange={() => toggleSelect(item.id)}
-                                      />
-                                    </TableCell>
-                                    <TableCell className="font-medium text-slate-800 dark:text-slate-200">
-                                      {format(new Date(item.date), "EEEE, d MMMM yyyy", { locale: idLocale })}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => { setSelectedIds([item.id]); setIsDeleteOpen(true); }}>
-                                        <Trash2 className="h-4 w-4"/>
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </CardContent>
-                    </Card>
-                 </div>
-              </TabsContent>
 
               {/* TABS PROFIL */}
               <TabsContent value="profil">
@@ -567,7 +311,7 @@ export default function PengaturanPage() {
                 </Card>
               </TabsContent>
 
-              {/* TABS PASSWORD (FIX WARNA TOMBOL) */}
+              {/* TABS PASSWORD */}
               <TabsContent value="password">
                 <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 transition-colors">
                   <CardHeader><CardTitle className="dark:text-slate-100">Keamanan Akun</CardTitle><CardDescription className="dark:text-slate-400">Pastikan password Anda kuat.</CardDescription></CardHeader>
@@ -578,7 +322,6 @@ export default function PengaturanPage() {
                       <div className="grid gap-2"><Label className="dark:text-slate-300">Password Baru</Label><Input type="password" value={pass.new} onChange={(e) => setPass({...pass, new: e.target.value})} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" /></div>
                       <div className="grid gap-2"><Label className="dark:text-slate-300">Konfirmasi Baru</Label><Input type="password" value={pass.confirm} onChange={(e) => setPass({...pass, confirm: e.target.value})} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" /></div>
                       
-                      {/* Tombol diganti jadi Biru (Primary) */}
                       <Button type="submit" disabled={loading} className="bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700">
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : "Update Password"}
                       </Button>
@@ -591,27 +334,6 @@ export default function PengaturanPage() {
           </div>
         </main>
       </div>
-
-      {/* --- MODAL DIALOG HAPUS --- */}
-      <Dialog open={isDeleteOpen} onOpenChange={(open) => { setIsDeleteOpen(open); if(!open) setSelectedIds([]); }}>
-        <DialogContent className="sm:max-w-[400px] border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
-          <DialogHeader className="flex flex-col items-center text-center gap-2">
-            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
-              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-            <DialogTitle className="text-xl dark:text-slate-100">Hapus {selectedIds.length} Data?</DialogTitle>
-            <DialogDescription className="text-center dark:text-slate-400">
-               Data yang dihapus tidak bisa dikembalikan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-            <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:border-slate-700 dark:text-slate-100" onClick={() => { setIsDeleteOpen(false); setSelectedIds([]); }}>Batal</Button>
-            <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white" onClick={handleDeleteHolidays} disabled={loading}>
-              {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : "Ya, Hapus Semua"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* --- MODAL LOGOUT --- */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
