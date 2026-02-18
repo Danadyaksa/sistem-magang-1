@@ -523,7 +523,7 @@ export default function AdminDashboard() {
                       <TableRow className="border-slate-200 dark:border-slate-800">
                         <TableHead className="w-[50px] text-center">No</TableHead>
                         <TableHead>Nama Unit UPT</TableHead>
-                        <TableHead>Alamat</TableHead>
+                        <TableHead>Link Google Maps</TableHead>
                         <TableHead className="text-right pr-6">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
