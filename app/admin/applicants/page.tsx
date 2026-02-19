@@ -638,7 +638,7 @@ Admin Dinas DIKPORA DIY`;
               <p className="text-slate-500 dark:text-slate-400">Cek berkas dan tentukan siapa yang layak magang.</p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-700/20 transition-all hover:scale-105">
                 <Download className="h-4 w-4 mr-2" /> Export Excel
               </Button>
               <Button onClick={() => { setLoading(true); fetchData(); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-700/20 transition-all hover:scale-105">

@@ -79,6 +79,7 @@ export default function AdminDashboard() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [upts, setUpts] = useState<UPT[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [minDaysSetting, setMinDaysSetting] = useState("44"); // State untuk minimal hari
 
   // --- TAB & FILTER STATE ---
   const [activeTab, setActiveTab] = useState("positions");
@@ -120,7 +121,8 @@ export default function AdminDashboard() {
         fetchAdminProfile(),
         fetchPositions(),
         fetchUpts(),
-        fetchHolidays()
+        fetchHolidays(),
+        fetchSettings() // Fetch pengaturan sistem
     ]).finally(() => setIsLoading(false));
   }, []);
 
@@ -166,6 +168,18 @@ export default function AdminDashboard() {
           if (Array.isArray(data)) setHolidays(data);
       }
     } catch (error) { console.error("Gagal ambil hari libur", error); }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch("/api/settings?key=MIN_MAGANG_DAYS");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.value) setMinDaysSetting(data.value);
+      }
+    } catch (err) {
+      console.error("Gagal load setting:", err);
+    }
   };
 
   // --- LOGIC SORTING POSISI ---
@@ -369,6 +383,25 @@ export default function AdminDashboard() {
     }
   };
 
+  // HANDLER PENGATURAN SISTEM
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "MIN_MAGANG_DAYS", value: String(minDaysSetting) })
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan pengaturan");
+      toast.success("Minimal hari magang berhasil diperbarui!");
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem, pastikan tabel database sudah siap.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleLogoutConfirm = async () => {
     setIsLogoutOpen(false);
     toast.promise(fetch("/api/auth/logout", { method: "POST" }), {
@@ -405,7 +438,7 @@ export default function AdminDashboard() {
           <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
-          <SidebarItem icon={LayoutDashboard} label="Master Data" active={activeTab !== "settings"} />
+          <SidebarItem icon={LayoutDashboard} label="Master Data" active={true} />
           <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")} />
@@ -443,22 +476,25 @@ export default function AdminDashboard() {
           
           <div className="w-full">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Konfigurasi Master Data</h1>
-            <p className="text-slate-500 dark:text-slate-400">Kelola kuota posisi, unit UPT, dan kalender hari libur.</p>
+            <p className="text-slate-500 dark:text-slate-400">Kelola kuota posisi, unit UPT, kalender hari libur, dan minimal magang.</p>
           </div>
 
           <div className="w-full">
             <Tabs defaultValue="positions" onValueChange={setActiveTab} className="w-full">
               
-              {/* TAB LIST SETTINGS STYLE (HORIZONTAL) */}
-              <TabsList className="grid w-full grid-cols-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors">
-                <TabsTrigger value="positions" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                  <Briefcase className="w-4 h-4 mr-2" /> Posisi
+              {/* TAB LIST (GRID COLS 4) */}
+              <TabsList className="grid w-full grid-cols-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 mb-6 rounded-lg h-12 shadow-sm transition-colors overflow-x-auto">
+                <TabsTrigger value="positions" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400 text-sm whitespace-nowrap px-3">
+                  <Briefcase className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Posisi</span>
                 </TabsTrigger>
-                <TabsTrigger value="upt" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                  <Building2 className="w-4 h-4 mr-2" /> Unit UPT
+                <TabsTrigger value="upt" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400 text-sm whitespace-nowrap px-3">
+                  <Building2 className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Unit UPT</span>
                 </TabsTrigger>
-                <TabsTrigger value="holidays" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400">
-                  <CalendarDays className="w-4 h-4 mr-2" /> Hari Libur
+                <TabsTrigger value="holidays" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400 text-sm whitespace-nowrap px-3">
+                  <CalendarDays className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Hari Libur</span>
+                </TabsTrigger>
+                <TabsTrigger value="sistem" className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400 text-sm whitespace-nowrap px-3">
+                  <CalendarClock className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Minimal Magang</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -493,7 +529,6 @@ export default function AdminDashboard() {
                           <TableCell className="text-center"><b>{pos.filled}</b> / {pos.quota}</TableCell>
                           <TableCell className="text-right pr-4">
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => { setPositionForm({title: pos.title, quota: pos.quota}); setEditingId(pos.id); setIsPositionDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
-                            {/* TOMBOL DELETE PAKE DIALOG */}
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -535,7 +570,6 @@ export default function AdminDashboard() {
                           <TableCell className="text-sm text-slate-500">{u.address || "-"}</TableCell>
                           <TableCell className="text-right pr-4">
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => { setUptForm({name: u.name, address: u.address || ""}); setEditingId(u.id); setIsUptDialogOpen(true); }}><Pencil className="h-4 w-4"/></Button>
-                            {/* TOMBOL DELETE PAKE DIALOG */}
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -552,11 +586,9 @@ export default function AdminDashboard() {
                 </Card>
               </TabsContent>
 
-              {/* TABS CONTENT 3: HARI LIBUR (THE ADVANCED SETTINGS STYLE) */}
+              {/* TABS CONTENT 3: HARI LIBUR */}
               <TabsContent value="holidays" className="animate-in fade-in slide-in-from-right-4 duration-300">
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    {/* FORM INPUT SETTINGS STYLE */}
                     <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 h-fit lg:col-span-1">
                       <CardHeader>
                         <CardTitle className="text-lg">Tambah Libur & Cuti</CardTitle>
@@ -590,7 +622,6 @@ export default function AdminDashboard() {
                       </CardContent>
                     </Card>
 
-                    {/* TABLE LIST SETTINGS STYLE */}
                     <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 lg:col-span-2">
                       <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b dark:border-slate-800">
                         <div><CardTitle className="text-lg">Daftar Tanggal Merah</CardTitle></div>
@@ -620,11 +651,9 @@ export default function AdminDashboard() {
                       </CardHeader>
                       <CardContent className="p-0">
                         <div className="max-h-[400px] overflow-auto">
-                          {/* TABEL DIPERBAIKI DISINI */}
                           <Table>
                             <TableHeader className="bg-slate-50 dark:bg-slate-950 sticky top-0 z-10">
                               <TableRow className="border-slate-200 dark:border-slate-800">
-                                {/* Kolom 1: Checkbox */}
                                 <TableHead className="w-[60px] text-center bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm">
                                   <input 
                                     type="checkbox" 
@@ -633,13 +662,9 @@ export default function AdminDashboard() {
                                     onChange={toggleSelectAllHolidays} 
                                   />
                                 </TableHead>
-                                
-                                {/* Kolom 2: Tanggal */}
                                 <TableHead className="bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm">
                                     Tanggal
                                 </TableHead>
-
-                                {/* Kolom 3: Aksi (Ditambahkan) */}
                                 <TableHead className="text-right pr-6 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm w-[100px]">
                                     Aksi
                                 </TableHead>
@@ -654,7 +679,6 @@ export default function AdminDashboard() {
                                         selectedHolidayIds.includes(item.id) ? "bg-red-50 dark:bg-red-900/10" : "hover:bg-slate-50/50"
                                     )}
                                 >
-                                  {/* Cell 1: Checkbox */}
                                   <TableCell className="text-center">
                                     <input 
                                         type="checkbox" 
@@ -663,22 +687,17 @@ export default function AdminDashboard() {
                                         onChange={() => toggleSelectHoliday(item.id)} 
                                     />
                                   </TableCell>
-
-                                  {/* Cell 2: Tanggal (Dengan Format Lengkap) */}
                                   <TableCell className="font-medium text-slate-700 dark:text-slate-200 py-3">
                                     <div className="flex items-center gap-2">
                                         <CalendarDays className="h-4 w-4 text-slate-400"/>
                                         {format(new Date(item.date), "EEEE, d MMMM yyyy", { locale: idLocale })}
                                     </div>
                                   </TableCell>
-
-                                  {/* Cell 3: Tombol Aksi Hapus */}
                                   <TableCell className="text-right pr-4">
                                      <Button 
                                        variant="ghost" 
                                        size="icon" 
                                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" 
-                                       // Trigger Dialog, format tanggal untuk judul
                                        onClick={() => openDeleteDialog("holiday", item.id, format(new Date(item.date), "d MMM yyyy", { locale: idLocale }))}
                                      >
                                        <Trash2 className="h-4 w-4"/>
@@ -686,8 +705,6 @@ export default function AdminDashboard() {
                                   </TableCell>
                                 </TableRow>
                               ))}
-                              
-                              {/* State Kosong */}
                               {filteredHolidays.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={3} className="h-32 text-center text-slate-400">
@@ -704,6 +721,35 @@ export default function AdminDashboard() {
                       </CardContent>
                     </Card>
                  </div>
+              </TabsContent>
+
+              {/* TABS CONTENT 4: SISTEM (Form Minimal Hari Dipindah ke Sini) */}
+              <TabsContent value="sistem" className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm dark:bg-slate-900 transition-colors max-w-xl">
+                  <CardHeader>
+                    <CardTitle className="dark:text-slate-100">Konfigurasi Minimal Lama Magang</CardTitle>
+                    <CardDescription className="dark:text-slate-400">Atur lama minimal magang dalam hari kerja</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    <form onSubmit={handleSaveSettings} className="space-y-5">
+                      <div className="grid gap-2">
+                        <Label className="dark:text-slate-300">Minimal Hari Magang (Hari Kerja)</Label>
+                        <Input 
+                          type="number" 
+                          value={minDaysSetting} 
+                          onChange={(e) => setMinDaysSetting(e.target.value)} 
+                          className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" 
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                           Angka ini akan langsung ditetapkan sebagai batas minimal pada form pengajuan magang.
+                        </p>
+                      </div>
+                      <Button type="submit" disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-600 dark:hover:bg-blue-700">
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : "Simpan Konfigurasi"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
             </Tabs>
@@ -736,7 +782,6 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* --- DIALOG KONFIRMASI HAPUS MASSAL (HARI LIBUR) --- */}
       <Dialog open={isDeleteMassOpen} onOpenChange={setIsDeleteMassOpen}>
         <DialogContent className="sm:max-w-[400px] dark:bg-slate-950 border-slate-800">
           <DialogHeader className="flex flex-col items-center text-center gap-2">
@@ -757,7 +802,6 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* --- DIALOG KONFIRMASI HAPUS SATUAN (BARU & CANTIK) --- */}
       <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}>
          <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
             <div className="flex flex-col items-center text-center gap-2 pt-2">
@@ -793,18 +837,22 @@ export default function AdminDashboard() {
          </DialogContent>
       </Dialog>
 
-      {/* --- DIALOG LOGOUT --- */}
+      {/* MODAL LOGOUT */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
-        <DialogContent className="sm:max-w-[400px] dark:bg-slate-950 dark:border-slate-800">
-          <DialogHeader className="items-center text-center">
-             <AlertTriangle className="h-10 w-10 text-red-500 mb-2"/>
-             <DialogTitle>Konfirmasi Keluar</DialogTitle>
-             <DialogDescription>Anda harus login kembali untuk mengakses panel.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-             <Button variant="outline" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
-             <Button variant="destructive" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
-          </DialogFooter>
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
+           <DialogHeader className="flex flex-col items-center text-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
+                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+              </DialogDescription>
+           </DialogHeader>
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+              <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
+           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

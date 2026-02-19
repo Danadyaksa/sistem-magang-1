@@ -14,7 +14,7 @@ model Admin {
   id        String   @id @default(uuid())
   username  String   @unique
   password  String   // Ini nanti di-hash
-  jabatan   String?  // <--- Cuma tambah ini aja
+  jabatan   String?
   createdAt DateTime @default(now())
 }
 
@@ -23,6 +23,7 @@ model Position {
   title       String        // Nama Bidang
   quota       Int           // Kuota Total
   filled      Int           @default(0) // Yang udah diterima
+ 
   description String?
   
   // Relasi ke pelamar (opsional, buat tracking siapa masuk bidang mana)
@@ -40,6 +41,7 @@ model Pendaftaran {
   nomorInduk    String
   email         String
   nomorHp       String
+ 
   instansi      String
   fakultas      String?
   jurusan       String
@@ -71,8 +73,6 @@ model Pendaftaran {
   createdAt     DateTime  @default(now())
 }
 
-// ... (Model Admin, Position, Pendaftaran biarkan saja)
-
 // --- TAMBAHAN: MODEL IZIN PENELITIAN ---
 model Penelitian {
   id            String   @id @default(uuid())
@@ -98,12 +98,10 @@ model Penelitian {
   
   // File
   fileSuratPath String   
-  fileProposalPath String? 
-
+  fileProposalPath String?
   status        String    @default("PENDING") 
   createdAt     DateTime  @default(now())
 }
-
 
 model Holiday {
   id          String   @id @default(uuid())
@@ -114,7 +112,16 @@ model Holiday {
 model Upt {
   id        Int      @id @default(autoincrement())
   name      String   
-  address   String?  // <--- Tambahin ini bro
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- TAMBAHAN: MODEL PENGATURAN SISTEM ---
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique // Contoh: "MIN_MAGANG_DAYS"
+  value     String   // Contoh: "44"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

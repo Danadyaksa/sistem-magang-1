@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, addDays, isWeekend } from "date-fns";
 import { id } from "date-fns/locale";
-import { toast } from "sonner"; // Pastikan import toast sudah ada
+import { toast } from "sonner";
 import { 
   CalendarIcon, 
   Upload, 
@@ -45,15 +45,15 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-// --- SKEMA VALIDASI ---
-const formSchema = z.object({
+// --- SKEMA VALIDASI DASAR (Ditaruh diluar agar TypeScript gak bingung) ---
+const baseSchema = z.object({
   namaLengkap: z.string().min(2, "Nama minimal 2 karakter"),
   nomorInduk: z.string().min(1, "NIS/NIM wajib diisi"),
   email: z.string().email("Format email tidak valid"),
   instansi: z.string().min(3, "Nama Sekolah/Universitas wajib diisi"),
   fakultas: z.string().optional(),
   jurusan: z.string().min(2, "Jurusan/Jenjang wajib diisi"),
-  lamaMagang: z.coerce.number().min(44, "Durasi magang minimal 44 hari kerja sesuai ketentuan"),
+  lamaMagang: z.coerce.number(), // Validasi minimalnya kita atur dinamis di dalam komponen
   tanggalMulai: z.date({ required_error: "Tanggal mulai wajib dipilih" }),
   tanggalSelesai: z.date({ required_error: "Tanggal selesai akan terhitung otomatis" }),
   pemohonSurat: z.string().min(2, "Nama/Jabatan pemohon wajib diisi"),
@@ -61,6 +61,9 @@ const formSchema = z.object({
   tanggalSurat: z.date({ required_error: "Tanggal surat wajib dipilih" }),
   nomorHp: z.string().min(10, "Nomor HP tidak valid"),
 });
+
+// Tipe form dari schema dasar
+type FormValues = z.infer<typeof baseSchema>;
 
 export default function RegistrationPage() {
   const router = useRouter();
@@ -71,6 +74,35 @@ export default function RegistrationPage() {
   }>({ cv: null, surat: null });
 
   const [dbHolidays, setDbHolidays] = useState<string[]>([]);
+  const [minMagangDays, setMinMagangDays] = useState<number>(44); // Default awal
+
+  // --- BIKIN SCHEMA DINAMIS ---
+  // Skema ini otomatis berubah dan nge-set error merah mengikuti angka minMagangDays
+  const dynamicSchema = useMemo(() => {
+    return baseSchema.extend({
+      lamaMagang: z.coerce.number().min(minMagangDays, `Durasi magang minimal ${minMagangDays} hari kerja`),
+    });
+  }, [minMagangDays]);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(dynamicSchema),
+    mode: "onChange", // Ini bikin error merah langsung muncul pas ngetik
+    defaultValues: {
+      namaLengkap: "",
+      nomorInduk: "",
+      email: "",
+      instansi: "",
+      fakultas: "",
+      jurusan: "",
+      pemohonSurat: "",
+      nomorSurat: "",
+      nomorHp: "'62",
+      lamaMagang: 44, 
+      tanggalMulai: undefined,
+      tanggalSelesai: undefined,
+      tanggalSurat: undefined,
+    } as any, // Typecast sementara karena tanggal undefined di awal
+  });
 
   useEffect(() => {
     const fetchHolidays = async () => {
@@ -88,30 +120,31 @@ export default function RegistrationPage() {
     fetchHolidays();
   }, []);
 
+  // Fetch Pengaturan Minimal Hari
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings?key=MIN_MAGANG_DAYS");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) {
+             const minDays = parseInt(data.value);
+             setMinMagangDays(minDays);
+             // OTOMATIS UBAH ISI FORM SESUAI SETTING ADMIN
+             form.setValue("lamaMagang", minDays, { shouldValidate: true });
+          }
+        }
+      } catch (err) {
+        console.error("Gagal ambil pengaturan hari magang", err);
+      }
+    };
+    fetchSettings();
+  }, [form]);
+
   const isHoliday = (date: Date) => {
     const dateString = format(date, "yyyy-MM-dd");
     return dbHolidays.includes(dateString);
   };
-
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    mode: "onChange",
-    defaultValues: {
-      namaLengkap: "",
-      nomorInduk: "",
-      email: "",
-      instansi: "",
-      fakultas: "",
-      jurusan: "",
-      pemohonSurat: "",
-      nomorSurat: "",
-      nomorHp: "'62",
-      lamaMagang: 44,
-      tanggalMulai: undefined,
-      tanggalSelesai: undefined,
-      tanggalSurat: undefined,
-    },
-  });
 
   const lamaMagang = useWatch({ control: form.control, name: "lamaMagang" });
   const tanggalMulai = useWatch({ control: form.control, name: "tanggalMulai" });
@@ -164,7 +197,10 @@ export default function RegistrationPage() {
     }
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: FormValues) {
+    // Pengecekan < minMagangDays dihapus dari sini karena Zod otomatis ngeblokir
+    // dan memunculkan tulisan merah kalau angkanya kurang.
+
     setIsSubmitting(true);
     try {
       const formData = new FormData();
@@ -315,15 +351,16 @@ export default function RegistrationPage() {
                       <FormItem>
                         <FormLabel className="dark:text-slate-300">Lama Magang (Hari Kerja) <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Min. 44" {...field} 
+                          <Input type="number" placeholder={`Min. ${minMagangDays}`} {...field} 
                             onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
                             className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100"
                           />
                         </FormControl>
                         <FormDescription className="text-xs text-blue-600 dark:text-blue-400">
-                          *Sabtu, Minggu & Libur Nasional tidak dihitung.
+                          *Minimal {minMagangDays} hari kerja. Sabtu, Minggu & Libur Nasional tidak dihitung.
                         </FormDescription>
-                        <FormMessage />
+                        {/* Zod Error akan masuk kesini jadi warna merah otomatis */}
+                        <FormMessage /> 
                       </FormItem>
                     )} />
 
