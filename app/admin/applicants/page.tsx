@@ -943,17 +943,22 @@ Admin Dinas DIKPORA DIY`;
         </main>
       </div>
 
+      {/* MODAL LOGOUT */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
-        <DialogContent className="sm:max-w-[400px] p-6">
-            <DialogHeader className="flex flex-col items-center text-center gap-2">
-                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-2"><AlertTriangle className="h-6 w-6 text-red-600" /></div>
-                <DialogTitle>Konfirmasi Keluar</DialogTitle>
-                <DialogDescription>Anda harus login kembali untuk mengakses panel.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-                <Button variant="outline" className="w-full sm:w-1/2" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
-                <Button variant="destructive" className="w-full sm:w-1/2" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
-            </DialogFooter>
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
+           <DialogHeader className="flex flex-col items-center text-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
+                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+              </DialogDescription>
+           </DialogHeader>
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+              <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
+           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

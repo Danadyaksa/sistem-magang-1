@@ -31,6 +31,7 @@ import {
   Mail,
   CalendarClock,
   Download,
+  AlertTriangle,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
@@ -113,6 +114,7 @@ export default function AdminResearchPage() {
 
   // Admin Info
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false); // <-- TAMBAHIN INI
 
   // --- FETCH DATA ---
   const fetchData = async () => {
@@ -334,7 +336,7 @@ export default function AdminResearchPage() {
           <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
           <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
-            <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => router.push("/admin/login")} />
+            <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
           </div>
         </nav>
       </aside>
@@ -549,10 +551,37 @@ export default function AdminResearchPage() {
                 </Button>
               </div>
             </div>
-
+                  {/* --- MODAL LOGOUT --- */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
+           <DialogHeader className="flex flex-col items-center text-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
+                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+              </DialogDescription>
+           </DialogHeader>
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" 
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  router.push("/admin/login");
+                }}
+              >
+                Ya, Keluar
+              </Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
           </Card>
         </main>
       </div>
     </div>
+    
   );
 }
