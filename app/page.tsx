@@ -355,13 +355,13 @@ export default function Home() {
                 </Badge>
 
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-tight">
-                  Sistem Informasi Magang & Penelitian
-                  <br />
+                 
+                  
                   <span className="text-blue-700 dark:text-blue-500">
-                    Dinas Dikpora DIY
+                     SIMPEL
                   </span>
                   <p className="text-bold md:text-2xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                  (SIMPEL DIKPORA DIY)
+                  (Sistem Pendaftaran Magang dan Izin Penelitian Dikpora DIY)
                 </p>
                 </h1>
 
@@ -465,8 +465,8 @@ export default function Home() {
                         3. Tunggu Konfirmasi
                       </CardTitle>
                       <CardDescription className="text-sm dark:text-slate-400">
-                        Konfirmasi penerimaan akan dikirim melalui
-                        WhatsApp/Email maksimal 3-7 hari kerja.
+                        Informasi selanjutnya akan 
+                        dikirim melalui WhatsApp/Email.
                       </CardDescription>
                     </CardHeader>
                   </Card>

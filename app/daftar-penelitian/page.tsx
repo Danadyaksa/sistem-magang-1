@@ -270,7 +270,7 @@ export default function ResearchRegistrationPage() {
                       <FormItem>
                         <FormLabel className="dark:text-slate-300">Subjek Penelitian <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
-                          <Input placeholder="Contoh: Pegawai Sub Bagian Kepegawaian, Siswa SMK N 1, dll" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
+                          <Input placeholder="Contoh: Pegawai Sub Bagian Kepegawaian, Siswa SMK Negeri 1 Bantul, dll" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
                         </FormControl>
                         <FormDescription className="text-xs dark:text-slate-500">
                           Sebutkan target responden atau unit kerja yang dituju.

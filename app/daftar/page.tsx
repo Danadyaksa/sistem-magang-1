@@ -133,7 +133,7 @@ export default function RegistrationPage() {
              // OTOMATIS UBAH ISI FORM SESUAI SETTING ADMIN
              form.setValue("lamaMagang", minDays, { shouldValidate: true });
           }
-        }
+        } 
       } catch (err) {
         console.error("Gagal ambil pengaturan hari magang", err);
       }

@@ -282,7 +282,7 @@ export default function AdminResearchPage() {
 
     let message = "";
     if (item.status === "ACCEPTED") {
-      message = `Halo *${item.namaLengkap}*,\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\n*Detail:* \nJudul: ${item.judul}\nInstansi: ${item.universitas}\n\nSilakan datang ke Sub Bagian Umum untuk pengambilan Surat Izin Penelitian resmi (Fisik). Terima kasih.`;
+      message = `Halo *${item.namaLengkap}*,\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\n*Detail:* \nJudul: ${item.judul}\nInstansi: ${item.universitas}\n\nSilakan datang ke Sub Bagian Kepegawaian untuk pengambilan Surat Izin Penelitian resmi (Fisik). Terima kasih.`;
     } else {
       message = `Halo *${item.namaLengkap}*,\n\nMohon maaf, permohonan Izin Penelitian Anda dengan judul "${item.judul}" belum dapat kami setujui saat ini. Terima kasih.`;
     }
