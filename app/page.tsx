@@ -117,6 +117,9 @@ export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // STATE BUAT MINIMAL HARI DARI SETTING ADMIN
+  const [minMagangDays, setMinMagangDays] = useState<number | string>("...");
 
   // STATE UNTUK FILTER & SORT
   const [searchTerm, setSearchTerm] = useState("");
@@ -142,7 +145,24 @@ export default function Home() {
       }
     };
 
+    // FETCH SETTING MINIMAL MAGANG
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings?key=MIN_MAGANG_DAYS", { cache: "no-store" });
+        const data = await res.json();
+        if (data && data.value) {
+          setMinMagangDays(data.value);
+        } else {
+          setMinMagangDays(44); // Fallback kalo kosong
+        }
+      } catch (error) {
+        console.error("Gagal ambil setting:", error);
+        setMinMagangDays(44); // Fallback kalo error
+      }
+    };
+
     fetchPositions();
+    fetchSettings();
   }, []);
 
   // FUNGSI SCROLL HALUS
@@ -717,7 +737,7 @@ export default function Home() {
                         Berpa lama durasi minimal magang?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
-                        Minimal durasi magang di Dinas DIKPORA DIY adalah 44 hari kerja.
+                        Minimal durasi magang di Dinas DIKPORA DIY adalah {minMagangDays} hari kerja.
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem
