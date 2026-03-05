@@ -202,7 +202,7 @@ export default function ApplicantsPage() {
       message = 
 `Halo *${p.namaLengkap}*,
 
-Selamat! Anda *DITERIMA* magang di Dinas DIKPORA DIY.
+Anda *DITERIMA* magang di Dinas DIKPORA DIY.
 
 *Detail Penerimaan:*
 Nama: ${p.namaLengkap}

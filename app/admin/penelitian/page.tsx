@@ -93,6 +93,16 @@ type Penelitian = {
   createdAt: string;
 };
 
+// CONSTANT BULAN
+const MONTHS = [
+  { value: "0", label: "Januari" }, { value: "1", label: "Februari" },
+  { value: "2", label: "Maret" }, { value: "3", label: "April" },
+  { value: "4", label: "Mei" }, { value: "5", label: "Juni" },
+  { value: "6", label: "Juli" }, { value: "7", label: "Agustus" },
+  { value: "8", label: "September" }, { value: "9", label: "Oktober" },
+  { value: "10", label: "November" }, { value: "11", label: "Desember" },
+];
+
 export default function AdminResearchPage() {
   const router = useRouter();
 
@@ -102,6 +112,10 @@ export default function AdminResearchPage() {
   const [dataPenelitian, setDataPenelitian] = useState<Penelitian[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // --- STATE FILTER (BARU) ---
+  const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [filterYear, setFilterYear] = useState<string>("all");
   
   // --- STATE PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,7 +128,7 @@ export default function AdminResearchPage() {
 
   // Admin Info
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false); // <-- TAMBAHIN INI
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   // --- FETCH DATA ---
   const fetchData = async () => {
@@ -150,26 +164,37 @@ export default function AdminResearchPage() {
     localStorage.setItem("sidebarCollapsed", String(newState));
   };
 
+  // --- LOGIC AVAILABLE YEARS ---
+  const availableYears = useMemo(() => {
+    const years = new Set(dataPenelitian.map((p) => new Date(p.createdAt).getFullYear()));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [dataPenelitian]);
+
   // --- FILTERING & PAGINATION LOGIC ---
   const filteredData = useMemo(() => {
-    return dataPenelitian.filter((item) =>
-      item.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.universitas.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.judul.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [dataPenelitian, searchTerm]);
+    return dataPenelitian.filter((item) => {
+      const date = new Date(item.createdAt);
+      const matchesSearch = item.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            item.universitas.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            item.judul.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesYear = filterYear === "all" || date.getFullYear().toString() === filterYear;
+      const matchesMonth = filterMonth === "all" || date.getMonth().toString() === filterMonth;
+      
+      return matchesSearch && matchesYear && matchesMonth;
+    });
+  }, [dataPenelitian, searchTerm, filterYear, filterMonth]);
 
-  // Reset page saat search berubah
+  // Reset page saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, itemsPerPage]);
+  }, [searchTerm, filterYear, filterMonth, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
 
-  // --- EXPORT EXCEL ---
+  // --- EXPORT EXCEL (UPDATE) ---
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
       toast.warning("Tidak ada data untuk diexport.");
@@ -179,74 +204,85 @@ export default function AdminResearchPage() {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Data Izin Penelitian");
 
-    // Definisi Kolom
-    worksheet.columns = [
-      { header: "No", key: "no", width: 5 },
-      { header: "Nama Peneliti", key: "nama", width: 30 },
-      { header: "NIM / NIDN", key: "nim", width: 20 },
-      { header: "Instansi", key: "instansi", width: 25 },
-      { header: "Fakultas - Jurusan", key: "jurusan", width: 30 },
-      { header: "Judul Penelitian", key: "judul", width: 40 },
-      { header: "Kategori", key: "kategori", width: 15 },
-      { header: "Subjek", key: "subjek", width: 20 },
-      { header: "No. HP", key: "hp", width: 15 },
-      { header: "Status", key: "status", width: 15 },
-      { header: "Tgl Daftar", key: "tgl_daftar", width: 15 },
-    ];
+    let titleText = "LAPORAN IZIN PENELITIAN - DINAS DIKPORA DIY";
+    if (filterMonth !== "all" && filterYear !== "all") {
+        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
+        titleText += ` (PERIODE: ${monthName?.toUpperCase()} ${filterYear})`;
+    } else if (filterYear !== "all") {
+        titleText += ` (TAHUN: ${filterYear})`;
+    } else if (filterMonth !== "all") {
+        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
+        titleText += ` (BULAN: ${monthName?.toUpperCase()})`;
+    } else {
+        titleText += " (SEMUA DATA)";
+    }
 
-    // Isi Data
+    worksheet.mergeCells('A1:K1');
+    const titleRow = worksheet.getCell('A1');
+    titleRow.value = titleText;
+    titleRow.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    titleRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1e3a8a' } // Warna biru Disdikpora
+    };
+    worksheet.getRow(1).height = 40;
+
+    const headerRow = worksheet.getRow(3);
+    headerRow.values = [
+      "No", "Nama Peneliti", "NIM / NIDN", "Instansi", "Fakultas - Jurusan", 
+      "Judul Penelitian", "Kategori", "Subjek", "No. HP", "Status", "Tgl Daftar"
+    ];
+    headerRow.font = { bold: true, color: { argb: "FF000000" }, size: 11 };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFbfdbfe" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 25;
+    
+    worksheet.getColumn(1).width = 5;
+    worksheet.getColumn(2).width = 30;
+    worksheet.getColumn(3).width = 20;
+    worksheet.getColumn(4).width = 25;
+    worksheet.getColumn(5).width = 30;
+    worksheet.getColumn(6).width = 40;
+    worksheet.getColumn(7).width = 15;
+    worksheet.getColumn(8).width = 20;
+    worksheet.getColumn(9).width = 15;
+    worksheet.getColumn(10).width = 15;
+    worksheet.getColumn(11).width = 15;
+
     filteredData.forEach((item, index) => {
       let statusLabel = "PENDING";
       if (item.status === "ACCEPTED") statusLabel = "DISETUJUI";
       if (item.status === "REJECTED") statusLabel = "DITOLAK";
 
-      worksheet.addRow({
-        no: index + 1,
-        nama: item.namaLengkap,
-        nim: item.nomorInduk,
-        instansi: item.universitas,
-        jurusan: `${item.fakultas || '-'} - ${item.jurusan}`,
-        judul: item.judul,
-        kategori: item.kategori,
-        subjek: item.subjek,
-        hp: item.nomorHp,
-        status: statusLabel,
-        tgl_daftar: new Date(item.createdAt).toLocaleDateString("id-ID"),
-      });
-    });
-
-    // Styling Header
-    const headerRow = worksheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
-    headerRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF10b981" }, // Warna Emerald
-    };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-    headerRow.height = 30;
-
-    // Styling Border & Alignment
-    worksheet.eachRow((row, rowNumber) => {
+      const row = worksheet.addRow([
+        index + 1, item.namaLengkap, item.nomorInduk, item.universitas, `${item.fakultas || '-'} - ${item.jurusan}`,
+        item.judul, item.kategori, item.subjek, item.nomorHp, statusLabel, new Date(item.createdAt).toLocaleDateString("id-ID")
+      ]);
       row.eachCell((cell) => {
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        cell.alignment = { vertical: "middle", wrapText: true };
+        cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       });
+      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' };
     });
 
-    // Download File
+    let fileName = "Rekap_Penelitian";
+    if (filterMonth !== "all" && filterYear !== "all") {
+        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
+        fileName += `_${monthName}_${filterYear}`;
+    } else if (filterYear !== "all") {
+        fileName += `_Tahun_${filterYear}`;
+    } else {
+        fileName += `_All_Data`;
+    }
+    fileName += ".xlsx";
+
     const buffer = await workbook.xlsx.writeBuffer();
-    const fileName = `Rekap_Penelitian_${new Date().toISOString().split("T")[0]}.xlsx`;
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     saveAs(blob, fileName);
-
     toast.success("Data berhasil diexport!");
   };
 
@@ -282,8 +318,7 @@ export default function AdminResearchPage() {
 
     let message = "";
     if (item.status === "ACCEPTED") {
-      message = `Halo *${item.namaLengkap}*,\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\n*Detail:* \nJudul: ${item.judul}\nInstansi: ${item.universitas}\n\nSilakan datang ke kantor Dinas Dikpora DIY Sub Bagian Kepegawaian untuk koordinasi pelaksanaan teknis penelitian. 
-Terima kasih.`;
+      message = `Halo *${item.namaLengkap}*,\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\n*Detail:* \nJudul: ${item.judul}\nInstansi: ${item.universitas}\n\nSilakan datang ke kantor Dinas Dikpora DIY Sub Bagian Kepegawaian untuk koordinasi pelaksanaan teknis penelitian. \nTerima kasih.`;
     } else {
       message = `Halo *${item.namaLengkap}*,\n\nMohon maaf, permohonan Izin Penelitian Anda dengan judul "${item.judul}" belum dapat kami setujui saat ini. Terima kasih.`;
     }
@@ -333,7 +368,7 @@ Terima kasih.`;
           <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")} />
           <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
-          <SidebarItem icon={BookOpen} label="Penelitian" active={true} /> {/* MENU AKTIF */}
+          <SidebarItem icon={BookOpen} label="Penelitian" active={true} />
           <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
           <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
@@ -381,10 +416,35 @@ Terima kasih.`;
           </div>
 
           <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-full max-h-[calc(100vh-14rem)]">
+            {/* UI FILTER BARU */}
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4 space-y-4">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input placeholder="Cari nama, kampus, atau judul..." className="pl-9 bg-white dark:bg-slate-950" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input placeholder="Cari nama, kampus, atau judul..." className="pl-9 bg-white dark:bg-slate-950" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                  <Select value={filterMonth} onValueChange={setFilterMonth}>
+                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="Bulan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Bulan</SelectItem>
+                      {MONTHS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterYear} onValueChange={setFilterYear}>
+                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="Tahun" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Tahun</SelectItem>
+                      {availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
 
@@ -483,7 +543,6 @@ Terima kasih.`;
               </Table>
             </div>
 
-            {/* --- PAGINATION CONTROLS (MIRIP APPLICANTS) --- */}
             <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                 <span>
