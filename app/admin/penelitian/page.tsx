@@ -282,7 +282,8 @@ export default function AdminResearchPage() {
 
     let message = "";
     if (item.status === "ACCEPTED") {
-      message = `Halo *${item.namaLengkap}*,\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\n*Detail:* \nJudul: ${item.judul}\nInstansi: ${item.universitas}\n\nSilakan datang ke Sub Bagian Kepegawaian untuk pengambilan Surat Izin Penelitian resmi (Fisik). Terima kasih.`;
+      message = `Halo *${item.namaLengkap}*,\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\n*Detail:* \nJudul: ${item.judul}\nInstansi: ${item.universitas}\n\nSilakan datang ke kantor Dinas Dikpora DIY Sub Bagian Kepegawaian untuk koordinasi pelaksanaan teknis penelitian. 
+Terima kasih.`;
     } else {
       message = `Halo *${item.namaLengkap}*,\n\nMohon maaf, permohonan Izin Penelitian Anda dengan judul "${item.judul}" belum dapat kami setujui saat ini. Terima kasih.`;
     }
@@ -294,9 +295,9 @@ export default function AdminResearchPage() {
     let body = "";
     
     if (item.status === "ACCEPTED") {
-      body = `Halo ${item.namaLengkap},\n\nSelamat! Pengajuan Izin Penelitian Anda telah DISETUJUI.\n\nJudul: ${item.judul}\n\nSilakan datang ke kantor Dinas DIKPORA DIY (Sub Bagian Umum) untuk mengambil Surat Keterangan Izin Penelitian yang asli.`;
+      body = `Halo ${item.namaLengkap},\n\nPermohonan Izin Penelitian Anda di Dinas DIKPORA DIY telah *DISETUJUI*.\n\nJudul: ${item.judul}\n\nSilakan datang ke kantor Dinas DIKPORA DIY (Sub Bagian Kepegawaian) untuk koordinasi pelaksanaan teknis penelitian.`;
     } else {
-      body = `Halo ${item.namaLengkap},\n\nMohon maaf, pengajuan izin penelitian Anda belum dapat kami terima saat ini.\n\nTerima kasih.`;
+      body = `Halo ${item.namaLengkap},\n\nMohon maaf, permohonan Izin Penelitian Anda dengan judul "${item.judul}" belum dapat kami setujui saat ini. Terima kasih.`;
     }
     window.open(`mailto:${item.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
   };
