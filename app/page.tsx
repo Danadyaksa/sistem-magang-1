@@ -292,7 +292,7 @@ export default function Home() {
             <span>Dinas DIKPORA</span>
           </Link>
 
-          <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <nav className="hidden md:flex gap-8 text-base font-medium text-slate-600 dark:text-slate-300">
             {["tentang", "alur", "kuota", "faq"].map((item) => (
               <Link
                 key={item}
@@ -374,20 +374,24 @@ export default function Home() {
                     : `Tersedia ${availableSlots} dari Total ${totalQuota} Kuota Magang`}
                 </Badge>
 
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-tight">
-                 
-                  
-                  <span className="text-blue-700 dark:text-blue-500">
-                     SIMPEL
-                  </span>
-                  <p className="text-bold md:text-2xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                  (Sistem Pendaftaran Magang dan Izin Penelitian Dikpora DIY)
-                </p>
-                </h1>
+                {/* HIERARKI JUDUL BARU */}
+                <div className="space-y-4 mb-6">
+                  <p className="text-sm md:text-base font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                    Selamat Datang di
+                  </p>
+                  <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+                    <span className="text-blue-700 dark:text-blue-500">SIMPEL</span>
+                  </h1>
+                  <h2 className="text-xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+                    Sistem Pendaftaran Magang & Izin Penelitian
+                  </h2>
+                  <p className="text-base md:text-xl font-medium text-slate-600 dark:text-slate-400 mt-2">
+                    Dinas Pendidikan, Pemuda, dan Olahraga Daerah Istimewa Yogyakarta
+                  </p>
+                </div>
 
-                <p className="text-base md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                  Layanan terintegrasi untuk pendaftaran Magang/PKL dan
-                  pengajuan Izin Penelitian mahasiswa/dosen secara online.
+                <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed mt-6">
+                  Layanan digital terintegrasi untuk mempermudah pendaftaran program Magang/PKL dan pengajuan Izin Penelitian secara online.
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 w-full max-w-md mx-auto sm:max-w-none">
@@ -396,7 +400,7 @@ export default function Home() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-12 w-full sm:w-auto px-8 text-base rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-950 dark:text-slate-200 dark:border-slate-700"
+                    className="h-12 w-full sm:w-auto px-8 py-6 text-base font-semibold rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-950 dark:text-slate-200 dark:border-slate-700 transition-colors"
                     asChild
                   >
                     <Link href="#alur" onClick={(e) => handleScroll(e, "alur")}>
@@ -407,7 +411,7 @@ export default function Home() {
               </div>
             </FadeInSection>
 
-            <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400 dark:text-slate-600">
+            <div className="absolute top-125 left-1/2 -translate-x-1/2 animate-bounce text-slate-400 dark:text-slate-600 mt-16">
               <ChevronDown className="h-6 w-6" />
             </div>
           </div>
