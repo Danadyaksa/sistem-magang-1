@@ -33,7 +33,8 @@ import {
   Download,
   AlertTriangle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash2 // Tambahin icon Trash2
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -113,7 +114,7 @@ export default function AdminResearchPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // --- STATE FILTER (BARU) ---
+  // --- STATE FILTER ---
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [filterYear, setFilterYear] = useState<string>("all");
   
@@ -125,6 +126,10 @@ export default function AdminResearchPage() {
   const [selectedItem, setSelectedItem] = useState<Penelitian | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // --- STATE DELETE MODAL (BARU) ---
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Penelitian | null>(null);
 
   // Admin Info
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
@@ -194,7 +199,7 @@ export default function AdminResearchPage() {
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
 
-  // --- EXPORT EXCEL (UPDATE) ---
+  // --- EXPORT EXCEL ---
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
       toast.warning("Tidak ada data untuk diexport.");
@@ -225,7 +230,7 @@ export default function AdminResearchPage() {
     titleRow.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF1e3a8a' } // Warna biru Disdikpora
+        fgColor: { argb: 'FF1e3a8a' } 
     };
     worksheet.getRow(1).height = 40;
 
@@ -311,6 +316,30 @@ export default function AdminResearchPage() {
     }
   };
 
+  // --- DELETE LOGIC (BARU) ---
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/penelitian/${itemToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("Data berhasil dihapus!");
+        setIsDeleteDialogOpen(false);
+        setItemToDelete(null);
+        fetchData();
+      } else {
+        toast.error("Gagal menghapus data");
+      }
+    } catch (err) {
+      toast.error("Terjadi kesalahan sistem");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // --- NOTIFIKASI WA & EMAIL ---
   const openWhatsApp = (item: Penelitian) => {
     let hp = item.nomorHp.replace(/\D/g, "");
@@ -342,7 +371,7 @@ export default function AdminResearchPage() {
     <TooltipProvider>
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onClick} className={`w-full flex items-center transition-all duration-200 ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"} ${active ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" : "text-slate-300 hover:text-white hover:bg-slate-800"} ${className}`}>
+          <Button variant="ghost" onClick={onClick} className={`w-full flex items-center transition-colors duration-200 ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"} ${active ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" : "text-slate-300 hover:text-white hover:bg-slate-800"} ${className}`}>
             <Icon className={`h-5 w-5 ${isSidebarCollapsed ? "" : "mr-3"}`} />
             {!isSidebarCollapsed && <span>{label}</span>}
           </Button>
@@ -416,7 +445,6 @@ export default function AdminResearchPage() {
           </div>
 
           <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-full max-h-[calc(100vh-14rem)]">
-            {/* UI FILTER BARU */}
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4 space-y-4">
               <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                 <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
@@ -494,47 +522,65 @@ export default function AdminResearchPage() {
                           {item.status === "REJECTED" && <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1"><XCircle className="h-3 w-3"/> Ditolak</Badge>}
                         </TableCell>
                         <TableCell className="text-right pr-4">
-                          <Dialog open={isDialogOpen && selectedItem?.id === item.id} onOpenChange={(open) => { setIsDialogOpen(open); if(open) setSelectedItem(item); }}>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-blue-600"><Eye className="h-4 w-4" /></Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl bg-white dark:bg-slate-950">
-                              <DialogHeader>
-                                <DialogTitle>Detail Permohonan</DialogTitle>
-                                <DialogDescription>Cek detail penelitian mahasiswa/dosen.</DialogDescription>
-                              </DialogHeader>
-                              
-                              <div className="grid grid-cols-2 gap-4 py-4 text-sm">
-                                <div><Label className="text-xs text-slate-500">Nama Lengkap</Label><div className="font-medium">{item.namaLengkap}</div></div>
-                                <div><Label className="text-xs text-slate-500">NIM / NIDN</Label><div className="font-medium">{item.nomorInduk}</div></div>
-                                <div><Label className="text-xs text-slate-500">Universitas</Label><div className="font-medium">{item.universitas}</div></div>
-                                <div><Label className="text-xs text-slate-500">Fakultas/Jurusan</Label><div className="font-medium">{item.fakultas} - {item.jurusan}</div></div>
-                                <div className="col-span-2 border-t pt-2 mt-2"><Label className="text-xs text-slate-500">Judul Penelitian</Label><div className="font-medium italic">"{item.judul}"</div></div>
-                                <div className="col-span-2"><Label className="text-xs text-slate-500">Subjek/Target</Label><div className="font-medium">{item.subjek}</div></div>
-                                <div><Label className="text-xs text-slate-500">Nomor Surat Kampus</Label><div className="font-medium">{item.nomorSurat}</div></div>
-                                <div><Label className="text-xs text-slate-500">Tanggal Surat</Label><div className="font-medium">{new Date(item.tanggalSurat).toLocaleDateString("id-ID")}</div></div>
-                              </div>
+                          <div className="flex justify-end gap-2">
+                            {/* --- TOMBOL DETAIL --- */}
+                            <Dialog open={isDialogOpen && selectedItem?.id === item.id} onOpenChange={(open) => { setIsDialogOpen(open); if(open) setSelectedItem(item); }}>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl bg-white dark:bg-slate-950">
+                                <DialogHeader>
+                                  <DialogTitle>Detail Permohonan</DialogTitle>
+                                  <DialogDescription>Cek detail penelitian mahasiswa/dosen.</DialogDescription>
+                                </DialogHeader>
+                                
+                                <div className="grid grid-cols-2 gap-4 py-4 text-sm">
+                                  <div><Label className="text-xs text-slate-500">Nama Lengkap</Label><div className="font-medium">{item.namaLengkap}</div></div>
+                                  <div><Label className="text-xs text-slate-500">NIM / NIDN</Label><div className="font-medium">{item.nomorInduk}</div></div>
+                                  <div><Label className="text-xs text-slate-500">Universitas</Label><div className="font-medium">{item.universitas}</div></div>
+                                  <div><Label className="text-xs text-slate-500">Fakultas/Jurusan</Label><div className="font-medium">{item.fakultas} - {item.jurusan}</div></div>
+                                  <div className="col-span-2 border-t pt-2 mt-2"><Label className="text-xs text-slate-500">Judul Penelitian</Label><div className="font-medium italic">"{item.judul}"</div></div>
+                                  <div className="col-span-2"><Label className="text-xs text-slate-500">Subjek/Target</Label><div className="font-medium">{item.subjek}</div></div>
+                                  <div><Label className="text-xs text-slate-500">Nomor Surat Kampus</Label><div className="font-medium">{item.nomorSurat}</div></div>
+                                  <div><Label className="text-xs text-slate-500">Tanggal Surat</Label><div className="font-medium">{new Date(item.tanggalSurat).toLocaleDateString("id-ID")}</div></div>
+                                </div>
 
-                              <DialogFooter className="gap-2 sm:gap-0">
-                                {item.status === "PENDING" ? (
-                                  <>
-                                    <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleUpdateStatus("REJECTED")} disabled={isProcessing}>Tolak</Button>
-                                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleUpdateStatus("ACCEPTED")} disabled={isProcessing}>
-                                      {isProcessing ? "Menyimpan..." : "Setujui Izin"}
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <div className="flex w-full justify-between items-center">
-                                    <div className="text-sm italic text-slate-500">Status: <span className="font-bold">{item.status}</span></div>
-                                    <div className="flex gap-2">
-                                      <Button variant="outline" size="sm" onClick={() => openWhatsApp(item)} className="text-green-600 border-green-200 hover:bg-green-50"><MessageCircle className="w-4 h-4 mr-2"/> WhatsApp</Button>
-                                      <Button variant="outline" size="sm" onClick={() => openEmail(item)} className="text-orange-600 border-orange-200 hover:bg-orange-50"><Mail className="w-4 h-4 mr-2"/> Email</Button>
+                                <DialogFooter className="gap-2 sm:gap-0">
+                                  {item.status === "PENDING" ? (
+                                    <>
+                                      <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleUpdateStatus("REJECTED")} disabled={isProcessing}>Tolak</Button>
+                                      <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleUpdateStatus("ACCEPTED")} disabled={isProcessing}>
+                                        {isProcessing ? "Menyimpan..." : "Setujui Izin"}
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <div className="flex w-full justify-between items-center">
+                                      <div className="text-sm italic text-slate-500">Status: <span className="font-bold">{item.status}</span></div>
+                                      <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => openWhatsApp(item)} className="text-green-600 border-green-200 hover:bg-green-50"><MessageCircle className="w-4 h-4 mr-2"/> WhatsApp</Button>
+                                        <Button variant="outline" size="sm" onClick={() => openEmail(item)} className="text-orange-600 border-orange-200 hover:bg-orange-50"><Mail className="w-4 h-4 mr-2"/> Email</Button>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
+                                  )}
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+
+                            {/* --- TOMBOL HAPUS --- */}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                              onClick={() => {
+                                setItemToDelete(item);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -611,33 +657,70 @@ export default function AdminResearchPage() {
                 </Button>
               </div>
             </div>
-                  {/* --- MODAL LOGOUT --- */}
-      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
-        <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
-           <DialogHeader className="flex flex-col items-center text-center gap-2">
-              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
-                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
-              <DialogDescription className="text-center dark:text-slate-400">
-                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
-              </DialogDescription>
-           </DialogHeader>
-           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-              <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
-              <Button 
-                variant="destructive" 
-                className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" 
-                onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  router.push("/admin/login");
-                }}
-              >
-                Ya, Keluar
-              </Button>
-           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            
+            {/* --- MODAL KONFIRMASI HAPUS (BARU) --- */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+                  <div className="flex flex-col items-center text-center gap-2 pt-2">
+                    <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                        <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+                    </div>
+                    <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                        Hapus Data Penelitian?
+                    </DialogTitle>
+                    <DialogDescription className="text-center dark:text-slate-400">
+                        Anda akan menghapus permohonan atas nama <span className="font-semibold text-slate-900 dark:text-slate-200">"{itemToDelete?.namaLengkap}"</span>. 
+                        <br/>Tindakan ini tidak dapat dibatalkan.
+                    </DialogDescription>
+                  </div>
+                  <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+                    <Button 
+                      variant="outline" 
+                      className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                      onClick={() => setIsDeleteDialogOpen(false)}
+                      disabled={isProcessing}
+                    >
+                      Batal
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                      onClick={handleDelete}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+                    </Button>
+                  </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* --- MODAL LOGOUT --- */}
+            <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+              <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
+                <DialogHeader className="flex flex-col items-center text-center gap-2">
+                    <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                      <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+                    <DialogDescription className="text-center dark:text-slate-400">
+                      Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+                    <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
+                    <Button 
+                      variant="destructive" 
+                      className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" 
+                      onClick={async () => {
+                        await fetch("/api/auth/logout", { method: "POST" });
+                        router.push("/admin/login");
+                      }}
+                    >
+                      Ya, Keluar
+                    </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
         </main>
       </div>

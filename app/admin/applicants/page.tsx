@@ -8,11 +8,11 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import {
   LayoutDashboard, Users, LogOut, Menu, X, Search, Eye, CheckCircle,
-  XCircle, Clock, User, FileText, RefreshCcw, Image as ImageIcon,
+  XCircle, Clock, User, FileText, RefreshCcw, ImageIcon,
   Loader2, Settings, AlertTriangle, PanelLeftClose, PanelLeftOpen,
   ChevronLeft, ChevronRight, Filter, Download, ArrowUpDown,
   ArrowUp, ArrowDown, CalendarClock, MessageCircle, Mail,
-  BookOpen, MoreHorizontal, ThumbsUp, MapPin
+  BookOpen, Trash2, ThumbsUp, MapPin
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -35,10 +35,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
 } from "@/components/ui/tooltip";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 // --- TIPE DATA ---
 type Pendaftaran = {
@@ -66,7 +62,6 @@ type Position = {
   filled: number;
 };
 
-// Tipe UPT sesuai Schema baru (ada address)
 type Upt = {
   id: number;
   name: string;
@@ -90,7 +85,7 @@ export default function ApplicantsPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [pendaftar, setPendaftar] = useState<Pendaftaran[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [upts, setUpts] = useState<Upt[]>([]); // State buat nampung UPT dari DB
+  const [upts, setUpts] = useState<Upt[]>([]); 
   const [loading, setLoading] = useState(true);
 
   // --- STATE FILTER, SORT & PAGINATION ---
@@ -110,6 +105,10 @@ export default function ApplicantsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // --- STATE DELETE MODAL (BARU) ---
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingPelamar, setDeletingPelamar] = useState<Pendaftaran | null>(null);
+
   // State Dropdown Dinamis
   const [actionStatus, setActionStatus] = useState<string>(""); 
   const [selectedPosition, setSelectedPosition] = useState<string>("");
@@ -127,13 +126,13 @@ export default function ApplicantsPage() {
     localStorage.setItem("sidebarCollapsed", String(newState));
   };
 
-  // --- 2. FETCH DATA (UPDATED: Include UPT) ---
+  // --- 2. FETCH DATA ---
   const fetchData = async () => {
     try {
       const [resPendaftar, resPositions, resUpt] = await Promise.all([
         fetch("/api/pendaftaran", { cache: "no-store" }),
         fetch("/api/positions", { cache: "no-store" }),
-        fetch("/api/upt", { cache: "no-store" }), // Fetch UPT dari API
+        fetch("/api/upt", { cache: "no-store" }), 
       ]);
 
       const dataPendaftar = await resPendaftar.json();
@@ -142,7 +141,7 @@ export default function ApplicantsPage() {
 
       if (Array.isArray(dataPendaftar)) setPendaftar(dataPendaftar);
       if (Array.isArray(dataPositions)) setPositions(dataPositions);
-      if (Array.isArray(dataUpt)) setUpts(dataUpt); // Set state UPT
+      if (Array.isArray(dataUpt)) setUpts(dataUpt); 
     } catch (error) {
       console.error("Gagal ambil data:", error);
       toast.error("Gagal mengambil data.");
@@ -186,7 +185,7 @@ export default function ApplicantsPage() {
     return positions.find((p) => p.id === id)?.title || "Posisi Tidak Ditemukan";
   };
 
-  // --- 3. NOTIFICATION LOGIC (Dynamic Address) ---
+  // --- 3. NOTIFICATION LOGIC ---
   const openWhatsApp = (p: Pendaftaran, overrideUpt?: string) => {
     if (!p.nomorHp) return toast.error("Nomor HP tidak tersedia");
 
@@ -228,7 +227,6 @@ Mohon maaf, berdasarkan hasil seleksi berkas, saat ini kami belum bisa menerima 
         return; 
       }
 
-      // FIND ADDRESS DARI STATE UPT
       const uptDetail = upts.find(u => u.name === targetUptName);
       const alamatUpt = uptDetail?.address || "Alamat belum tersedia (Hubungi Admin)";
 
@@ -300,7 +298,6 @@ Terima kasih.`;
         return;
       }
 
-      // FIND ADDRESS DARI STATE UPT
       const uptDetail = upts.find(u => u.name === targetUptName);
       const alamatUpt = uptDetail?.address || "Alamat belum tersedia (Hubungi Admin)";
 
@@ -398,7 +395,6 @@ Admin Dinas DIKPORA DIY`;
     });
   };
 
-  // --- LOGIC PROSES KEPUTUSAN ---
   const handleProcess = async () => {
     if (!selectedPelamar || !actionStatus) {
       toast.warning("Pilih status keputusan terlebih dahulu!");
@@ -410,7 +406,6 @@ Admin Dinas DIKPORA DIY`;
       return;
     }
     
-    // Validasi UPT
     if (actionStatus === "RECOMMENDED" && !selectedUpt) {
       toast.warning("Wajib pilih UPT tujuan untuk rekomendasi!");
       return;
@@ -449,22 +444,30 @@ Admin Dinas DIKPORA DIY`;
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin hapus data ini? File fisik juga akan dihapus.")) return;
+  // --- LOGIC HAPUS DATA ---
+  const confirmDelete = async () => {
+    if (!deletingPelamar) return;
+    setIsProcessing(true);
     try {
-        const res = await fetch(`/api/pendaftaran/${id}`, { method: "DELETE" });
-        if(res.ok){
-            toast.success("Data berhasil dihapus");
-            fetchData(); 
-        } else {
-            toast.error("Gagal menghapus");
-        }
-    } catch (err) {
-        toast.error("Terjadi kesalahan server");
+      const res = await fetch(`/api/pendaftaran/${deletingPelamar.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Data pelamar berhasil dihapus");
+        fetchData();
+      } else {
+        toast.error("Gagal menghapus data");
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem");
+    } finally {
+      setIsProcessing(false);
+      setIsDeleteOpen(false);
+      setDeletingPelamar(null);
     }
   };
 
-  // --- EXPORT EXCEL (Masih aman pake logic lama) ---
+  // --- EXPORT EXCEL ---
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
       toast.warning("Tidak ada data untuk diexport.");
@@ -566,7 +569,7 @@ Admin Dinas DIKPORA DIY`;
     <TooltipProvider>
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onClick} className={`w-full flex items-center transition-all duration-200 ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"} ${active ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" : "text-slate-300 hover:text-white hover:bg-slate-800"} ${className}`}>
+          <Button variant="ghost" onClick={onClick} className={`w-full flex items-center transition-colors duration-200 ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"} ${active ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" : "text-slate-300 hover:text-white hover:bg-slate-800"} ${className}`}>
             <Icon className={`h-5 w-5 ${isSidebarCollapsed ? "" : "mr-3"}`} />
             {!isSidebarCollapsed && <span>{label}</span>}
           </Button>
@@ -582,7 +585,8 @@ Admin Dinas DIKPORA DIY`;
 
   return (
     <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
-      {/* SIDEBAR SAMA */}
+      
+      {/* SIDEBAR */}
       <aside className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 ${isSidebarCollapsed ? "w-20" : "w-64"}`}>
         <div className={`h-16 flex items-center border-b border-slate-800 flex-none ${isSidebarCollapsed ? "justify-center px-0" : "px-6 gap-3"}`}>
           <div className="flex items-center justify-center">
@@ -609,7 +613,6 @@ Admin Dinas DIKPORA DIY`;
       {/* CONTENT */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
-           {/* HEADER SAMA */}
            <div className="flex items-center gap-4">
             <button className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
@@ -717,210 +720,212 @@ Admin Dinas DIKPORA DIY`;
                         <TableCell className="text-slate-600 dark:text-slate-300 text-sm py-3">{item.instansi}</TableCell>
                         <TableCell className="text-slate-500 text-sm py-3">{new Date(item.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</TableCell>
                         <TableCell className="py-3">
-                          {item.status === "PENDING" && <Badge variant="outline" className="bg-yellow-50 text-yellow-700">Pending</Badge>}
-                          {item.status === "ACCEPTED" && <Badge className="bg-green-100 text-green-700">Diterima</Badge>}
-                          {item.status === "REJECTED" && <Badge variant="outline" className="bg-red-50 text-red-700">Ditolak</Badge>}
-                          {item.status === "RECOMMENDED" && <Badge variant="outline" className="bg-blue-50 text-blue-700">Direkomendasikan</Badge>}
+                          {item.status === "PENDING" && <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>}
+                          {item.status === "ACCEPTED" && <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none hover:bg-green-100">Diterima</Badge>}
+                          {item.status === "REJECTED" && <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Ditolak</Badge>}
+                          {item.status === "RECOMMENDED" && <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Direkomendasikan</Badge>}
                         </TableCell>
                         <TableCell className="text-right pr-4 py-3">
-                          <Dialog
-                            open={isDialogOpen && selectedPelamar?.id === item.id}
-                            onOpenChange={(open) => {
-                              setIsDialogOpen(open);
-                              if (open) {
-                                setSelectedPelamar(item);
-                                setActionStatus(""); 
-                                setSelectedPosition("");
-                                setSelectedUpt(""); 
+                          <div className="flex justify-end gap-1">
+                            <Dialog
+                              open={isDialogOpen && selectedPelamar?.id === item.id}
+                              onOpenChange={(open) => {
+                                setIsDialogOpen(open);
+                                if (open) {
+                                  setSelectedPelamar(item);
+                                  setActionStatus(""); 
+                                  setSelectedPosition("");
+                                  setSelectedUpt(""); 
 
-                                if (item.status === "ACCEPTED" && item.positionId) {
-                                   setActionStatus("ACCEPTED");
-                                   setSelectedPosition(item.positionId.toString());
-                                } else if (item.status === "RECOMMENDED") {
-                                   setActionStatus("RECOMMENDED");
-                                } else if (item.status === "REJECTED") {
-                                   setActionStatus("REJECTED");
+                                  if (item.status === "ACCEPTED" && item.positionId) {
+                                     setActionStatus("ACCEPTED");
+                                     setSelectedPosition(item.positionId.toString());
+                                  } else if (item.status === "RECOMMENDED") {
+                                     setActionStatus("RECOMMENDED");
+                                  } else if (item.status === "REJECTED") {
+                                     setActionStatus("REJECTED");
+                                  }
                                 }
-                              }
-                            }}
-                          >
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-blue-50 text-slate-400 hover:text-blue-600">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl bg-white dark:bg-slate-950 p-0 overflow-hidden">
-                              <DialogHeader className="p-6 pb-2">
-                                <DialogTitle>Detail Pendaftaran</DialogTitle>
-                                <DialogDescription>Tinjau kelengkapan berkas kandidat.</DialogDescription>
-                              </DialogHeader>
-                              
-                              <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* ... Data Diri Sama ... */}
-                                <div className="space-y-4">
-                                  <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 uppercase font-semibold">Nama Lengkap</Label>
-                                    <div className="font-medium border-b pb-1">{item.namaLengkap}</div>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 uppercase font-semibold">Asal Instansi</Label>
-                                    <div className="text-sm">{item.instansi}</div>
-                                    <div className="text-slate-500 text-xs">{item.jurusan}</div>
-                                  </div>
-                                  <div className="space-y-1">
-                                      <Label className="text-xs text-slate-500 uppercase font-semibold">Rencana Magang</Label>
-                                      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                                        <Clock className="h-3 w-3 text-blue-500" />
-                                        {new Date(item.tanggalMulai).toLocaleDateString()} — {new Date(item.tanggalSelesai).toLocaleDateString()}
-                                      </div>
-                                  </div>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-100 dark:border-slate-800 space-y-3">
-                                  <Label className="text-xs text-slate-500 uppercase font-semibold block mb-2">Lampiran</Label>
-                                  <Button variant="outline" size="sm" className="w-full justify-start text-slate-600" asChild>
-                                    <a href={`/uploads/${item.cvPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-blue-600" /> Lihat CV</a>
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="w-full justify-start text-slate-600" asChild>
-                                    <a href={`/uploads/${item.suratPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-orange-600" /> Surat Pengantar</a>
-                                  </Button>
-                                </div>
-                              </div>
-                              <Separator />
-                              
-                              {/* --- FORM KEPUTUSAN --- */}
-                              <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100">
-                                <div className="mb-4 flex items-center gap-2">
-                                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                                  <span className="text-sm font-semibold">Keputusan Admin</span>
-                                </div>
-
-                                <div className="grid gap-4">
-                                  {/* DROPDOWN STATUS UTAMA */}
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs text-slate-500">Status Keputusan</Label>
-                                    <Select 
-                                      value={actionStatus} 
-                                      onValueChange={(val) => {
-                                          setActionStatus(val);
-                                          if (val !== "ACCEPTED") setSelectedPosition("");
-                                          // Note: UPT pilih ulang
-                                      }}
-                                    >
-                                      <SelectTrigger className="bg-white dark:bg-slate-950"><SelectValue placeholder="-- Tentukan Status --" /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="ACCEPTED">Diterima (Masuk Bidang)</SelectItem>
-                                        <SelectItem value="RECOMMENDED">Direkomendasikan (Pindah UPT)</SelectItem>
-                                        <SelectItem value="REJECTED">Ditolak</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  {/* DROPDOWN ACCEPTED */}
-                                  {actionStatus === "ACCEPTED" && (
-                                    <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                                      <Label className="text-xs text-slate-500">Penempatan Bidang <span className="text-red-500">*</span></Label>
-                                      <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-                                        <SelectTrigger className="bg-white dark:bg-slate-950 border-blue-200"><SelectValue placeholder="Pilih Posisi Magang" /></SelectTrigger>
-                                        <SelectContent>
-                                          {positions.map((pos) => (
-                                            <SelectItem key={pos.id} value={pos.id.toString()}>{pos.title} <span className="text-slate-400 text-xs ml-2">(Sisa: {pos.quota - pos.filled})</span></SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                              }}
+                            >
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl bg-white dark:bg-slate-950 p-0 overflow-hidden">
+                                <DialogHeader className="p-6 pb-2">
+                                  <DialogTitle>Detail Pendaftaran</DialogTitle>
+                                  <DialogDescription>Tinjau kelengkapan berkas kandidat.</DialogDescription>
+                                </DialogHeader>
+                                
+                                <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-4">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-slate-500 uppercase font-semibold">Nama Lengkap</Label>
+                                      <div className="font-medium border-b border-slate-100 dark:border-slate-800 pb-1">{item.namaLengkap}</div>
                                     </div>
-                                  )}
-
-                                  {/* DROPDOWN RECOMMENDED (FETCH FROM DB NOW) */}
-                                  {(actionStatus === "RECOMMENDED") && (
-                                    <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                                      <Label className="text-xs text-slate-500">
-                                        Tujuan UPT <span className="text-red-500">*</span>
-                                        {item.status === "RECOMMENDED" && <span className="ml-2 text-[10px] text-orange-500 font-normal">(Pilih ulang jika ingin kirim notifikasi)</span>}
-                                      </Label>
-                                      <Select value={selectedUpt} onValueChange={setSelectedUpt}>
-                                        <SelectTrigger className="bg-white dark:bg-slate-950 border-orange-200"><SelectValue placeholder="Pilih UPT Tujuan" /></SelectTrigger>
-                                        <SelectContent>
-                                          {/* MAPPING DARI STATE UPTS (DATABASE) */}
-                                          {upts.length > 0 ? upts.map((upt) => (
-                                            <SelectItem key={upt.id} value={upt.name}>{upt.name}</SelectItem>
-                                          )) : (
-                                            <SelectItem value="dummy" disabled>Belum ada data UPT</SelectItem>
-                                          )}
-                                        </SelectContent>
-                                      </Select>
-                                      
-                                      {item.status === "RECOMMENDED" && !selectedUpt && (
-                                        <p className="text-[10px] text-slate-500 mt-1">
-                                          <MapPin className="h-3 w-3 inline mr-1"/>
-                                          Pilih ulang UPT agar alamat muncul di WhatsApp/Email.
-                                        </p>
-                                      )}
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-slate-500 uppercase font-semibold">Asal Instansi</Label>
+                                      <div className="text-sm">{item.instansi}</div>
+                                      <div className="text-slate-500 text-xs">{item.jurusan}</div>
                                     </div>
-                                  )}
-
-                                  {actionStatus === "REJECTED" && (
-                                     <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 rounded text-xs text-red-600 animate-in fade-in">
-                                        <span className="font-semibold">Konfirmasi:</span> Pelamar akan ditolak.
-                                     </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* --- FOOTER --- */}
-                              <DialogFooter className="p-4 bg-slate-100/50 dark:bg-slate-900/50 border-t border-slate-200 gap-2 sm:gap-0">
-                                {item.status === "PENDING" && (
-                                  <>
-                                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isProcessing}>Batal</Button>
-                                    <Button className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]" onClick={handleProcess} disabled={isProcessing || !actionStatus}>
-                                      {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : "Simpan Keputusan"}
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-slate-500 uppercase font-semibold">Rencana Magang</Label>
+                                        <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                          <Clock className="h-3 w-3 text-blue-500" />
+                                          {new Date(item.tanggalMulai).toLocaleDateString("id-ID")} — {new Date(item.tanggalSelesai).toLocaleDateString("id-ID")}
+                                        </div>
+                                    </div>
+                                  </div>
+                                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-100 dark:border-slate-800 space-y-3">
+                                    <Label className="text-xs text-slate-500 uppercase font-semibold block mb-2">Lampiran</Label>
+                                    <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
+                                      <a href={`/uploads/${item.cvPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-blue-600" /> Lihat CV / Proposal</a>
                                     </Button>
-                                  </>
-                                )}
-
-                                {item.status !== "PENDING" && (
-                                  <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4">
-                                    <div className="text-sm italic text-slate-500 flex flex-col">
-                                      <span>Status saat ini:{" "}
-                                        <span className={`font-semibold ${item.status === "ACCEPTED" ? "text-green-600" : item.status === "RECOMMENDED" ? "text-blue-600" : "text-red-600"}`}>
-                                          {item.status === "ACCEPTED" ? "Diterima" : item.status === "RECOMMENDED" ? "Direkomendasikan" : "Ditolak"}
-                                        </span>
-                                      </span>
-                                      {isProcessing === false && actionStatus === item.status && (
-                                        <span className="text-[10px] text-green-600 flex items-center mt-1"><CheckCircle className="h-3 w-3 mr-1"/> Data Tersimpan</span>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>Tutup</Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => openWhatsApp(item, selectedUpt)} 
-                                        className="h-8 text-green-600 border-green-200 hover:bg-green-50"
-                                      >
-                                        <MessageCircle className="w-3.5 h-3.5 mr-2" /> WhatsApp
-                                      </Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => openEmail(item, selectedUpt)} 
-                                        className="h-8 text-orange-600 border-orange-200 hover:bg-orange-50"
-                                      >
-                                        <Mail className="w-3.5 h-3.5 mr-2" /> Email
-                                      </Button>
-                                    </div>
+                                    <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
+                                      <a href={`/uploads/${item.suratPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-orange-600" /> Surat Pengantar</a>
+                                    </Button>
                                   </div>
-                                )}
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-1"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-red-600">Hapus</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                </div>
+                                <Separator className="dark:bg-slate-800" />
+                                
+                                {/* --- FORM KEPUTUSAN --- */}
+                                <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50">
+                                  <div className="mb-4 flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-semibold">Keputusan Admin</span>
+                                  </div>
+
+                                  <div className="grid gap-4">
+                                    {/* DROPDOWN STATUS UTAMA */}
+                                    <div className="space-y-1.5">
+                                      <Label className="text-xs text-slate-500">Status Keputusan</Label>
+                                      <Select 
+                                        value={actionStatus} 
+                                        onValueChange={(val) => {
+                                            setActionStatus(val);
+                                            if (val !== "ACCEPTED") setSelectedPosition("");
+                                        }}
+                                      >
+                                        <SelectTrigger className="bg-white dark:bg-slate-950"><SelectValue placeholder="-- Tentukan Status --" /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="ACCEPTED">Diterima (Masuk Bidang)</SelectItem>
+                                          <SelectItem value="RECOMMENDED">Direkomendasikan (Pindah UPT)</SelectItem>
+                                          <SelectItem value="REJECTED">Ditolak</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    {/* DROPDOWN ACCEPTED */}
+                                    {actionStatus === "ACCEPTED" && (
+                                      <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                                        <Label className="text-xs text-slate-500">Penempatan Bidang <span className="text-red-500">*</span></Label>
+                                        <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+                                          <SelectTrigger className="bg-white dark:bg-slate-950 border-blue-200 dark:border-blue-900"><SelectValue placeholder="Pilih Posisi Magang" /></SelectTrigger>
+                                          <SelectContent>
+                                            {positions.map((pos) => (
+                                              <SelectItem key={pos.id} value={pos.id.toString()}>{pos.title} <span className="text-slate-400 text-xs ml-2">(Sisa: {pos.quota - pos.filled})</span></SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+
+                                    {/* DROPDOWN RECOMMENDED */}
+                                    {(actionStatus === "RECOMMENDED") && (
+                                      <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                                        <Label className="text-xs text-slate-500">
+                                          Tujuan UPT <span className="text-red-500">*</span>
+                                          {item.status === "RECOMMENDED" && <span className="ml-2 text-[10px] text-orange-500 font-normal">(Pilih ulang jika ingin kirim notifikasi)</span>}
+                                        </Label>
+                                        <Select value={selectedUpt} onValueChange={setSelectedUpt}>
+                                          <SelectTrigger className="bg-white dark:bg-slate-950 border-orange-200 dark:border-orange-900"><SelectValue placeholder="Pilih UPT Tujuan" /></SelectTrigger>
+                                          <SelectContent>
+                                            {upts.length > 0 ? upts.map((upt) => (
+                                              <SelectItem key={upt.id} value={upt.name}>{upt.name}</SelectItem>
+                                            )) : (
+                                                <SelectItem value="dummy" disabled>Belum ada data UPT</SelectItem>
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                        
+                                        {item.status === "RECOMMENDED" && !selectedUpt && (
+                                          <p className="text-[10px] text-slate-500 mt-1">
+                                            <MapPin className="h-3 w-3 inline mr-1"/>
+                                            Pilih ulang UPT agar alamat muncul di WhatsApp/Email.
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {actionStatus === "REJECTED" && (
+                                       <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900 rounded text-xs text-red-600 dark:text-red-400 animate-in fade-in">
+                                          <span className="font-semibold">Konfirmasi:</span> Pelamar akan ditolak.
+                                       </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* --- FOOTER --- */}
+                                <DialogFooter className="p-4 bg-slate-100/50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 gap-2 sm:gap-0">
+                                  {item.status === "PENDING" ? (
+                                    <>
+                                      <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isProcessing}>Batal</Button>
+                                      <Button className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]" onClick={handleProcess} disabled={isProcessing || !actionStatus}>
+                                        {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : "Simpan Keputusan"}
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4">
+                                      <div className="text-sm italic text-slate-500 flex flex-col">
+                                        <span>Status saat ini:{" "}
+                                          <span className={`font-semibold ${item.status === "ACCEPTED" ? "text-green-600" : item.status === "RECOMMENDED" ? "text-blue-600" : "text-red-600"}`}>
+                                            {item.status === "ACCEPTED" ? "Diterima" : item.status === "RECOMMENDED" ? "Direkomendasikan" : "Ditolak"}
+                                          </span>
+                                        </span>
+                                        {isProcessing === false && actionStatus === item.status && (
+                                          <span className="text-[10px] text-green-600 flex items-center mt-1"><CheckCircle className="h-3 w-3 mr-1"/> Data Tersimpan</span>
+                                        )}
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>Tutup</Button>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          onClick={() => openWhatsApp(item, selectedUpt)} 
+                                          className="h-8 text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                        >
+                                          <MessageCircle className="w-3.5 h-3.5 mr-2" /> WhatsApp
+                                        </Button>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          onClick={() => openEmail(item, selectedUpt)} 
+                                          className="h-8 text-orange-600 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                                        >
+                                          <Mail className="w-3.5 h-3.5 mr-2" /> Email
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+
+                            {/* --- TOMBOL HAPUS (BARU & DI LUAR) --- */}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                              onClick={() => {
+                                setDeletingPelamar(item);
+                                setIsDeleteOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -942,6 +947,42 @@ Admin Dinas DIKPORA DIY`;
           </Card>
         </main>
       </div>
+
+      {/* --- MODAL KONFIRMASI HAPUS (BARU) --- */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+              <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+              </div>
+              <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                  Hapus Data Pelamar?
+              </DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
+                  Anda akan menghapus data pendaftaran <span className="font-semibold text-slate-900 dark:text-slate-200">"{deletingPelamar?.namaLengkap}"</span>. 
+                  <br/>Tindakan ini tidak dapat dibatalkan.
+              </DialogDescription>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={isProcessing}
+              >
+                Batal
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                onClick={confirmDelete}
+                disabled={isProcessing}
+              >
+                {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+              </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* MODAL LOGOUT */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
