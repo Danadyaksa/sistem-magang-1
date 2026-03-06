@@ -498,6 +498,9 @@ export default function PKLMonitoringPage() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   useEffect(() => {
+    const savedState = localStorage.getItem("sidebarCollapsed");
+    if (savedState === "true") setIsSidebarCollapsed(true);
+
     fetchData();
     fetchAdminSession();
   }, []);
@@ -579,6 +582,12 @@ export default function PKLMonitoringPage() {
       });
     return groups;
   }, [interns, positions, searchTerm]);
+
+  const toggleSidebar = () => {
+    const newState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newState);
+    localStorage.setItem("sidebarCollapsed", String(newState));
+  };
 
   // --- LOGIC MANUAL INPUT ---
   const handleStartDateChange = (date: string) => {
@@ -835,7 +844,7 @@ export default function PKLMonitoringPage() {
     <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden">
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-all duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 ${isSidebarCollapsed ? "w-20" : "w-64"}`}
+        className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 ${isSidebarCollapsed ? "w-20" : "w-64"}`}
       >
         <div
           className={`h-16 flex items-center border-b border-slate-800 flex-none ${isSidebarCollapsed ? "justify-center px-0" : "px-6 gap-3"}`}
@@ -861,7 +870,7 @@ export default function PKLMonitoringPage() {
             <X className="h-6 w-6" />
           </button>
         </div>
-        <nav className="p-3 space-y-2 flex-1 overflow-y-auto">
+        <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarItem
             icon={LayoutDashboard}
             label="Master Data"
@@ -878,7 +887,6 @@ export default function PKLMonitoringPage() {
             icon={BookOpen}
             label="Penelitian"
             onClick={() => router.push("/admin/penelitian")}
-            // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
           />
           <SidebarItem
             icon={Users}
@@ -913,13 +921,7 @@ export default function PKLMonitoringPage() {
             </button>
             <button
               className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
-              onClick={() => {
-                setIsSidebarCollapsed(!isSidebarCollapsed);
-                localStorage.setItem(
-                  "sidebarCollapsed",
-                  String(!isSidebarCollapsed),
-                );
-              }}
+              onClick={toggleSidebar}
             >
               {isSidebarCollapsed ? (
                 <PanelLeftOpen className="h-5 w-5" />
