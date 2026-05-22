@@ -439,11 +439,11 @@ export default function AdminDashboard() {
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarItem icon={LayoutDashboard} label="Master Data" active={true} />
-          <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
+          <SidebarItem icon={FileText} label="Data Pelamar" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")} />
           <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
-          <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
+          <SidebarItem icon={Settings} label="Pengaturan" onClick={() => router.push("/admin/pengaturan")} />
           <div className="pt-4 mt-4 border-t border-slate-800">
             <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
           </div>
@@ -776,7 +776,7 @@ export default function AdminDashboard() {
             <DialogHeader><DialogTitle>{editingId ? "Edit UPT" : "Tambah UPT"}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2"><Label>Nama UPT</Label><Input value={uptForm.name} onChange={(e) => setUptForm({...uptForm, name: e.target.value})} placeholder="Nama Balai..."/></div>
-                <div className="grid gap-2"><Label>Alamat</Label><Input value={uptForm.address} onChange={(e) => setUptForm({...uptForm, address: e.target.value})} placeholder="Jl. Raya..."/></div>
+                <div className="grid gap-2"><Label>Link Google Maps</Label><Input value={uptForm.address} onChange={(e) => setUptForm({...uptForm, address: e.target.value})} placeholder="https://maps.app.goo.gl/..."/></div>
             </div>
             <DialogFooter><Button className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 w-full sm:w-auto transition-all text-white" onClick={handleSaveUpt} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
         </DialogContent>

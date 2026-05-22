@@ -778,8 +778,7 @@ export default function Home() {
                         Kapan saya dapat kepastian diterima?
                       </AccordionTrigger>
                       <AccordionContent className="text-slate-600 dark:text-slate-400 text-sm">
-                        Proses verifikasi berkas biasanya memakan waktu 3-7 hari
-                        kerja tergantung antrian pendaftar.
+                        Proses verifikasi berkas akan dilakukan secepatnya
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

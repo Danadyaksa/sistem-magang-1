@@ -392,7 +392,7 @@ export default function AdminUsersPage() {
           />
           <SidebarItem 
             icon={FileText} 
-            label="Applicants" 
+            label="Data Pelamar" 
             onClick={() => router.push("/admin/applicants")}
           />
           <SidebarItem 
@@ -413,7 +413,7 @@ export default function AdminUsersPage() {
           />
           <SidebarItem 
             icon={Settings} 
-            label="Settings" 
+            label="Pengaturan" 
             onClick={() => router.push("/admin/pengaturan")} 
           />
           

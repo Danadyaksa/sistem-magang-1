@@ -234,11 +234,11 @@ export default function PengaturanPage() {
 
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")}/>
-          <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")}/>
+          <SidebarItem icon={FileText} label="Data Pelamar" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")}/>
           <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")}/>
-          <SidebarItem icon={Settings} label="Settings" active={true}/>
+          <SidebarItem icon={Settings} label="Pengaturan" active={true}/>
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
             <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
           </div>
