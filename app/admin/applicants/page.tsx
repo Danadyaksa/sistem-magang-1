@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox"; // Ditambahkan
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -105,9 +106,13 @@ export default function ApplicantsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // --- STATE DELETE MODAL (BARU) ---
+  // --- STATE DELETE MODAL ---
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingPelamar, setDeletingPelamar] = useState<Pendaftaran | null>(null);
+
+  // --- STATE BULK DELETE (BARU) ---
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // State Dropdown Dinamis
   const [actionStatus, setActionStatus] = useState<string>(""); 
@@ -374,12 +379,34 @@ Admin Dinas DIKPORA DIY`;
 
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds([]); // Reset select saat filter berubah
   }, [searchTerm, filterYear, filterMonth, itemsPerPage]);
+
+  useEffect(() => {
+    setSelectedIds([]); // Reset select saat ganti page
+  }, [currentPage]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
+
+  // --- LOGIC CHECKBOX SELECTION (BARU) ---
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentData.map((item) => item.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
 
   // --- ACTION HANDLERS ---
   const handleLogoutConfirm = async () => {
@@ -444,7 +471,7 @@ Admin Dinas DIKPORA DIY`;
     }
   };
 
-  // --- LOGIC HAPUS DATA ---
+  // --- LOGIC HAPUS DATA (SATU) ---
   const confirmDelete = async () => {
     if (!deletingPelamar) return;
     setIsProcessing(true);
@@ -464,6 +491,25 @@ Admin Dinas DIKPORA DIY`;
       setIsProcessing(false);
       setIsDeleteOpen(false);
       setDeletingPelamar(null);
+    }
+  };
+
+  // --- LOGIC HAPUS BANYAK DATA (BARU) ---
+  const confirmBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsProcessing(true);
+    try {
+      await Promise.all(
+        selectedIds.map((id) => fetch(`/api/pendaftaran/${id}`, { method: "DELETE" }))
+      );
+      toast.success(`${selectedIds.length} data pelamar berhasil dihapus`);
+      setSelectedIds([]);
+      fetchData();
+    } catch (error) {
+      toast.error("Gagal menghapus beberapa data");
+    } finally {
+      setIsProcessing(false);
+      setIsBulkDeleteOpen(false);
     }
   };
 
@@ -641,6 +687,12 @@ Admin Dinas DIKPORA DIY`;
               <p className="text-slate-500 dark:text-slate-400">Cek berkas dan tentukan siapa yang layak magang.</p>
             </div>
             <div className="flex gap-2">
+              {/* TOMBOL BULK DELETE (BARU) */}
+              {selectedIds.length > 0 && (
+                <Button onClick={() => setIsBulkDeleteOpen(true)} className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-700/20 transition-all hover:scale-105">
+                  <Trash2 className="h-4 w-4 mr-2" /> Hapus Terpilih ({selectedIds.length})
+                </Button>
+              )}
               <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-700/20 transition-all hover:scale-105">
                 <Download className="h-4 w-4 mr-2" /> Export Excel
               </Button>
@@ -686,7 +738,15 @@ Admin Dinas DIKPORA DIY`;
               <Table>
                 <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                   <TableRow className="border-b border-slate-200 dark:border-slate-700">
-                    <TableHead className="w-[50px] text-center h-10">No</TableHead>
+                    <TableHead className="w-[40px] text-center h-10">
+                      {/* CHECKBOX SELECT ALL */}
+                      <Checkbox 
+                        checked={currentData.length > 0 && selectedIds.length === currentData.length}
+                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[40px] text-center h-10">No</TableHead>
                     <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("namaLengkap")}>
                         <div className="flex items-center gap-2">Nama Pelamar <ArrowUpDown className="h-3 w-3" /></div>
                     </TableHead>
@@ -704,12 +764,20 @@ Admin Dinas DIKPORA DIY`;
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="h-24 text-center text-slate-500"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-slate-500"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
                   ) : currentData.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="h-32 text-center text-slate-500"><div className="flex flex-col items-center gap-2"><FileText className="h-8 w-8 text-slate-300" /><p>Data tidak ditemukan.</p></div></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="h-32 text-center text-slate-500"><div className="flex flex-col items-center gap-2"><FileText className="h-8 w-8 text-slate-300" /><p>Data tidak ditemukan.</p></div></TableCell></TableRow>
                   ) : (
                     currentData.map((item, idx) => (
                       <TableRow key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                        <TableCell className="text-center py-3">
+                          {/* CHECKBOX SELECT ROW */}
+                          <Checkbox 
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={(checked) => handleSelectRow(item.id, checked as boolean)}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
                         <TableCell className="text-center text-slate-500 py-3">{startIndex + idx + 1}</TableCell>
                         <TableCell className="font-medium py-3">
                           <div className="flex flex-col">
@@ -913,7 +981,7 @@ Admin Dinas DIKPORA DIY`;
                               </DialogContent>
                             </Dialog>
 
-                            {/* --- TOMBOL HAPUS (BARU & DI LUAR) --- */}
+                            {/* --- TOMBOL HAPUS --- */}
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -937,7 +1005,29 @@ Admin Dinas DIKPORA DIY`;
             <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-4 text-sm text-slate-500">
                 <span>Menampilkan <strong>{filteredData.length > 0 ? startIndex + 1 : 0}</strong> - <strong>{Math.min(endIndex, filteredData.length)}</strong> dari <strong>{filteredData.length}</strong> data</span>
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline">| Baris:</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(val) => {
+                      setItemsPerPage(Number(val));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px] bg-white dark:bg-slate-950">
+                      <SelectValue placeholder="10" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" /></Button>
                 <div className="flex items-center gap-1"><span className="text-sm px-2">Halaman {currentPage}</span></div>
@@ -948,7 +1038,7 @@ Admin Dinas DIKPORA DIY`;
         </main>
       </div>
 
-      {/* --- MODAL KONFIRMASI HAPUS (BARU) --- */}
+      {/* --- MODAL KONFIRMASI HAPUS SATU --- */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
             <div className="flex flex-col items-center text-center gap-2 pt-2">
@@ -979,6 +1069,42 @@ Admin Dinas DIKPORA DIY`;
                 disabled={isProcessing}
               >
                 {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+              </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- MODAL KONFIRMASI BULK DELETE (BARU) --- */}
+      <Dialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
+        <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+              <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+              </div>
+              <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                  Hapus {selectedIds.length} Data Pelamar?
+              </DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
+                  Anda akan menghapus <span className="font-semibold text-slate-900 dark:text-slate-200">{selectedIds.length} data</span> yang dipilih. 
+                  <br/>Tindakan ini tidak dapat dibatalkan.
+              </DialogDescription>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                onClick={() => setIsBulkDeleteOpen(false)}
+                disabled={isProcessing}
+              >
+                Batal
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                onClick={confirmBulkDelete}
+                disabled={isProcessing}
+              >
+                {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus Semua"}
               </Button>
             </DialogFooter>
         </DialogContent>

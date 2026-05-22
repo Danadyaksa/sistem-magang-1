@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox"; // Ditambahkan
 import {
   Card,
   CardContent,
@@ -491,11 +492,21 @@ export default function PKLMonitoringPage() {
   const [editingIntern, setEditingIntern] = useState<Intern | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   
-  // --- DELETE STATE (REVISI) ---
+  // --- DELETE STATE ---
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingIntern, setDeletingIntern] = useState<Intern | null>(null);
   
+  // --- BULK DELETE HISTORY STATE (BARU) ---
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
+  const [isBulkDeleteHistoryOpen, setIsBulkDeleteHistoryOpen] = useState(false);
+
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
+  // --- STATE UNTUK TAB HISTORY ---
+  const [historySortConfig, setHistorySortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>(null);
 
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
@@ -504,6 +515,11 @@ export default function PKLMonitoringPage() {
     fetchData();
     fetchAdminSession();
   }, []);
+
+  // Reset selection pas pindah tab atau ngetik pencarian
+  useEffect(() => {
+    setSelectedHistoryIds([]);
+  }, [searchTerm, activeTab, historySortConfig]);
 
   const fetchAdminSession = async () => {
     try {
@@ -583,6 +599,98 @@ export default function PKLMonitoringPage() {
     return groups;
   }, [interns, positions, searchTerm]);
 
+  // --- LOGIC TAB HISTORY ---
+  const sortedHistoryInterns = useMemo(() => {
+    let sortableItems = interns.filter(
+      (i) =>
+        i.statusWaktu === "FINISHED" &&
+        (i.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          i.instansi.toLowerCase().includes(searchTerm.toLowerCase())),
+    );
+
+    if (historySortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue: any = a[historySortConfig.key as keyof Intern];
+        let bValue: any = b[historySortConfig.key as keyof Intern];
+
+        if (historySortConfig.key === "periode") {
+          aValue = new Date(a.tanggalMulai).getTime();
+          bValue = new Date(b.tanggalMulai).getTime();
+        } else if (historySortConfig.key === "posisi") {
+          aValue = positions.find((p) => p.id === a.positionId)?.title || "";
+          bValue = positions.find((p) => p.id === b.positionId)?.title || "";
+        }
+
+        if (aValue < bValue)
+          return historySortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue)
+          return historySortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [interns, searchTerm, historySortConfig, positions]);
+
+  const requestHistorySort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (
+      historySortConfig &&
+      historySortConfig.key === key &&
+      historySortConfig.direction === "asc"
+    ) {
+      direction = "desc";
+    }
+    setHistorySortConfig({ key, direction });
+  };
+
+  const getHistorySortIcon = (key: string) => {
+    if (historySortConfig?.key === key) {
+      return historySortConfig.direction === "asc" ? (
+        <ArrowUp className="ml-1 h-3 w-3" />
+      ) : (
+        <ArrowDown className="ml-1 h-3 w-3" />
+      );
+    }
+    return (
+      <ArrowUpDown className="ml-1 h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+    );
+  };
+
+  // --- LOGIC BULK DELETE HISTORY (BARU) ---
+  const handleSelectAllHistory = (checked: boolean) => {
+    if (checked) {
+      setSelectedHistoryIds(sortedHistoryInterns.map((item) => item.id));
+    } else {
+      setSelectedHistoryIds([]);
+    }
+  };
+
+  const handleSelectRowHistory = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedHistoryIds((prev) => [...prev, id]);
+    } else {
+      setSelectedHistoryIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  const confirmBulkDeleteHistory = async () => {
+    if (selectedHistoryIds.length === 0) return;
+    setIsSubmitting(true);
+    try {
+      await Promise.all(
+        selectedHistoryIds.map((id) => fetch(`/api/pendaftaran/${id}`, { method: "DELETE" }))
+      );
+      toast.success(`${selectedHistoryIds.length} data alumni berhasil dihapus`);
+      setSelectedHistoryIds([]);
+      fetchData();
+    } catch (error) {
+      toast.error("Gagal menghapus beberapa data");
+    } finally {
+      setIsSubmitting(false);
+      setIsBulkDeleteHistoryOpen(false);
+    }
+  };
+
   const toggleSidebar = () => {
     const newState = !isSidebarCollapsed;
     setIsSidebarCollapsed(newState);
@@ -602,7 +710,6 @@ export default function PKLMonitoringPage() {
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
     if (!isNaN(val)) {
-      // Jangan update tanggal selesai kalo < 44 (biar user tau ada warning/error), tapi state lama kerja tetep diupdate
       const endDate =
         val >= 44 ? calculateEndDate(batchCommon.tanggalMulai, val) : "";
       setBatchCommon((prev) => ({
@@ -620,7 +727,7 @@ export default function PKLMonitoringPage() {
       batchCommon.pembimbing &&
       batchCommon.kontakPembimbing &&
       batchCommon.tanggalMulai &&
-      batchCommon.lamaMagang >= 44 && // Validasi Min 44 Hari
+      batchCommon.lamaMagang >= 44 && 
       batchCommon.tanggalSelesai &&
       batchSurat;
 
@@ -750,7 +857,6 @@ export default function PKLMonitoringPage() {
 
   // LOGIC EDIT (FIXED CRASH)
   const onEditClick = (intern: Intern) => {
-    // Safety check biar ga crash kalo data tanggal aneh
     const safeStart = formatDateForInput(intern.tanggalMulai);
     const safeEnd = formatDateForInput(intern.tanggalSelesai);
 
@@ -786,7 +892,7 @@ export default function PKLMonitoringPage() {
     }
   };
 
-  // --- LOGIC HAPUS DATA (NEW) ---
+  // --- LOGIC HAPUS DATA (SINGLE) ---
   const confirmDelete = async () => {
     if (!deletingIntern) return;
     setIsSubmitting(true);
@@ -953,6 +1059,15 @@ export default function PKLMonitoringPage() {
                 </p>
               </div>
               <div className="flex gap-3">
+                {/* --- TOMBOL BULK DELETE MUNCUL JIKA ADA YG DIPILIH DI TAB HISTORY --- */}
+                {activeTab === "history" && selectedHistoryIds.length > 0 && (
+                  <Button
+                    onClick={() => setIsBulkDeleteHistoryOpen(true)}
+                    className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-700/20 transition-all hover:scale-105"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Hapus Terpilih ({selectedHistoryIds.length})
+                  </Button>
+                )}
                 <div className="relative w-72">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
@@ -990,9 +1105,10 @@ export default function PKLMonitoringPage() {
                 className="data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 font-medium rounded-md h-full transition-all dark:text-slate-400"
               >
                 <History className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Magang Selesai</span>
+                <span className="hidden sm:inline">Selesai Magang</span>
               </TabsTrigger>
             </TabsList>
+            
             <TabsContent value="active" className="space-y-6">
               {loading ? (
                 <div className="h-24 text-center text-slate-500">
@@ -1022,42 +1138,127 @@ export default function PKLMonitoringPage() {
                 })
               )}
             </TabsContent>
-            <TabsContent value="history" className="space-y-6">
+
+            {/* --- TAB HISTORY --- */}
+            <TabsContent value="history" className="space-y-6 animate-in fade-in duration-500">
               {loading ? (
                 <div className="p-12 text-center">
-                  <Loader2 className="animate-spin h-6 w-6 mx-auto mb-2" />
-                  Loading data...
+                  <Loader2 className="animate-spin h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <p className="text-slate-500">Loading data...</p>
                 </div>
               ) : (
-                positions.map((pos) => {
-                  const historyInterns =
-                    groupedData[pos.id]?.filter(
-                      (i) => i.statusWaktu === "FINISHED",
-                    ) || [];
-                  // Jangan tampilkan card kalau kosong, kecuali user lagi searching (biar ga bingung)
-                  if (historyInterns.length === 0) return null;
-
-                  return (
-                    <PositionCard
-                      key={pos.id}
-                      pos={pos}
-                      interns={historyInterns}
-                      loading={loading}
-                      onEditClick={onEditClick}
-                      onDeleteClick={(i: any) => {
-                        setDeletingIntern(i);
-                        setIsDeleteOpen(true);
-                      }}
-                    />
-                  );
-                })
+                <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm overflow-hidden">
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/50 dark:bg-slate-900/30">
+                          {/* CHECKBOX SELECT ALL */}
+                          <TableHead className="w-[40px] text-center">
+                            <Checkbox 
+                              checked={sortedHistoryInterns.length > 0 && selectedHistoryIds.length === sortedHistoryInterns.length}
+                              onCheckedChange={(checked) => handleSelectAllHistory(checked as boolean)}
+                              aria-label="Select all"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[50px] text-center text-xs">No</TableHead>
+                          <TableHead className="text-xs cursor-pointer group" onClick={() => requestHistorySort("namaLengkap")}>
+                            <div className="flex items-center">Nama {getHistorySortIcon("namaLengkap")}</div>
+                          </TableHead>
+                          <TableHead className="text-xs cursor-pointer group" onClick={() => requestHistorySort("posisi")}>
+                            <div className="flex items-center">Penempatan / Divisi {getHistorySortIcon("posisi")}</div>
+                          </TableHead>
+                          <TableHead className="text-xs cursor-pointer group" onClick={() => requestHistorySort("periode")}>
+                            <div className="flex items-center">Periode {getHistorySortIcon("periode")}</div>
+                          </TableHead>
+                          <TableHead className="text-center text-xs">Status</TableHead>
+                          <TableHead className="text-right text-xs pr-6">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedHistoryInterns.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-xs py-8 text-slate-400">
+                              Tidak ada data alumni magang.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          sortedHistoryInterns.map((intern, idx) => {
+                            const posisiName = positions.find((p) => p.id === intern.positionId)?.title || "-";
+                            return (
+                              <TableRow key={intern.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                {/* CHECKBOX SELECT ROW */}
+                                <TableCell className="text-center">
+                                  <Checkbox 
+                                    checked={selectedHistoryIds.includes(intern.id)}
+                                    onCheckedChange={(checked) => handleSelectRowHistory(intern.id, checked as boolean)}
+                                    aria-label="Select row"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center text-slate-500 px-4 py-3 text-xs">{idx + 1}</TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="font-medium flex items-center text-sm">
+                                    {intern.namaLengkap} <SourceBadge path={intern.cvPath} />
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                    <School className="h-3 w-3" /> {intern.instansi}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                                  {posisiName}
+                                </TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="flex flex-col text-xs">
+                                    <span>
+                                      {new Date(intern.tanggalMulai).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} - {new Date(intern.tanggalSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "2-digit" })}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">Total {intern.totalDurasi} Hari</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center px-4 py-3">
+                                  <StatusBadge status={intern.statusWaktu} daysLeft={intern.sisaHari} />
+                                </TableCell>
+                                <TableCell className="text-right px-4 py-3 pr-6">
+                                  <div className="flex justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-slate-400 hover:text-blue-600"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditClick(intern);
+                                      }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-slate-400 hover:text-red-600"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeletingIntern(intern);
+                                        setIsDeleteOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
               )}
             </TabsContent>
           </Tabs>
         </main>
       </div>
 
-      {/* --- DIALOG INPUT MANUAL (REVISI: max-w-[80vw], Layout Full) --- */}
+      {/* --- DIALOG INPUT MANUAL --- */}
       <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
         <DialogContent className="sm:max-w-[80vw] max-h-[95vh] overflow-y-auto dark:bg-slate-950 dark:border-slate-800">
           <DialogHeader>
@@ -1069,7 +1270,7 @@ export default function PKLMonitoringPage() {
           </DialogHeader>
 
           <div className="grid gap-6 py-4">
-            {/* 1. DATA SEKOLAH & TANGGAL (Layout Form Mirip /daftar) */}
+            {/* 1. DATA SEKOLAH & TANGGAL */}
             <div className="grid md:grid-cols-2 gap-8">
               {/* KOLOM KIRI: Sekolah */}
               <div className="space-y-4">
@@ -1238,7 +1439,6 @@ export default function PKLMonitoringPage() {
                   key={idx}
                   className="p-4 border rounded-xl bg-white dark:bg-slate-900 dark:border-slate-800 relative group shadow-sm flex gap-5 items-center hover:shadow-md transition-shadow"
                 >
-                  {/* NOMOR PESERTA DI KIRI (Besar & Jelas) */}
                   <div className="flex-none flex flex-col items-center justify-center w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-xs text-slate-400 font-medium uppercase">
                       Siswa
@@ -1470,7 +1670,7 @@ export default function PKLMonitoringPage() {
         </DialogContent>
       </Dialog>
 
-      {/* --- DIALOG KONFIRMASI HAPUS (BARU & CANTIK) --- */}
+      {/* --- DIALOG KONFIRMASI HAPUS (SINGLE) --- */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
          <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
             <div className="flex flex-col items-center text-center gap-2 pt-2">
@@ -1504,6 +1704,42 @@ export default function PKLMonitoringPage() {
                </Button>
             </DialogFooter>
          </DialogContent>
+      </Dialog>
+
+      {/* --- DIALOG KONFIRMASI BULK DELETE HISTORY (BARU) --- */}
+      <Dialog open={isBulkDeleteHistoryOpen} onOpenChange={setIsBulkDeleteHistoryOpen}>
+        <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+              <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+              </div>
+              <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                  Hapus {selectedHistoryIds.length} Data Alumni?
+              </DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-400">
+                  Anda akan menghapus <span className="font-semibold text-slate-900 dark:text-slate-200">{selectedHistoryIds.length} data</span> alumni yang dipilih. 
+                  <br/>Tindakan ini tidak dapat dibatalkan.
+              </DialogDescription>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                onClick={() => setIsBulkDeleteHistoryOpen(false)}
+                disabled={isSubmitting}
+              >
+                Batal
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                onClick={confirmBulkDeleteHistory}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus Semua"}
+              </Button>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

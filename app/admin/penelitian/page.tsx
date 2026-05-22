@@ -34,13 +34,14 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Trash2 // Tambahin icon Trash2
+  Trash2 
 } from "lucide-react";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox"; // Ditambahkan
 import {
   Table,
   TableBody,
@@ -127,9 +128,13 @@ export default function AdminResearchPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // --- STATE DELETE MODAL (BARU) ---
+  // --- STATE DELETE MODAL ---
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Penelitian | null>(null);
+
+  // --- STATE BULK DELETE (BARU) ---
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // Admin Info
   const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
@@ -189,15 +194,37 @@ export default function AdminResearchPage() {
     });
   }, [dataPenelitian, searchTerm, filterYear, filterMonth]);
 
-  // Reset page saat filter berubah
+  // Reset page dan select saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds([]); 
   }, [searchTerm, filterYear, filterMonth, itemsPerPage]);
+
+  useEffect(() => {
+    setSelectedIds([]); 
+  }, [currentPage]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
+
+  // --- LOGIC CHECKBOX SELECTION (BARU) ---
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentData.map((item) => item.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
 
   // --- EXPORT EXCEL ---
   const handleExportExcel = async () => {
@@ -316,7 +343,7 @@ export default function AdminResearchPage() {
     }
   };
 
-  // --- DELETE LOGIC (BARU) ---
+  // --- DELETE LOGIC (SATU) ---
   const handleDelete = async () => {
     if (!itemToDelete) return;
     setIsProcessing(true);
@@ -337,6 +364,25 @@ export default function AdminResearchPage() {
       toast.error("Terjadi kesalahan sistem");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // --- BULK DELETE LOGIC (BARU) ---
+  const confirmBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsProcessing(true);
+    try {
+      await Promise.all(
+        selectedIds.map((id) => fetch(`/api/penelitian/${id}`, { method: "DELETE" }))
+      );
+      toast.success(`${selectedIds.length} data penelitian berhasil dihapus`);
+      setSelectedIds([]);
+      fetchData();
+    } catch (error) {
+      toast.error("Gagal menghapus beberapa data");
+    } finally {
+      setIsProcessing(false);
+      setIsBulkDeleteOpen(false);
     }
   };
 
@@ -435,6 +481,12 @@ export default function AdminResearchPage() {
               <p className="text-slate-500 dark:text-slate-400">Kelola pengajuan izin penelitian dari Mahasiswa/Dosen.</p>
             </div>
             <div className="flex gap-2">
+              {/* TOMBOL BULK DELETE (BARU) */}
+              {selectedIds.length > 0 && (
+                <Button onClick={() => setIsBulkDeleteOpen(true)} className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-700/20 transition-all hover:scale-105">
+                  <Trash2 className="h-4 w-4 mr-2" /> Hapus Terpilih ({selectedIds.length})
+                </Button>
+              )}
               <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-700/20 transition-all hover:scale-105">
                 <Download className="h-4 w-4 mr-2" /> Export Excel
               </Button>
@@ -480,7 +532,15 @@ export default function AdminResearchPage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                   <TableRow>
-                    <TableHead className="w-[50px] text-center">No</TableHead>
+                    <TableHead className="w-[40px] text-center">
+                      {/* CHECKBOX SELECT ALL */}
+                      <Checkbox 
+                        checked={currentData.length > 0 && selectedIds.length === currentData.length}
+                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[40px] text-center">No</TableHead>
                     <TableHead>Nama Peneliti</TableHead>
                     <TableHead>Instansi / Kampus</TableHead>
                     <TableHead>Kategori</TableHead>
@@ -491,9 +551,9 @@ export default function AdminResearchPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-slate-500"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="h-24 text-center text-slate-500"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
                   ) : currentData.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                    <TableRow><TableCell colSpan={8} className="h-32 text-center text-slate-500">
                       <div className="flex flex-col items-center gap-2">
                         <BookOpen className="h-8 w-8 text-slate-300" />
                         <p>Belum ada data masuk.</p>
@@ -502,6 +562,14 @@ export default function AdminResearchPage() {
                   ) : (
                     currentData.map((item, idx) => (
                       <TableRow key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                        <TableCell className="text-center">
+                          {/* CHECKBOX SELECT ROW */}
+                          <Checkbox 
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={(checked) => handleSelectRow(item.id, checked as boolean)}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
                         <TableCell className="text-center">{startIndex + idx + 1}</TableCell>
                         <TableCell className="font-medium">
                           <div className="flex flex-col">
@@ -658,7 +726,7 @@ export default function AdminResearchPage() {
               </div>
             </div>
             
-            {/* --- MODAL KONFIRMASI HAPUS (BARU) --- */}
+            {/* --- MODAL KONFIRMASI HAPUS SATU --- */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
               <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
                   <div className="flex flex-col items-center text-center gap-2 pt-2">
@@ -689,6 +757,42 @@ export default function AdminResearchPage() {
                       disabled={isProcessing}
                     >
                       {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
+                    </Button>
+                  </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* --- MODAL KONFIRMASI BULK DELETE (BARU) --- */}
+            <Dialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
+              <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+                  <div className="flex flex-col items-center text-center gap-2 pt-2">
+                    <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
+                        <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
+                    </div>
+                    <DialogTitle className="text-xl font-semibold dark:text-slate-100">
+                        Hapus {selectedIds.length} Data Penelitian?
+                    </DialogTitle>
+                    <DialogDescription className="text-center dark:text-slate-400">
+                        Anda akan menghapus <span className="font-semibold text-slate-900 dark:text-slate-200">{selectedIds.length} data</span> yang dipilih. 
+                        <br/>Tindakan ini tidak dapat dibatalkan.
+                    </DialogDescription>
+                  </div>
+                  <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+                    <Button 
+                      variant="outline" 
+                      className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
+                      onClick={() => setIsBulkDeleteOpen(false)}
+                      disabled={isProcessing}
+                    >
+                      Batal
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
+                      onClick={confirmBulkDelete}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus Semua"}
                     </Button>
                   </DialogFooter>
               </DialogContent>
@@ -725,6 +829,5 @@ export default function AdminResearchPage() {
         </main>
       </div>
     </div>
-    
   );
 }
