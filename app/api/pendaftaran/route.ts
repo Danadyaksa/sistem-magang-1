@@ -1,115 +1,136 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import prisma from "@/lib/prisma";
+import { writeFile } from "fs/promises";
+import { join } from "path";
 
-const prisma = new PrismaClient();
-
-export async function POST(req: Request) {
+// ==========================================
+// --- GET: AMBIL SEMUA DATA (KHUSUS ADMIN) ---
+// ==========================================
+export async function GET(request: Request) {
   try {
-    const formData = await req.formData();
-
-    // Ambil data text
-    const namaLengkap = formData.get("namaLengkap") as string;
-    const nomorInduk = formData.get("nomorInduk") as string;
-    const email = formData.get("email") as string;
-    const nomorHp = formData.get("nomorHp") as string;
-    const instansi = formData.get("instansi") as string;
-    const fakultas = formData.get("fakultas") as string || ""; // Optional
-    const jurusan = formData.get("jurusan") as string;
-    const lamaMagang = parseInt(formData.get("lamaMagang") as string);
-    const tanggalMulai = new Date(formData.get("tanggalMulai") as string);
-    const tanggalSelesai = new Date(formData.get("tanggalSelesai") as string);
-    const pemohonSurat = formData.get("pemohonSurat") as string;
-    const nomorSurat = formData.get("nomorSurat") as string;
-    const tanggalSurat = new Date(formData.get("tanggalSurat") as string);
-
-    // Ambil file
-    const cvFile = formData.get("cv") as File | null;
-    const suratFile = formData.get("surat") as File | null;
-
-    // --- VALIDASI: Cek file wajib (Cuma CV & Surat) ---
-    if (!cvFile || !suratFile) {
-      return NextResponse.json(
-        { error: "File CV dan Surat Pengantar wajib diupload." },
-        { status: 400 }
-      );
-    }
-
-    // Fungsi helper simpan file
-    const saveFile = async (file: File, prefix: string) => {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const ext = path.extname(file.name);
-      // Ganti spasi jadi underscore biar aman di URL
-      const cleanName = file.name.replace(/\s+/g, "_");
-      const filename = `${prefix}-${Date.now()}-${cleanName}`;
-      
-      // Pastikan folder uploads ada
-      const uploadDir = path.join(process.cwd(), "public/uploads");
-      await mkdir(uploadDir, { recursive: true });
-      
-      await writeFile(path.join(uploadDir, filename), buffer);
-      return filename;
-    };
-
-    // Simpan file ke server
-    const cvPath = await saveFile(cvFile, "CV");
-    const suratPath = await saveFile(suratFile, "SURAT");
-    
-    // --- NOTE PENTING ---
-    // Karena di Schema Prisma "fotoPath" itu Wajib (String), tapi di form gak ada upload foto,
-    // Kita isi pake string kosong "" atau placeholder.
-    // Nanti pas nampilin data, admin tau kalo string kosong brarti foto ada di CV.
-    const fotoPath = ""; 
-
-    // Simpan ke Database
-    const pendaftaran = await prisma.pendaftaran.create({
-      data: {
-        namaLengkap,
-        nomorInduk,
-        email,
-        nomorHp,
-        instansi,
-        fakultas,
-        jurusan,
-        lamaMagang,
-        tanggalMulai,
-        tanggalSelesai,
-        pemohonSurat,
-        nomorSurat,
-        tanggalSurat,
-        cvPath,
-        suratPath,
-        fotoPath, // <--- Diisi string kosong biar Prisma gak error
-        status: "PENDING",
-      },
+    const data = await prisma.pendaftaran.findMany({
+      orderBy: { createdAt: "desc" }, // Urutkan pendaftar pkl dari yang terbaru
     });
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Pendaftaran berhasil", 
-      data: pendaftaran 
-    });
-
-  } catch (error: any) {
-    console.error("Error pendaftaran:", error);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error ambil pendaftaran GET:", error);
     return NextResponse.json(
-      { error: "Terjadi kesalahan server: " + error.message },
+      { error: "Gagal mengambil data pendaftaran applicants" },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
+// ==========================================
+// --- POST: SIMPAN PENDAFTARAN BARU ---
+// ==========================================
+export async function POST(request: Request) {
   try {
-    const data = await prisma.pendaftaran.findMany({
-      orderBy: { createdAt: "desc" },
+    const formData = await request.formData();
+    
+    // Cek jenis tipe pendaftar
+    const jenisPendaftaran = formData.get("jenisPendaftaran")?.toString() || "MAHASISWA";
+
+    // Handler Berkas Surat Pengantar (Wajib buat dua-duanya)
+    const suratFile = formData.get("surat") as File | null;
+    if (!suratFile) {
+      return NextResponse.json({ error: "Surat Pengantar wajib diupload!" }, { status: 400 });
+    }
+    const suratBytes = await suratFile.arrayBuffer();
+    const suratName = `SURAT-${Date.now()}-${suratFile.name}`;
+    const suratPath = join(process.cwd(), "public/uploads", suratName);
+    await writeFile(suratPath, Buffer.from(suratBytes));
+
+    // ==========================================
+    // ALUR A: SISWA SMK KOLEKTIF (OPSI B)
+    // ==========================================
+    if (jenisPendaftaran === "SMK") {
+      const instansi = formData.get("instansi")?.toString() || "";
+      const jurusan = formData.get("jurusan")?.toString() || "";
+      const pembimbing = formData.get("pembimbing")?.toString() || "";
+      const kontakPembimbing = formData.get("kontakPembimbing")?.toString() || "";
+      const lamaMagang = parseInt(formData.get("lamaMagang")?.toString() || "44");
+      const tanggalMulai = new Date(formData.get("tanggalMulai")?.toString() || "");
+      const tanggalSelesai = new Date(formData.get("tanggalSelesai")?.toString() || "");
+      const pemohonSurat = formData.get("pemohonSurat")?.toString() || pembimbing;
+      const nomorSurat = formData.get("nomorSurat")?.toString() || "-";
+      const tanggalSurat = formData.get("tanggalSurat") ? new Date(formData.get("tanggalSurat")!.toString()) : new Date();
+
+      // Parsing data array siswa dari client
+      const studentsRaw = formData.get("students")?.toString() || "[]";
+      const students = JSON.parse(studentsRaw);
+
+      if (!Array.isArray(students) || students.length === 0) {
+        return NextResponse.json({ error: "Data siswa belum diisi pak!" }, { status: 400 });
+      }
+
+      const createdRecords = [];
+      for (const student of students) {
+        const newRecord = await prisma.pendaftaran.create({
+          data: {
+            namaLengkap: student.namaLengkap,
+            nomorInduk: student.nomorHp, 
+            email: `${student.namaLengkap.toLowerCase().replace(/\s+/g, "")}@smk-entry.com`,
+            nomorHp: student.nomorHp,
+            instansi,
+            jurusan,
+            pembimbing,
+            kontakPembimbing,
+            lamaMagang,
+            tanggalMulai,
+            tanggalSelesai,
+            pemohonSurat,
+            nomorSurat,
+            tanggalSurat,
+            cvPath: "manual-entry-smk", 
+            suratPath: suratName,
+            fotoPath: "manual-entry-smk",
+            status: "PENDING", 
+            positionId: student.positionId ? parseInt(student.positionId) : null,
+          },
+        });
+        createdRecords.push(newRecord);
+      }
+
+      return NextResponse.json({ success: true, count: createdRecords.length });
+    }
+
+    // ==========================================
+    // ALUR B: MAHASISWA REGULER
+    // ==========================================
+    const cvFile = formData.get("cv") as File | null;
+    if (!cvFile) return NextResponse.json({ error: "File CV wajib diupload bray!" }, { status: 400 });
+    
+    const cvBytes = await cvFile.arrayBuffer();
+    const cvName = `CV-${Date.now()}-${cvFile.name}`;
+    const cvPathLocation = join(process.cwd(), "public/uploads", cvName);
+    await writeFile(cvPathLocation, Buffer.from(cvBytes));
+
+    const newPendaftaran = await prisma.pendaftaran.create({
+      data: {
+        namaLengkap: formData.get("namaLengkap")!.toString(),
+        nomorInduk: formData.get("nomorInduk")!.toString(),
+        email: formData.get("email")!.toString(),
+        nomorHp: formData.get("nomorHp")!.toString(),
+        instansi: formData.get("instansi")!.toString(),
+        fakultas: formData.get("fakultas")?.toString() || "-",
+        jurusan: formData.get("jurusan")!.toString(),
+        lamaMagang: parseInt(formData.get("lamaMagang")!.toString()),
+        tanggalMulai: new Date(formData.get("tanggalMulai")!.toString()),
+        tanggalSelesai: new Date(formData.get("tanggalSelesai")!.toString()),
+        pemohonSurat: formData.get("pemohonSurat")!.toString(),
+        nomorSurat: formData.get("nomorSurat")!.toString(),
+        tanggalSurat: new Date(formData.get("tanggalSurat")!.toString()),
+        cvPath: cvName,
+        suratPath: suratName,
+        fotoPath: "web-entry",
+        status: "PENDING",
+      },
     });
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Gagal mengambil data" },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ success: true, data: newPendaftaran });
+  } catch (error: any) {
+    console.error("Error pendaftaran API:", error);
+    return NextResponse.json({ error: "Gagal memproses data pendaftaran." }, { status: 500 });
   }
 }

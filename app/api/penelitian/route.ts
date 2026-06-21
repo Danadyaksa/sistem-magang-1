@@ -39,6 +39,7 @@ export async function POST(request: Request) {
         fileSuratPath: "-", 
         fileProposalPath: "-", 
         status: "PENDING",
+        tujuanPenelitian: body.tujuanPenelitian, // <-- TINGGAL SELIPIN INI AJA, MON! Aman tentram!
       },
     });
 

@@ -14,7 +14,10 @@ import {
   Loader2, 
   Send,
   FileCheck,
-  CalendarClock 
+  CalendarClock,
+  Plus,
+  Trash2,
+  Users
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,41 +46,44 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-// --- SKEMA VALIDASI DASAR (Ditaruh diluar agar TypeScript gak bingung) ---
 const baseSchema = z.object({
-  namaLengkap: z.string().min(2, "Nama minimal 2 karakter"),
-  nomorInduk: z.string().min(1, "NIS/NIM wajib diisi"),
-  email: z.string().email("Format email tidak valid"),
-  instansi: z.string().min(3, "Nama Sekolah/Universitas wajib diisi"),
+  namaLengkap: z.string().optional(),
+  nomorInduk: z.string().optional(),
+  email: z.string().optional(),
+  instansi: z.string().min(3, "Nama Instansi Pendidikan wajib diisi"),
   fakultas: z.string().optional(),
-  jurusan: z.string().min(2, "Jurusan/Jenjang wajib diisi"),
-  lamaMagang: z.coerce.number(), // Validasi minimalnya kita atur dinamis di dalam komponen
+  jurusan: z.string().min(2, "Jurusan wajib diisi"),
+  lamaMagang: z.coerce.number(),
   tanggalMulai: z.date({ required_error: "Tanggal mulai wajib dipilih" }),
-  tanggalSelesai: z.date({ required_error: "Tanggal selesai akan terhitung otomatis" }),
-  pemohonSurat: z.string().min(2, "Nama/Jabatan pemohon wajib diisi"),
+  tanggalSelesai: z.date({ required_error: "Tanggal selesai terhitung otomatis" }),
+  pemohonSurat: z.string().min(2, "Nama pemohon surat wajib diisi"),
   nomorSurat: z.string().min(1, "Nomor surat wajib diisi"),
   tanggalSurat: z.date({ required_error: "Tanggal surat wajib dipilih" }),
-  nomorHp: z.string().min(10, "Nomor HP tidak valid"),
+  nomorHp: z.string().optional(),
 });
 
-// Tipe form dari schema dasar
 type FormValues = z.infer<typeof baseSchema>;
 
 export default function RegistrationPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fileNames, setFileNames] = useState<{
-    cv: string | null;
-    surat: string | null;
-  }>({ cv: null, surat: null });
-
+  const [jenisPendaftaran, setJenisPendaftaran] = useState<"MAHASISWA" | "SMK">("MAHASISWA");
+  const [positions, setPositions] = useState<any[]>([]);
+  
+  const [fileNames, setFileNames] = useState<{ cv: string | null; surat: string | null }>({ cv: null, surat: null });
   const [dbHolidays, setDbHolidays] = useState<string[]>([]);
-  const [minMagangDays, setMinMagangDays] = useState<number>(44); // Default awal
+  const [minMagangDays, setMinMagangDays] = useState<number>(44);
 
-  // --- BIKIN SCHEMA DINAMIS ---
-  // Skema ini otomatis berubah dan nge-set error merah mengikuti angka minMagangDays
+  // Array State Kolektif Data Siswa SMK (Opsi B)
+  const [batchStudents, setBatchStudents] = useState<Array<{ namaLengkap: string; nomorHp: string; positionId: string }>>([
+    { namaLengkap: "", nomorHp: "", positionId: "" }
+  ]);
+
   const dynamicSchema = useMemo(() => {
     return baseSchema.extend({
       lamaMagang: z.coerce.number().min(minMagangDays, `Durasi magang minimal ${minMagangDays} hari kerja`),
@@ -86,7 +92,7 @@ export default function RegistrationPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(dynamicSchema),
-    mode: "onChange", // Ini bikin error merah langsung muncul pas ngetik
+    mode: "onChange",
     defaultValues: {
       namaLengkap: "",
       nomorInduk: "",
@@ -101,49 +107,33 @@ export default function RegistrationPage() {
       tanggalMulai: undefined,
       tanggalSelesai: undefined,
       tanggalSurat: undefined,
-    } as any, // Typecast sementara karena tanggal undefined di awal
+    } as any,
   });
 
   useEffect(() => {
-    const fetchHolidays = async () => {
-      try {
-        const res = await fetch("/api/holidays");
-        if (res.ok) {
-          const data = await res.json();
-          const formatted = data.map((h: any) => format(new Date(h.date), "yyyy-MM-dd"));
-          setDbHolidays(formatted);
-        }
-      } catch (err) {
-        console.error("Gagal ambil hari libur", err);
-      }
-    };
-    fetchHolidays();
-  }, []);
+    // Fetch data kuota posisi/bidang dari database
+    fetch("/api/positions").then(res => res.json()).then(data => {
+      if (Array.isArray(data)) setPositions(data);
+    }).catch(err => console.error(err));
 
-  // Fetch Pengaturan Minimal Hari
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch("/api/settings?key=MIN_MAGANG_DAYS");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.value) {
-             const minDays = parseInt(data.value);
-             setMinMagangDays(minDays);
-             // OTOMATIS UBAH ISI FORM SESUAI SETTING ADMIN
-             form.setValue("lamaMagang", minDays, { shouldValidate: true });
-          }
-        } 
-      } catch (err) {
-        console.error("Gagal ambil pengaturan hari magang", err);
+    fetch("/api/holidays").then(res => res.json()).then(data => {
+      if (Array.isArray(data)) {
+        const formatted = data.map((h: any) => format(new Date(h.date), "yyyy-MM-dd"));
+        setDbHolidays(formatted);
       }
-    };
-    fetchSettings();
+    });
+
+    fetch("/api/settings?key=MIN_MAGANG_DAYS").then(res => res.json()).then(data => {
+      if (data?.value) {
+        const minDays = parseInt(data.value);
+        setMinMagangDays(minDays);
+        form.setValue("lamaMagang", minDays, { shouldValidate: true });
+      }
+    });
   }, [form]);
 
   const isHoliday = (date: Date) => {
-    const dateString = format(date, "yyyy-MM-dd");
-    return dbHolidays.includes(dateString);
+    return dbHolidays.includes(format(date, "yyyy-MM-dd"));
   };
 
   const lamaMagang = useWatch({ control: form.control, name: "lamaMagang" });
@@ -154,237 +144,321 @@ export default function RegistrationPage() {
       let count = 0;
       let currentDate = new Date(tanggalMulai);
       let lastWorkingDate = new Date(tanggalMulai);
-
       let safetyLoop = 0;
-      while (count < lamaMagang && safetyLoop < 365) {
-        const isWeekendDay = isWeekend(currentDate);
-        const isNationalHoliday = isHoliday(currentDate);
 
-        if (!isWeekendDay && !isNationalHoliday) {
+      while (count < lamaMagang && safetyLoop < 365) {
+        if (!isWeekend(currentDate) && !isHoliday(currentDate)) {
           count++; 
           lastWorkingDate = currentDate; 
         }
-
-        if (count < lamaMagang) {
-           currentDate = addDays(currentDate, 1);
-        }
+        if (count < lamaMagang) currentDate = addDays(currentDate, 1);
         safetyLoop++;
       }
       form.setValue("tanggalSelesai", lastWorkingDate);
     }
   }, [lamaMagang, tanggalMulai, form, dbHolidays]);
 
-  // --- HANDLER FILE DENGAN TOAST ---
+  // Handle baris siswa SMK dinamis
+  const addStudentField = () => {
+    if (batchStudents.length >= 4) return toast.warning("Maksimal input kolektif 4 siswa bray!");
+    setBatchStudents([...batchStudents, { namaLengkap: "", nomorHp: "", positionId: "" }]);
+  };
+
+  const removeStudentField = (idx: number) => {
+    if (batchStudents.length === 1) return;
+    setBatchStudents(batchStudents.filter((_, i) => i !== idx));
+  };
+
+  const updateStudent = (idx: number, field: string, val: string) => {
+    const nextList = [...batchStudents];
+    (nextList[idx] as any)[field] = val;
+    setBatchStudents(nextList);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "cv" | "surat") => {
     const file = e.target.files?.[0];
-    const maxSize = 300 * 1024; // 300KB
-
     if (file) {
-      if (file.size > maxSize) {
-        toast.error(`File ${type.toUpperCase()} Terlalu Besar!`, {
-          description: `Ukuran file Anda ${(file.size / 1024).toFixed(2)}KB. Maksimal yang diperbolehkan adalah 300KB.`,
-        });
-        e.target.value = ""; 
-        setFileNames(prev => ({ ...prev, [type]: null }));
+      if (file.size > 300 * 1024) {
+        toast.error(`File ${type.toUpperCase()} Kebesaran! Max 300KB`);
+        e.target.value = "";
         return;
       }
       setFileNames(prev => ({ ...prev, [type]: file.name }));
-      toast.success(`${type.toUpperCase()} terpilih`, {
-        description: file.name
-      });
-    } else {
-      setFileNames(prev => ({ ...prev, [type]: null }));
+      toast.success(`${type.toUpperCase()} Terpilih: ${file.name}`);
     }
   };
 
   async function onSubmit(values: FormValues) {
-    // Pengecekan < minMagangDays dihapus dari sini karena Zod otomatis ngeblokir
-    // dan memunculkan tulisan merah kalau angkanya kurang.
-
     setIsSubmitting(true);
     try {
       const formData = new FormData();
+      formData.append("jenisPendaftaran", jenisPendaftaran);
+
+      // Packing data umum form
       Object.keys(values).forEach((key) => {
         const value = values[key as keyof typeof values];
         if (value instanceof Date) formData.append(key, value.toISOString());
         else if (value !== undefined && value !== null) formData.append(key, value.toString());
       });
 
-      const cvFile = (document.getElementById("cv") as HTMLInputElement).files?.[0];
       const suratFile = (document.getElementById("surat") as HTMLInputElement).files?.[0];
-
-      if (!cvFile || !suratFile) {
-        toast.warning("Berkas Belum Lengkap", {
-          description: "Silakan upload file CV dan Surat Pengantar terlebih dahulu."
-        });
+      if (!suratFile) {
+        toast.warning("File Surat Pengantar wajib dilampirkan!");
         setIsSubmitting(false);
         return;
       }
-
-      formData.append("cv", cvFile);
       formData.append("surat", suratFile);
 
-      const response = await fetch("/api/pendaftaran", { method: "POST", body: formData });
-      const result = await response.json();
+      // Packing spesifik alur SMK
+      if (jenisPendaftaran === "SMK") {
+        const isValidBatch = batchStudents.every(s => s.namaLengkap && s.nomorHp && s.positionId);
+        if (!isValidBatch) {
+          toast.warning("Lengkapi data nama, HP, dan bidang pilihan untuk seluruh baris siswa!");
+          setIsSubmitting(false);
+          return;
+        }
+        formData.append("students", JSON.stringify(batchStudents));
+      } else {
+        // Packing spesifik Mahasiswa
+        const cvFile = (document.getElementById("cv") as HTMLInputElement).files?.[0];
+        if (!cvFile || !values.namaLengkap || !values.nomorInduk || !values.email) {
+          toast.warning("Data Diri & CV Mahasiswa wajib lengkap!");
+          setIsSubmitting(false);
+          return;
+        }
+        formData.append("cv", cvFile);
+      }
 
-      if (!response.ok) throw new Error(result.error || "Gagal mengirim data");
+      const res = await fetch("/api/pendaftaran", { method: "POST", body: formData });
+      const result = await res.json();
 
-      toast.success("Pendaftaran Berhasil!", {
-        description: "Data Anda telah masuk ke sistem. Silakan tunggu info selanjutnya melalui WhatsApp/Email.",
-        duration: 5000,
-      });
-      
+      if (!res.ok) throw new Error(result.error || "Gagal mendaftarkan data");
+
+      toast.success("Pendaftaran Sukses Dimasukkan, BHAP!", { duration: 5000 });
       router.push("/");
     } catch (error: any) {
-      toast.error("Terjadi Kesalahan", {
-        description: error.message
-      });
+      toast.error(error.message || "Gagal memproses data");
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 relative overflow-hidden transition-colors duration-300">
-      
-      {/* Background Pattern */}
-      <div className="absolute inset-0 z-0 opacity-[0.6] dark:opacity-[0.2] pointer-events-none" style={{ backgroundImage: "radial-gradient(#94a3b8 1px, transparent 1px)", backgroundSize: "24px 24px" }}></div>
-      
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 relative overflow-hidden transition-colors">
       <div className="max-w-4xl mx-auto relative z-10">
-        <Link href="/" className="inline-flex items-center text-slate-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-400 mb-6 transition-colors">
+        <Link href="/" className="inline-flex items-center text-slate-500 hover:text-blue-700 mb-6 font-medium">
           <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda
         </Link>
 
-        <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900 transition-colors">
-          <CardHeader className="bg-blue-700 dark:bg-blue-800 text-white rounded-t-lg px-6 py-8">
-            <CardTitle className="text-2xl font-bold">Formulir Pendaftaran Magang</CardTitle>
-            <CardDescription className="text-blue-100 text-base">Silahkan lengkapi data diri dan berkas persyaratan.</CardDescription>
+        <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900">
+          <CardHeader className="bg-blue-700 dark:bg-blue-800 text-white rounded-t-lg px-6 py-6">
+            <CardTitle className="text-xl md:text-2xl font-bold">Portal Formulir Pendaftaran Magang</CardTitle>
+            <CardDescription className="text-blue-100 text-sm">Pilih jenis instansi pendaftar terlebih dahulu di bawah, pak.</CardDescription>
           </CardHeader>
+
+          {/* CHOOSE DROPDOWN JENIS PENDAFTARAN UTAMA */}
+          <div className="px-6 md:px-8 pt-6">
+            <div className="space-y-2 p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900">
+              <Label className="font-semibold text-slate-700 dark:text-slate-300">Pilih Kategori Kualifikasi Instansi Magang <span className="text-red-500">*</span></Label>
+              <Select value={jenisPendaftaran} onValueChange={(v: any) => setJenisPendaftaran(v)}>
+                <SelectTrigger className="w-full bg-white dark:bg-slate-950"><SelectValue placeholder="Pilih Kategori" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MAHASISWA">Perguruan Tinggi / Mahasiswa (S1/D3)</SelectItem>
+                  <SelectItem value="SMK">Sekolah Menengah Kejuruan / Siswa SMK (Kolektif oleh Guru)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <CardContent className="p-6 md:p-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 
-                {/* --- BAGIAN 1: DATA DIRI --- */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 border-b dark:border-slate-800 pb-2 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center text-xs">1</span>
-                    Data Diri Peserta
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="namaLengkap" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel className="dark:text-slate-300">Nama Lengkap <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="Sesuai KTP/KTM" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
+                {/* --- RENDER KONDISIONAL 1: ALUR MAHASISWA --- */}
+                {jenisPendaftaran === "MAHASISWA" && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <h3 className="text-lg font-semibold border-b pb-2 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
+                      Data Diri Peserta Mahasiswa
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField control={form.control} name="namaLengkap" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nama Lengkap <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Sesuai KTM" {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="nomorInduk" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel className="dark:text-slate-300">Nomor Induk (NIS/NIM) <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="Contoh: 21.11.1234" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="nomorInduk" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nomor Induk Mahasiswa (NIM) <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Masukkan NIM..." {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel className="dark:text-slate-300">Alamat Email <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input type="email" placeholder="email@contoh.com" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Alamat Email <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input type="email" placeholder="mail@kampus.com" {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="nomorHp" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel className="dark:text-slate-300">Nomor HP (WhatsApp) <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="'62812345678" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
-                          <FormDescription className="text-xs dark:text-slate-500">Diawali tanda petik satu (') dan kode negara 62.</FormDescription>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="nomorHp" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nomor HP (WhatsApp) <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="'628..." {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="instansi" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel className="dark:text-slate-300">Sekolah / Universitas <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="Nama Instansi Pendidikan" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="instansi" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nama Universitas <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Misal: UPN Veteran Yogyakarta" {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="fakultas" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel className="dark:text-slate-300">Fakultas</FormLabel>
-                          <FormControl>
-                              <Input placeholder="Kosongkan jika siswa SMK/SMA" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="fakultas" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fakultas</FormLabel>
+                          <FormControl><Input placeholder="Fakultas Ilmu Komputer" {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="jurusan" render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                          <FormLabel className="dark:text-slate-300">Jurusan/Prodi - Jenjang <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="Contoh: Pendidikan Administrasi - S1" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="jurusan" render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Program Studi / Jurusan - Jenjang <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Contoh: Informatika - S1" {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
-                      </FormItem>
-                    )} />
+                        </FormItem>
+                      )} />
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* --- BAGIAN 2: DETAIL MAGANG --- */}
+                {/* --- RENDER KONDISIONAL 2: ALUR SISWA SMK MULTI-INPUT (OPSI B) --- */}
+                {jenisPendaftaran === "SMK" && (
+                  <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
+                    <h3 className="text-lg font-semibold border-b pb-2 flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
+                      Informasi Kolektif Sekolah & Guru Pembimbing SMK
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-dashed">
+                      <FormField control={form.control} name="instansi" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Asal Sekolah SMK <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Nama Sekolah SMK..." {...field} className="dark:bg-slate-950" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="jurusan" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kompetensi Keahlian / Jurusan <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Contoh: Teknik Komputer Jaringan (TKJ)" {...field} className="dark:bg-slate-950" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="pemohonSurat" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nama Guru Pembimbing SMK <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Nama Guru Operator Pembimbing..." {...field} className="dark:bg-slate-950" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="fakultas" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>No HP Guru Pembimbing <span className="text-red-500">*</span></FormLabel>
+                          <FormControl><Input placeholder="Masukkan kontak aktif guru..." {...field} className="dark:bg-slate-950" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    {/* LOOPING INPUT BARIS SISWA SMK DARI OPSI B */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center border-b pb-2">
+                        <Label className="text-sm font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                          <Users className="h-4 w-4" /> Daftar Anggota Siswa Pemagang ({batchStudents.length}/4)
+                        </Label>
+                        <Button type="button" size="sm" variant="outline" onClick={addStudentField} className="h-8">
+                          <Plus className="h-3 w-3 mr-1" /> Tambah Siswa
+                        </Button>
+                      </div>
+
+                      {batchStudents.map((siswa, idx) => (
+                        <div key={idx} className="p-4 border rounded-xl bg-slate-50/50 dark:bg-slate-900/20 relative group shadow-sm flex flex-col md:flex-row gap-4 items-center">
+                          <div className="flex-none flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-slate-950 rounded-lg border font-bold text-slate-500 text-sm">
+                            #{idx + 1}
+                          </div>
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Nama Lengkap Siswa <span className="text-red-500">*</span></Label>
+                              <Input placeholder="Nama lengkap..." value={siswa.namaLengkap} onChange={(e) => updateStudent(idx, "namaLengkap", e.target.value)} className="h-9 bg-white dark:bg-slate-950 text-xs" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">No HP Siswa <span className="text-red-500">*</span></Label>
+                              <Input placeholder="08..." value={siswa.nomorHp} onChange={(e) => updateStudent(idx, "nomorHp", e.target.value)} className="h-9 bg-white dark:bg-slate-950 text-xs" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Pilihan Bidang Magang <span className="text-red-500">*</span></Label>
+                              <Select value={siswa.positionId} onValueChange={(v) => updateStudent(idx, "positionId", v)}>
+                                <SelectTrigger className="h-9 text-xs w-full bg-white dark:bg-slate-950">
+                                  <SelectValue placeholder="Pilih Posisi..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {positions.map((p) => (
+                                    <SelectItem key={p.id} value={p.id.toString()} disabled={(p.quota - p.filled) <= 0}>
+                                      {p.title} (Sisa Kuota: {p.quota - p.filled})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          {batchStudents.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeStudentField(idx)} className="text-red-500 hover:bg-red-50 h-8 w-8 mt-2 md:mt-0">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* --- BAGIAN 2: DETAIL WAKTU (SAMA BUAT DUA-DUANYA) --- */}
                 <div className="space-y-4 pt-4">
-                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 border-b dark:border-slate-800 pb-2 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center text-xs">2</span>
-                    Detail Magang
+                  <h3 className="text-lg font-semibold border-b pb-2 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 flex items-center justify-center text-xs font-bold">2</span>
+                    Detail Waktu Kontrak Magang
                   </h3>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="lamaMagang" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="dark:text-slate-300">Lama Magang (Hari Kerja) <span className="text-red-500">*</span></FormLabel>
+                        <FormLabel>Lama Magang (Hari Kerja) <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder={`Min. ${minMagangDays}`} {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
-                            className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100"
-                          />
+                          <Input type="number" placeholder={`Min. ${minMagangDays}`} {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} className="dark:bg-slate-950" />
                         </FormControl>
                         <FormDescription className="text-xs text-blue-600 dark:text-blue-400">
-                          *Minimal {minMagangDays} hari kerja. Sabtu, Minggu & Libur Nasional tidak dihitung.
+                          *Minimal {minMagangDays} hari kerja. Sabtu, Minggu & Libur Nasional terhitung libur otomatis.
                         </FormDescription>
-                        {/* Zod Error akan masuk kesini jadi warna merah otomatis */}
                         <FormMessage /> 
                       </FormItem>
                     )} />
 
                     <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel className="dark:text-slate-300">Tanggal Mulai Magang <span className="text-red-500">*</span></FormLabel>
+                        <FormLabel>Tanggal Mulai Pelaksanaan <span className="text-red-500">*</span></FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900", !field.value && "text-muted-foreground")}>
+                              <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal dark:bg-slate-950 dark:border-slate-700", !field.value && "text-muted-foreground")}>
                                 {field.value ? format(field.value, "d MMMM yyyy", { locale: id }) : <span>Pilih tanggal mulai</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 dark:bg-slate-950 dark:border-slate-800" align="start">
-                            <Calendar 
-                              mode="single" 
-                              selected={field.value} 
-                              onSelect={field.onChange} 
-                              disabled={(date) => isWeekend(date) || isHoliday(date)} 
-                              initialFocus 
-                              className="dark:bg-slate-950 dark:text-slate-100"
-                            />
+                          <PopoverContent className="w-auto p-0 dark:bg-slate-950 border-slate-800" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => isWeekend(date) || isHoliday(date)} initialFocus className="dark:bg-slate-950" />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -393,18 +467,11 @@ export default function RegistrationPage() {
 
                     <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
                       <FormItem className="flex flex-col md:col-span-2">
-                        <FormLabel className="dark:text-slate-300">Estimasi Tanggal Selesai</FormLabel>
-                        <div className="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                        <FormLabel>Estimasi Masa Selesai Kontrak</FormLabel>
+                        <div className="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-md border text-sm font-semibold text-slate-700 dark:text-slate-200">
                           <CalendarClock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          <span className="font-semibold">
-                            {field.value 
-                              ? format(field.value, "EEEE, d MMMM yyyy", { locale: id }) 
-                              : "Pilih tanggal mulai & durasi dulu..."}
-                          </span>
+                          <span>{field.value ? format(field.value, "EEEE, d MMMM yyyy", { locale: id }) : "Pilih tanggal mulai & durasi kerja dulu..."}</span>
                         </div>
-                        <FormDescription className="text-xs dark:text-slate-500">
-                          Tanggal ini dihitung otomatis berdasarkan hari kerja (Senin-Jumat) dan Libur Nasional.
-                        </FormDescription>
                         <input type="hidden" name="tanggalSelesai" value={field.value ? field.value.toISOString() : ""} />
                         <FormMessage />
                       </FormItem>
@@ -412,52 +479,41 @@ export default function RegistrationPage() {
                   </div>
                 </div>
 
-                {/* --- BAGIAN 3: SURAT PENGANTAR --- */}
+                {/* --- BAGIAN 3: DATA SURAT KAMPUS/SEKOLAH --- */}
                 <div className="space-y-4 pt-4">
-                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 border-b dark:border-slate-800 pb-2 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center text-xs">3</span>
-                    Data Surat Pengantar
+                  <h3 className="text-lg font-semibold border-b pb-2 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 flex items-center justify-center text-xs font-bold">3</span>
+                    Legitimasi Surat Pengantar Instansi
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="pemohonSurat" render={({ field }) => (
                       <FormItem>
-                          <FormLabel className="dark:text-slate-300">Pemohon Surat <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="Contoh: Wakil Dekan" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
-                          <FormMessage />
+                        <FormLabel>Jabatan Pemohon Surat <span className="text-red-500">*</span></FormLabel>
+                        <FormControl><Input placeholder="Contoh: Wakil Dekan / Kepala Sekolah" {...field} className="dark:bg-slate-950" /></FormControl>
+                        <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="nomorSurat" render={({ field }) => (
                       <FormItem>
-                          <FormLabel className="dark:text-slate-300">Nomor Surat <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                              <Input placeholder="Nomor surat resmi" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
-                          </FormControl>
-                          <FormMessage />
+                        <FormLabel>Nomor Surat Resmi <span className="text-red-500">*</span></FormLabel>
+                        <FormControl><Input placeholder="Nomor surat keluar dari sekolah/kampus" {...field} className="dark:bg-slate-950" /></FormControl>
+                        <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="tanggalSurat" render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel className="dark:text-slate-300">Tanggal Surat <span className="text-red-500">*</span></FormLabel>
+                        <FormLabel>Tanggal Terbit Surat <span className="text-red-500">*</span></FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900", !field.value && "text-muted-foreground")}>
+                              <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal dark:bg-slate-950", !field.value && "text-muted-foreground")}>
                                 {field.value ? format(field.value, "d MMMM yyyy", { locale: id }) : <span>Pilih tanggal</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 dark:bg-slate-950 dark:border-slate-800" align="start">
-                            <Calendar 
-                                mode="single" 
-                                selected={field.value} 
-                                onSelect={field.onChange} 
-                                disabled={(date) => date > new Date()} 
-                                initialFocus 
-                                className="dark:bg-slate-950 dark:text-slate-100"
-                            />
+                          <PopoverContent className="w-auto p-0 dark:bg-slate-950" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus className="dark:bg-slate-950" />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -466,52 +522,52 @@ export default function RegistrationPage() {
                   </div>
                 </div>
 
-                {/* --- BAGIAN 4: UPLOAD BERKAS --- */}
+                {/* --- BAGIAN 4: UPLOAD BERKAS (DINAMIS SINKRON) --- */}
                 <div className="space-y-4 pt-4">
-                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 border-b dark:border-slate-800 pb-2 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center text-xs">4</span>
-                    Upload Berkas
+                  <h3 className="text-lg font-semibold border-b pb-2 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 flex items-center justify-center text-xs font-bold">4</span>
+                    Lampiran Berkas Kelengkapan (Format PDF Max 300KB)
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* CV */}
-                    <div className="space-y-2">
-                      <FormLabel className="dark:text-slate-300">Curriculum Vitae (CV) <span className="text-red-500">*</span></FormLabel>
-                      <label htmlFor="cv" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.cv ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
-                          {fileNames.cv ? (
-                            <>
-                              <FileCheck className="w-8 h-8 mb-2 text-green-600"/>
-                              <p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all">{fileNames.cv}</p>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-6 h-6 mb-2 text-slate-400"/>
-                              <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold">Upload PDF</p>
-                              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 px-2">
-                                Wajib memuat: Foto, Biodata Singkat, Pengalaman Kerja & Organisasi.
-                              </p>
-                              <p className="text-[10px] text-slate-400 mt-2">Max. 300KB</p>
-                            </>
-                          )}
-                        </div>
-                        <Input id="cv" type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileChange(e, "cv")} />
-                      </label>
-                    </div>
-                    {/* SURAT */}
-                    <div className="space-y-2">
-                      <FormLabel className="dark:text-slate-300">Surat Pengantar <span className="text-red-500">*</span></FormLabel>
-                      <label htmlFor="surat" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.surat ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6 px-2 text-center">
+                    {/* CV (HANYA MUNCUL DI MAHASISWA) */}
+                    {jenisPendaftaran === "MAHASISWA" && (
+                      <div className="space-y-2 animate-in fade-in duration-200">
+                        <FormLabel>Curriculum Vitae (CV) <span className="text-red-500">*</span></FormLabel>
+                        <label htmlFor="cv" className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.cv ? "border-green-500 bg-green-50/30" : "border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100"}`}>
+                          <div className="flex flex-col items-center justify-center text-center px-4">
+                            {fileNames.cv ? (
+                              <>
+                                <FileCheck className="w-8 h-8 mb-1 text-green-600"/>
+                                <p className="text-xs text-green-700 font-semibold break-all">{fileNames.cv}</p>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-5 h-5 mb-1 text-slate-400"/>
+                                <p className="text-xs text-slate-500 font-semibold">Upload CV PDF</p>
+                                <p className="text-[10px] text-slate-400 mt-1">Biodata, Pengalaman Kerja & Organisasi.</p>
+                              </>
+                            )}
+                          </div>
+                          <Input id="cv" type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileChange(e, "cv")} />
+                        </label>
+                      </div>
+                    )}
+
+                    {/* SURAT PENGANTAR (MUNCUL DI DUA-DUANYA) */}
+                    <div className={cn("space-y-2", jenisPendaftaran === "SMK" && "col-span-1 md:col-span-2")}>
+                      <FormLabel>Surat Pengantar Instansi / Sekolah <span className="text-red-500">*</span></FormLabel>
+                      <label htmlFor="surat" className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fileNames.surat ? "border-green-500 bg-green-50/30" : "border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100"}`}>
+                        <div className="flex flex-col items-center justify-center text-center px-4">
                           {fileNames.surat ? (
                             <>
-                              <FileCheck className="w-8 h-8 mb-2 text-green-600"/>
-                              <p className="text-sm text-green-700 dark:text-green-400 font-semibold break-all px-4">{fileNames.surat}</p>
+                              <FileCheck className="w-8 h-8 mb-1 text-green-600"/>
+                              <p className="text-xs text-green-700 font-semibold break-all">{fileNames.surat}</p>
                             </>
                           ) : (
                             <>
-                              <Upload className="w-6 h-6 mb-2 text-slate-400"/>
-                              <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold">Upload PDF</p>
-                              <p className="text-[10px] text-slate-400 mt-1">Max. 300KB</p>
+                              <Upload className="w-5 h-5 mb-1 text-slate-400"/>
+                              <p className="text-xs text-slate-500 font-semibold">Upload Surat Pengantar Resmi (PDF)</p>
+                              <p className="text-[10px] text-slate-400 mt-1">Surat resmi ber-ttd dan cap basah instansi bray.</p>
                             </>
                           )}
                         </div>
@@ -522,10 +578,10 @@ export default function RegistrationPage() {
                 </div>
 
                 <div className="pt-6">
-                  <Button type="submit" size="lg" className="w-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white" disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Mengirim...</> : <><Send className="mr-2 h-4 w-4" /> Kirim Pendaftaran</>}
+                  <Button type="submit" size="lg" className="w-full bg-blue-700 hover:bg-blue-800 text-white" disabled={isSubmitting}>
+                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sedang Mengirim Berkas...</> : <><Send className="mr-2 h-4 w-4" /> Daftarkan Permohonan</>}
                   </Button>
-                  <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-4">Dengan mengirim form ini, Anda menyatakan data yang diisi adalah benar.</p>
+                  <p className="text-xs text-center text-slate-500 mt-3">Dengan mengirim form ini, Anda menyatakan data yang diisi adalah benar, valid, dan dapat dipertanggungjawabkan.</p>
                 </div>
               </form>
             </Form>
