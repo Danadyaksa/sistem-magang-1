@@ -52,6 +52,8 @@ type Pendaftaran = {
   suratPath: string;
   fotoPath: string;
   positionId: number | null;
+  pembimbing?: string | null;
+  kontakPembimbing?: string | null;
   createdAt: string;
 };
 
@@ -92,6 +94,7 @@ export default function ApplicantsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [filterJenis, setFilterJenis] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc"; } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -350,7 +353,10 @@ Admin Dinas DIKPORA DIY`;
       const matchesSearch = item.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) || item.instansi.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesYear = filterYear === "all" || date.getFullYear().toString() === filterYear;
       const matchesMonth = filterMonth === "all" || date.getMonth().toString() === filterMonth;
-      return matchesSearch && matchesYear && matchesMonth;
+      const matchesJenis = filterJenis === "all" || 
+                           (filterJenis === "smk" && item.cvPath === "manual-entry-smk") ||
+                           (filterJenis === "mahasiswa" && item.cvPath !== "manual-entry-smk");
+      return matchesSearch && matchesYear && matchesMonth && matchesJenis;
     });
 
     if (sortConfig !== null) {
@@ -370,7 +376,7 @@ Admin Dinas DIKPORA DIY`;
       });
     }
     return data;
-  }, [pendaftar, searchTerm, filterYear, filterMonth, sortConfig]);
+  }, [pendaftar, searchTerm, filterYear, filterMonth, filterJenis, sortConfig]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -599,11 +605,11 @@ Admin Dinas DIKPORA DIY`;
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")} />
-          <SidebarItem icon={FileText} label="Applicants" active={true} />
+          <SidebarItem icon={FileText} label="Pendaftar" active={true} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")} />
-          <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
-          <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
+          <SidebarItem icon={Users} label="User Admin" onClick={() => router.push("/admin/users")} />
+          <SidebarItem icon={Settings} label="Pengaturan" onClick={() => router.push("/admin/pengaturan")} />
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
             <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
           </div>
@@ -660,6 +666,16 @@ Admin Dinas DIKPORA DIY`;
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                  <Select value={filterJenis} onValueChange={setFilterJenis}>
+                    <SelectTrigger className="w-[160px] bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="Semua Kualifikasi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kualifikasi</SelectItem>
+                      <SelectItem value="mahasiswa">Mahasiswa (S1/D3)</SelectItem>
+                      <SelectItem value="smk">Siswa SMK (Kolektif)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={filterMonth} onValueChange={setFilterMonth}>
                     <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
                         <SelectValue placeholder="Bulan" />
@@ -713,7 +729,12 @@ Admin Dinas DIKPORA DIY`;
                         <TableCell className="text-center text-slate-500 py-3">{startIndex + idx + 1}</TableCell>
                         <TableCell className="font-medium py-3">
                           <div className="flex flex-col">
-                            <span className="text-slate-900 dark:text-slate-100 text-sm">{item.namaLengkap}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-900 dark:text-slate-100 text-sm">{item.namaLengkap}</span>
+                              {item.cvPath === "manual-entry-smk" && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0 h-5 font-medium">SMK (Kolektif)</Badge>
+                              )}
+                            </div>
                             <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{item.jurusan}</span>
                           </div>
                         </TableCell>
@@ -729,24 +750,24 @@ Admin Dinas DIKPORA DIY`;
                           <div className="flex justify-end gap-1">
                             <Dialog
                               open={isDialogOpen && selectedPelamar?.id === item.id}
-                              onOpenChange={(open) => {
-                                setIsDialogOpen(open);
-                                if (open) {
-                                  setSelectedPelamar(item);
-                                  setActionStatus(""); 
-                                  setSelectedPosition("");
-                                  setSelectedUpt(""); 
-
-                                  if (item.status === "ACCEPTED" && item.positionId) {
-                                     setActionStatus("ACCEPTED");
-                                     setSelectedPosition(item.positionId.toString());
-                                  } else if (item.status === "RECOMMENDED") {
-                                     setActionStatus("RECOMMENDED");
-                                  } else if (item.status === "REJECTED") {
-                                     setActionStatus("REJECTED");
+                                onOpenChange={(open) => {
+                                  setIsDialogOpen(open);
+                                  if (open) {
+                                    setSelectedPelamar(item);
+                                    setActionStatus(""); 
+                                    setSelectedPosition(item.positionId ? item.positionId.toString() : "");
+                                    setSelectedUpt(""); 
+  
+                                    if (item.status === "ACCEPTED" && item.positionId) {
+                                       setActionStatus("ACCEPTED");
+                                       setSelectedPosition(item.positionId.toString());
+                                    } else if (item.status === "RECOMMENDED") {
+                                       setActionStatus("RECOMMENDED");
+                                    } else if (item.status === "REJECTED") {
+                                       setActionStatus("REJECTED");
+                                    }
                                   }
-                                }
-                              }}
+                                }}
                             >
                               <DialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
@@ -777,12 +798,27 @@ Admin Dinas DIKPORA DIY`;
                                           {new Date(item.tanggalMulai).toLocaleDateString("id-ID")} — {new Date(item.tanggalSelesai).toLocaleDateString("id-ID")}
                                         </div>
                                     </div>
+                                    {item.pembimbing && (
+                                      <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <Label className="text-xs text-slate-500 uppercase font-semibold">Guru Pembimbing</Label>
+                                        <div className="text-sm font-medium">{item.pembimbing}</div>
+                                        <div className="text-slate-500 text-xs">WA: {item.kontakPembimbing || "-"}</div>
+                                      </div>
+                                    )}
+                                    {item.positionId && (
+                                      <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <Label className="text-xs text-slate-500 uppercase font-semibold">Pilihan Bidang Magang</Label>
+                                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">{getPositionName(item.positionId)}</div>
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-100 dark:border-slate-800 space-y-3">
                                     <Label className="text-xs text-slate-500 uppercase font-semibold block mb-2">Lampiran</Label>
-                                    <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
-                                      <a href={`/uploads/${item.cvPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-blue-600" /> Lihat CV / Proposal</a>
-                                    </Button>
+                                    {item.cvPath !== "manual-entry-smk" && (
+                                      <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
+                                        <a href={`/uploads/${item.cvPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-blue-600" /> Lihat CV / Proposal</a>
+                                      </Button>
+                                    )}
                                     <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
                                       <a href={`/uploads/${item.suratPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-orange-600" /> Surat Pengantar</a>
                                     </Button>

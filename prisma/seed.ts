@@ -19,8 +19,13 @@ async function main() {
 
   console.log("Seeding Positions...");
   for (const title of bidangData) {
-    // Random quota 1-5
-    const randomQuota = Math.floor(Math.random() * 5) + 1;
+    // Quota bawaan sesuai revisi (Keuangan = 4, SMA = 3), sisanya random 1-5
+    let quota = Math.floor(Math.random() * 5) + 1;
+    if (title === "Sub Bagian Keuangan") {
+      quota = 4;
+    } else if (title === "Bidang Pembinaan Sekolah Menengah Atas") {
+      quota = 3;
+    }
 
     // Cek dulu biar ga double kalo run seed berkali-kali
     const existingPosition = await prisma.position.findFirst({
@@ -31,12 +36,12 @@ async function main() {
       await prisma.position.create({
         data: {
           title: title,
-          quota: randomQuota,
+          quota: quota,
           filled: 0,
           description: `Posisi magang untuk ${title}`,
         },
       });
-      console.log(`✅ Created Position: ${title} (Quota: ${randomQuota})`);
+      console.log(`✅ Created Position: ${title} (Quota: ${quota})`);
     } else {
       console.log(`⏩ Skipped Position: ${title} (Already exists)`);
     }

@@ -62,14 +62,16 @@ const formSchema = z.object({
   jurusan: z.string().min(2, "Jurusan wajib diisi"),
   
   // Riset Details
-  kategori: z.string({ required_error: "Pilih jenis penelitian" }),
+  kategori: z.string().min(1, "Pilih jenis penelitian"),
+  kategoriLainnya: z.string().optional(),
   judul: z.string().min(5, "Judul penelitian terlalu pendek"),
   subjek: z.string().min(3, "Subjek penelitian wajib diisi"),
+  tujuanPenelitian: z.string().min(3, "Tujuan penelitian wajib diisi"),
   
   // Surat Info
   pemohonSurat: z.string().min(2, "Pejabat penandatangan wajib diisi"),
   nomorSurat: z.string().min(1, "Nomor surat wajib diisi"),
-  tanggalSurat: z.date({ required_error: "Tanggal surat wajib dipilih" }),
+  tanggalSurat: z.date({ message: "Tanggal surat wajib dipilih" }),
 });
 
 export default function ResearchRegistrationPage() {
@@ -87,8 +89,10 @@ export default function ResearchRegistrationPage() {
       fakultas: "",
       jurusan: "",
       kategori: "",
+      kategoriLainnya: "",
       judul: "",
       subjek: "",
+      tujuanPenelitian: "",
       pemohonSurat: "",
       nomorSurat: "",
       tanggalSurat: undefined,
@@ -98,11 +102,21 @@ export default function ResearchRegistrationPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
+      let payload = { ...values };
+      if (payload.kategori === "Lainnya") {
+        if (!payload.kategoriLainnya || payload.kategoriLainnya.trim() === "") {
+          toast.warning("Silakan isi kategori penelitian lainnya!");
+          setIsSubmitting(false);
+          return;
+        }
+        payload.kategori = payload.kategoriLainnya;
+      }
+
       // Kirim Data JSON
       const response = await fetch("/api/penelitian", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values) 
+        body: JSON.stringify(payload) 
       });
       
       const result = await response.json();
@@ -256,6 +270,18 @@ export default function ResearchRegistrationPage() {
                       </FormItem>
                     )} />
 
+                    {form.watch("kategori") === "Lainnya" && (
+                      <FormField control={form.control} name="kategoriLainnya" render={({ field }) => (
+                        <FormItem className="animate-in fade-in slide-in-from-top-2 duration-200">
+                          <FormLabel className="dark:text-slate-300">Sebutkan Kategori Penelitian Lainnya <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input placeholder="Contoh: Riset Mandiri Dosen, Tugas Kuliah, dll" {...field} className="dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    )}
+
                     <FormField control={form.control} name="judul" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="dark:text-slate-300">Judul Penelitian <span className="text-red-500">*</span></FormLabel>
@@ -275,6 +301,16 @@ export default function ResearchRegistrationPage() {
                         <FormDescription className="text-xs dark:text-slate-500">
                           Sebutkan target responden atau unit kerja yang dituju.
                         </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="tujuanPenelitian" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-slate-300">Tujuan Penelitian <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Ketik tujuan penelitian Anda..." className="resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />

@@ -119,6 +119,21 @@ export default function AdminResearchPage() {
   // --- STATE FILTER ---
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterKategori, setFilterKategori] = useState<string>("all");
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc"; } | null>(null);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const availableCategories = useMemo(() => {
+    const categories = new Set(dataPenelitian.map((p) => p.kategori));
+    return Array.from(categories).filter(Boolean).sort();
+  }, [dataPenelitian]);
   
   // --- STATE PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -177,21 +192,40 @@ export default function AdminResearchPage() {
   }, [dataPenelitian]);
 
   const filteredData = useMemo(() => {
-    return dataPenelitian.filter((item) => {
+    let data = dataPenelitian.filter((item) => {
       const date = new Date(item.createdAt);
       const matchesSearch = item.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             item.universitas.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             item.judul.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesYear = filterYear === "all" || date.getFullYear().toString() === filterYear;
       const matchesMonth = filterMonth === "all" || date.getMonth().toString() === filterMonth;
+      const matchesKategori = filterKategori === "all" || item.kategori === filterKategori;
       
-      return matchesSearch && matchesYear && matchesMonth;
+      return matchesSearch && matchesYear && matchesMonth && matchesKategori;
     });
-  }, [dataPenelitian, searchTerm, filterYear, filterMonth]);
+
+    if (sortConfig !== null) {
+      data.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof Penelitian];
+        let bValue: any = b[sortConfig.key as keyof Penelitian];
+        if (sortConfig.key === "createdAt") {
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
+        } else if (typeof aValue === "string") {
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return data;
+  }, [dataPenelitian, searchTerm, filterYear, filterMonth, filterKategori, sortConfig]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterYear, filterMonth, itemsPerPage]);
+  }, [searchTerm, filterYear, filterMonth, filterKategori, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -365,11 +399,11 @@ export default function AdminResearchPage() {
         </div>
         <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")} />
-          <SidebarItem icon={FileText} label="Applicants" onClick={() => router.push("/admin/applicants")} />
+          <SidebarItem icon={FileText} label="Pendaftar" onClick={() => router.push("/admin/applicants")} />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
           <SidebarItem icon={BookOpen} label="Penelitian" active={true} />
-          <SidebarItem icon={Users} label="Admin Users" onClick={() => router.push("/admin/users")} />
-          <SidebarItem icon={Settings} label="Settings" onClick={() => router.push("/admin/pengaturan")} />
+          <SidebarItem icon={Users} label="User Admin" onClick={() => router.push("/admin/users")} />
+          <SidebarItem icon={Settings} label="Pengaturan" onClick={() => router.push("/admin/pengaturan")} />
           <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
             <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
           </div>
@@ -424,6 +458,17 @@ export default function AdminResearchPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                  <Select value={filterKategori} onValueChange={setFilterKategori}>
+                    <SelectTrigger className="w-[160px] bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="Semua Kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kategori</SelectItem>
+                      {availableCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={filterMonth} onValueChange={setFilterMonth}>
                     <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
                         <SelectValue placeholder="Bulan" />
@@ -449,14 +494,24 @@ export default function AdminResearchPage() {
             <div className="p-0 overflow-auto flex-1">
               <Table>
                 <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
-                  <TableRow>
-                    <TableHead className="w-[50px] text-center">No</TableHead>
-                    <TableHead>Nama Peneliti</TableHead>
-                    <TableHead>Instansi / Kampus</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Judul Penelitian</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right pr-6">Aksi</TableHead>
+                  <TableRow className="border-b border-slate-200 dark:border-slate-700">
+                    <TableHead className="w-[50px] text-center h-10">No</TableHead>
+                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("namaLengkap")}>
+                      <div className="flex items-center gap-2">Nama Peneliti <ArrowUpDown className="h-3 w-3" /></div>
+                    </TableHead>
+                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("universitas")}>
+                      <div className="flex items-center gap-2">Instansi / Kampus <ArrowUpDown className="h-3 w-3" /></div>
+                    </TableHead>
+                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("kategori")}>
+                      <div className="flex items-center gap-2">Kategori <ArrowUpDown className="h-3 w-3" /></div>
+                    </TableHead>
+                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("judul")}>
+                      <div className="flex items-center gap-2">Judul Penelitian <ArrowUpDown className="h-3 w-3" /></div>
+                    </TableHead>
+                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("status")}>
+                      <div className="flex items-center gap-2">Status <ArrowUpDown className="h-3 w-3" /></div>
+                    </TableHead>
+                    <TableHead className="text-right pr-6 h-10">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

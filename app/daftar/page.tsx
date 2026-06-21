@@ -58,12 +58,14 @@ const baseSchema = z.object({
   instansi: z.string().min(3, "Nama Instansi Pendidikan wajib diisi"),
   fakultas: z.string().optional(),
   jurusan: z.string().min(2, "Jurusan wajib diisi"),
+  pembimbing: z.string().optional(),
+  kontakPembimbing: z.string().optional(),
   lamaMagang: z.coerce.number(),
-  tanggalMulai: z.date({ required_error: "Tanggal mulai wajib dipilih" }),
-  tanggalSelesai: z.date({ required_error: "Tanggal selesai terhitung otomatis" }),
+  tanggalMulai: z.date({ message: "Tanggal mulai wajib dipilih" }),
+  tanggalSelesai: z.date({ message: "Tanggal selesai terhitung otomatis" }),
   pemohonSurat: z.string().min(2, "Nama pemohon surat wajib diisi"),
   nomorSurat: z.string().min(1, "Nomor surat wajib diisi"),
-  tanggalSurat: z.date({ required_error: "Tanggal surat wajib dipilih" }),
+  tanggalSurat: z.date({ message: "Tanggal surat wajib dipilih" }),
   nomorHp: z.string().optional(),
 });
 
@@ -84,6 +86,13 @@ export default function RegistrationPage() {
     { namaLengkap: "", nomorHp: "", positionId: "" }
   ]);
 
+  const getAvailableQuota = (position: any, currentSiswaIdx: number) => {
+    const selectedCount = batchStudents.filter(
+      (siswa, idx) => idx !== currentSiswaIdx && siswa.positionId === position.id.toString()
+    ).length;
+    return position.quota - position.filled - selectedCount;
+  };
+
   const dynamicSchema = useMemo(() => {
     return baseSchema.extend({
       lamaMagang: z.coerce.number().min(minMagangDays, `Durasi magang minimal ${minMagangDays} hari kerja`),
@@ -91,7 +100,7 @@ export default function RegistrationPage() {
   }, [minMagangDays]);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(dynamicSchema),
+    resolver: zodResolver(dynamicSchema) as any,
     mode: "onChange",
     defaultValues: {
       namaLengkap: "",
@@ -100,6 +109,8 @@ export default function RegistrationPage() {
       instansi: "",
       fakultas: "",
       jurusan: "",
+      pembimbing: "",
+      kontakPembimbing: "",
       pemohonSurat: "",
       nomorSurat: "",
       nomorHp: "'62",
@@ -160,7 +171,7 @@ export default function RegistrationPage() {
 
   // Handle baris siswa SMK dinamis
   const addStudentField = () => {
-    if (batchStudents.length >= 4) return toast.warning("Maksimal input kolektif 4 siswa bray!");
+    if (batchStudents.length >= 4) return toast.warning("Maksimal pendaftaran kolektif adalah 4 siswa.");
     setBatchStudents([...batchStudents, { namaLengkap: "", nomorHp: "", positionId: "" }]);
   };
 
@@ -211,6 +222,11 @@ export default function RegistrationPage() {
 
       // Packing spesifik alur SMK
       if (jenisPendaftaran === "SMK") {
+        if (!values.pembimbing || !values.kontakPembimbing) {
+          toast.warning("Nama & Kontak Guru Pembimbing wajib diisi!");
+          setIsSubmitting(false);
+          return;
+        }
         const isValidBatch = batchStudents.every(s => s.namaLengkap && s.nomorHp && s.positionId);
         if (!isValidBatch) {
           toast.warning("Lengkapi data nama, HP, dan bidang pilihan untuk seluruh baris siswa!");
@@ -234,7 +250,7 @@ export default function RegistrationPage() {
 
       if (!res.ok) throw new Error(result.error || "Gagal mendaftarkan data");
 
-      toast.success("Pendaftaran Sukses Dimasukkan, BHAP!", { duration: 5000 });
+      toast.success("Pendaftaran berhasil diajukan.", { duration: 5000 });
       router.push("/");
     } catch (error: any) {
       toast.error(error.message || "Gagal memproses data");
@@ -253,7 +269,7 @@ export default function RegistrationPage() {
         <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900">
           <CardHeader className="bg-blue-700 dark:bg-blue-800 text-white rounded-t-lg px-6 py-6">
             <CardTitle className="text-xl md:text-2xl font-bold">Portal Formulir Pendaftaran Magang</CardTitle>
-            <CardDescription className="text-blue-100 text-sm">Pilih jenis instansi pendaftar terlebih dahulu di bawah, pak.</CardDescription>
+            <CardDescription className="text-blue-100 text-sm">Pilih kategori instansi pendaftar terlebih dahulu di bawah ini.</CardDescription>
           </CardHeader>
 
           {/* CHOOSE DROPDOWN JENIS PENDAFTARAN UTAMA */}
@@ -357,14 +373,14 @@ export default function RegistrationPage() {
                           <FormMessage />
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="pemohonSurat" render={({ field }) => (
+                      <FormField control={form.control} name="pembimbing" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nama Guru Pembimbing SMK <span className="text-red-500">*</span></FormLabel>
                           <FormControl><Input placeholder="Nama Guru Operator Pembimbing..." {...field} className="dark:bg-slate-950" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="fakultas" render={({ field }) => (
+                      <FormField control={form.control} name="kontakPembimbing" render={({ field }) => (
                         <FormItem>
                           <FormLabel>No HP Guru Pembimbing <span className="text-red-500">*</span></FormLabel>
                           <FormControl><Input placeholder="Masukkan kontak aktif guru..." {...field} className="dark:bg-slate-950" /></FormControl>
@@ -405,11 +421,14 @@ export default function RegistrationPage() {
                                   <SelectValue placeholder="Pilih Posisi..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {positions.map((p) => (
-                                    <SelectItem key={p.id} value={p.id.toString()} disabled={(p.quota - p.filled) <= 0}>
-                                      {p.title} (Sisa Kuota: {p.quota - p.filled})
-                                    </SelectItem>
-                                  ))}
+                                  {positions.map((p) => {
+                                    const availQuota = getAvailableQuota(p, idx);
+                                    return (
+                                      <SelectItem key={p.id} value={p.id.toString()} disabled={availQuota <= 0}>
+                                        {p.title} (Sisa Kuota: {availQuota})
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -567,7 +586,7 @@ export default function RegistrationPage() {
                             <>
                               <Upload className="w-5 h-5 mb-1 text-slate-400"/>
                               <p className="text-xs text-slate-500 font-semibold">Upload Surat Pengantar Resmi (PDF)</p>
-                              <p className="text-[10px] text-slate-400 mt-1">Surat resmi ber-ttd dan cap basah instansi bray.</p>
+                              <p className="text-[10px] text-slate-400 mt-1">Surat resmi ber-ttd dan cap basah instansi.</p>
                             </>
                           )}
                         </div>

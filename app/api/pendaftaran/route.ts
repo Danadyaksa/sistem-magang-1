@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       const students = JSON.parse(studentsRaw);
 
       if (!Array.isArray(students) || students.length === 0) {
-        return NextResponse.json({ error: "Data siswa belum diisi pak!" }, { status: 400 });
+        return NextResponse.json({ error: "Data siswa belum diisi." }, { status: 400 });
       }
 
       const createdRecords = [];
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     // ALUR B: MAHASISWA REGULER
     // ==========================================
     const cvFile = formData.get("cv") as File | null;
-    if (!cvFile) return NextResponse.json({ error: "File CV wajib diupload bray!" }, { status: 400 });
+    if (!cvFile) return NextResponse.json({ error: "File CV wajib diunggah." }, { status: 400 });
     
     const cvBytes = await cvFile.arrayBuffer();
     const cvName = `CV-${Date.now()}-${cvFile.name}`;

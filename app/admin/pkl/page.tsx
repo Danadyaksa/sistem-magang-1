@@ -878,7 +878,7 @@ export default function PKLMonitoringPage() {
           />
           <SidebarItem
             icon={FileText}
-            label="Applicants"
+            label="Pendaftar"
             onClick={() => router.push("/admin/applicants")}
           />
           <SidebarItem icon={CalendarClock} label="Daftar PKL" active={true} />
@@ -890,12 +890,12 @@ export default function PKLMonitoringPage() {
           />
           <SidebarItem
             icon={Users}
-            label="Admin Users"
+            label="User Admin"
             onClick={() => router.push("/admin/users")}
           />
           <SidebarItem
             icon={Settings}
-            label="Settings"
+            label="Pengaturan"
             onClick={() => router.push("/admin/pengaturan")}
           />
           <div className="pt-4 mt-4 border-t border-slate-800">

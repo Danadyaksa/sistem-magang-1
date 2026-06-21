@@ -1,7 +1,7 @@
 "use client";
 
 import { ModeToggle } from "@/components/mode-toggle";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image"; 
 import { useRouter } from "next/navigation";
 import {
@@ -25,7 +25,8 @@ import {
   PanelLeftClose, 
   PanelLeftOpen, 
   CalendarClock,
-  BookOpen
+  BookOpen,
+  ArrowUpDown
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -310,10 +311,37 @@ export default function AdminUsersPage() {
       }
   };
 
-  const filteredAdmins = admins.filter((admin) =>
-    admin.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (admin.jabatan && admin.jabatan.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc"; } | null>(null);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const filteredAdmins = useMemo(() => {
+    let data = admins.filter((admin) =>
+      admin.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (admin.jabatan && admin.jabatan.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    if (sortConfig !== null) {
+      data.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof AdminUser];
+        let bValue: any = b[sortConfig.key as keyof AdminUser];
+        if (typeof aValue === "string") {
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return data;
+  }, [admins, searchTerm, sortConfig]);
 
   // Component Sidebar Item
   const SidebarItem = ({ icon: Icon, label, active = false, onClick, className = "" }: any) => (
@@ -392,7 +420,7 @@ export default function AdminUsersPage() {
           />
           <SidebarItem 
             icon={FileText} 
-            label="Applicants" 
+            label="Pendaftar" 
             onClick={() => router.push("/admin/applicants")}
           />
           <SidebarItem 
@@ -404,16 +432,15 @@ export default function AdminUsersPage() {
             icon={BookOpen}
             label="Penelitian"
             onClick={() => router.push("/admin/penelitian")}
-            // active={true}  <-- HANYA nyalakan ini di file 'app/admin/penelitian/page.tsx'
           />
           <SidebarItem 
             icon={Users} 
-            label="Admin Users" 
+            label="User Admin" 
             active={true}
           />
           <SidebarItem 
             icon={Settings} 
-            label="Settings" 
+            label="Pengaturan" 
             onClick={() => router.push("/admin/pengaturan")} 
           />
           
@@ -493,8 +520,12 @@ export default function AdminUsersPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent dark:border-slate-800">
                   <TableHead className="w-[50px] text-center dark:text-slate-400">No</TableHead>
-                  <TableHead className="dark:text-slate-400">Username</TableHead>
-                  <TableHead className="dark:text-slate-400">Jabatan</TableHead> 
+                  <TableHead className="dark:text-slate-400 cursor-pointer group" onClick={() => requestSort("username")}>
+                    <div className="flex items-center gap-2">Username <ArrowUpDown className="h-3 w-3" /></div>
+                  </TableHead>
+                  <TableHead className="dark:text-slate-400 cursor-pointer group" onClick={() => requestSort("jabatan")}>
+                    <div className="flex items-center gap-2">Jabatan <ArrowUpDown className="h-3 w-3" /></div>
+                  </TableHead> 
                   <TableHead className="dark:text-slate-400">Role</TableHead>
                   <TableHead className="text-right pr-6 dark:text-slate-400">Aksi</TableHead>
                 </TableRow>
