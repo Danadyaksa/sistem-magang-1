@@ -1,123 +1,48 @@
 "use client";
 
-import Image from "next/image";
-import { ModeToggle } from "@/components/mode-toggle";
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
-import {
-  LayoutDashboard, Users, LogOut, Menu, X, Search, Eye, CheckCircle,
-  XCircle, Clock, User, FileText, RefreshCcw, ImageIcon,
-  Loader2, Settings, AlertTriangle, PanelLeftClose, PanelLeftOpen,
-  ChevronLeft, ChevronRight, Filter, Download, ArrowUpDown,
-  ArrowUp, ArrowDown, CalendarClock, MessageCircle, Mail,
-  BookOpen, Trash2, ThumbsUp, MapPin
-} from "lucide-react";
-
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
-} from "@/components/ui/tooltip";
+import { Card } from "@/components/ui/card";
 
-// --- TIPE DATA ---
-type Pendaftaran = {
-  id: string;
-  namaLengkap: string;
-  nomorHp: string;
-  email: string;
-  instansi: string;
-  jurusan: string;
-  nomorInduk: string;
-  tanggalMulai: string;
-  tanggalSelesai: string;
-  status: "PENDING" | "ACCEPTED" | "REJECTED" | "RECOMMENDED";
-  cvPath: string;
-  suratPath: string;
-  fotoPath: string;
-  positionId: number | null;
-  pembimbing?: string | null;
-  kontakPembimbing?: string | null;
-  createdAt: string;
-};
-
-type Position = {
-  id: number;
-  title: string;
-  quota: number;
-  filled: number;
-};
-
-type Upt = {
-  id: number;
-  name: string;
-  address?: string;
-};
-
-// CONSTANT BULAN
-const MONTHS = [
-  { value: "0", label: "Januari" }, { value: "1", label: "Februari" },
-  { value: "2", label: "Maret" }, { value: "3", label: "April" },
-  { value: "4", label: "Mei" }, { value: "5", label: "Juni" },
-  { value: "6", label: "Juli" }, { value: "7", label: "Agustus" },
-  { value: "8", label: "September" }, { value: "9", label: "Oktober" },
-  { value: "10", label: "November" }, { value: "11", label: "Desember" },
-];
+// Hooks & Components
+import { useApplicants } from "@/hooks/useApplicants";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { ApplicantFilters } from "@/components/admin/ApplicantFilters";
+import { ApplicantTable } from "@/components/admin/ApplicantTable";
 
 export default function ApplicantsPage() {
-  const router = useRouter();
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [pendaftar, setPendaftar] = useState<Pendaftaran[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [upts, setUpts] = useState<Upt[]>([]); 
-  const [loading, setLoading] = useState(true);
-
-  // --- STATE FILTER, SORT & PAGINATION ---
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterYear, setFilterYear] = useState<string>("all");
-  const [filterMonth, setFilterMonth] = useState<string>("all");
-  const [filterJenis, setFilterJenis] = useState<string>("all");
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc"; } | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // State Lainnya
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const [admin, setAdmin] = useState({ username: "...", jabatan: "..." });
-  const [selectedPelamar, setSelectedPelamar] = useState<Pendaftaran | null>(null);
-  
-  // State Form Keputusan
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // --- STATE DELETE MODAL (BARU) ---
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deletingPelamar, setDeletingPelamar] = useState<Pendaftaran | null>(null);
 
-  // State Dropdown Dinamis
-  const [actionStatus, setActionStatus] = useState<string>(""); 
-  const [selectedPosition, setSelectedPosition] = useState<string>("");
-  const [selectedUpt, setSelectedUpt] = useState<string>(""); 
+  // Ambil semua data & fungsi logika dari custom hook
+  const {
+    pendaftar,
+    positions,
+    upts,
+    loading,
+    admin,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    exportToExcel,
+    fetchData,
+    ...filterProps
+  } = useApplicants();
 
-  // --- 1. CEK LOCAL STORAGE ---
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
     if (savedState === "true") setIsSidebarCollapsed(true);
@@ -129,913 +54,134 @@ export default function ApplicantsPage() {
     localStorage.setItem("sidebarCollapsed", String(newState));
   };
 
-  // --- 2. FETCH DATA ---
-  const fetchData = async () => {
-    try {
-      const [resPendaftar, resPositions, resUpt] = await Promise.all([
-        fetch("/api/pendaftaran", { cache: "no-store" }),
-        fetch("/api/positions", { cache: "no-store" }),
-        fetch("/api/upt", { cache: "no-store" }), 
-      ]);
-
-      const dataPendaftar = await resPendaftar.json();
-      const dataPositions = await resPositions.json();
-      const dataUpt = await resUpt.json();
-
-      if (Array.isArray(dataPendaftar)) setPendaftar(dataPendaftar);
-      if (Array.isArray(dataPositions)) setPositions(dataPositions);
-      if (Array.isArray(dataUpt)) setUpts(dataUpt); 
-    } catch (error) {
-      console.error("Gagal ambil data:", error);
-      toast.error("Gagal mengambil data.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAdminSession = async () => {
-    try {
-      const res = await fetch("/api/auth/me");
-      const data = await res.json();
-      if (res.ok) {
-        setAdmin({
-          username: data.username,
-          jabatan: data.jabatan || "Administrator",
-        });
-      } else {
-        router.push("/admin/login");
-      }
-    } catch (error) {
-      console.error("Auth error:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-    fetchAdminSession();
-  }, []);
-
-  // --- HELPER DATE INDONESIA ---
-  const formatDateIndo = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      day: "numeric", month: "long", year: "numeric",
-    });
-  };
-
-  const getPositionName = (id: number | null) => {
-    if (!id) return "-";
-    return positions.find((p) => p.id === id)?.title || "Posisi Tidak Ditemukan";
-  };
-
-  // --- 3. NOTIFICATION LOGIC ---
-  const openWhatsApp = (p: Pendaftaran, overrideUpt?: string) => {
-    if (!p.nomorHp) return toast.error("Nomor HP tidak tersedia");
-
-    let hp = p.nomorHp.replace(/\D/g, "");
-    if (hp.startsWith("0")) hp = "62" + hp.slice(1);
-
-    const tglMulai = formatDateIndo(p.tanggalMulai);
-    const tglSelesai = formatDateIndo(p.tanggalSelesai);
-    let message = "";
-
-    if (p.status === "ACCEPTED") {
-      const posName = getPositionName(p.positionId);
-      message = 
-`Halo *${p.namaLengkap}*,
-
-Anda *DITERIMA* magang di Dinas DIKPORA DIY.
-
-*Detail Penerimaan:*
-Nama: ${p.namaLengkap}
-Asal: ${p.instansi}
-Bidang: ${posName}
-Tanggal Magang: ${tglMulai} s.d. ${tglSelesai}
-
-Mohon balas pesan ini untuk konfirmasi kesediaannya. Terima kasih.`;
-
-    } else if (p.status === "REJECTED") {
-      message = 
-`Halo *${p.namaLengkap}*,
-
-Terima kasih sudah mendaftar magang di Dinas DIKPORA DIY (Asal: ${p.instansi}).
-
-Mohon maaf, berdasarkan hasil seleksi berkas, saat ini kami belum bisa menerima permohonan magang Anda di Dinas DIKPORA DIY. Tetap semangat dan sukses selalu untuk studinya!`;
-
-    } else if (p.status === "RECOMMENDED") {
-      const targetUptName = overrideUpt || selectedUpt;
-
-      if (!targetUptName) {
-        toast.warning("Mohon pilih UPT terlebih dahulu di dropdown sebelum kirim WA.");
-        return; 
-      }
-
-      const uptDetail = upts.find(u => u.name === targetUptName);
-      const alamatUpt = uptDetail?.address || "Alamat belum tersedia (Hubungi Admin)";
-
-      message = 
-`Halo, *${p.namaLengkap}*
-
-Menindaklanjuti permohonan magang Anda di Dinas DIKPORA DIY, dengan ini kami informasikan hasil verifikasi berkas:
-
-*Data Pelamar:*
-Nama: ${p.namaLengkap}
-NIM/NIS: ${p.nomorInduk || "-"}
-Jurusan: ${p.jurusan}
-Asal Sekolah/Kampus: ${p.instansi}
-
-Berdasarkan ketersediaan kuota di kantor induk, kami *MEREKOMENDASIKAN* Anda untuk melaksanakan magang di Unit Pelaksana Teknis (UPT) kami:
-
-*Unit Tujuan: ${targetUptName}*
-Alamat: ${alamatUpt}
-
-Silakan datang atau menghubungi pihak UPT terkait dengan membawa surat pengantar ini untuk proses administrasi lebih lanjut.
-
-Terima kasih.`;
-    }
-
-    const url = `https://wa.me/${hp}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-  };
-
-  const openEmail = (p: Pendaftaran, overrideUpt?: string) => {
-    if (!p.email) return toast.error("Email tidak tersedia");
-
-    let subject = "";
-    let body = "";
-
-    const tglMulai = formatDateIndo(p.tanggalMulai);
-    const tglSelesai = formatDateIndo(p.tanggalSelesai);
-
-    if (p.status === "ACCEPTED") {
-        const posName = getPositionName(p.positionId);
-        subject = "SELAMAT! Anda Diterima Magang - Dinas DIKPORA DIY";
-        body = 
-`Halo ${p.namaLengkap},
-
-Selamat! Anda DITERIMA magang di Dinas DIKPORA DIY.
-
-Detail Penerimaan:
-Nama: ${p.namaLengkap}
-Asal: ${p.instansi}
-Bidang: ${posName}
-Tanggal Magang: ${tglMulai} s.d. ${tglSelesai}
-
-Silakan balas email ini untuk konfirmasi.`;
-
-    } else if (p.status === "REJECTED") {
-      subject = "Update Status Pendaftaran Magang - Dinas DIKPORA DIY";
-      body = 
-`Halo ${p.namaLengkap},
-
-Terima kasih telah mendaftar di Dinas DIKPORA DIY.
-
-Mohon maaf, lamaran magang Anda belum dapat kami terima di periode ini karena keterbatasan kuota/ketidaksesuaian kualifikasi.
-
-Terima kasih.`;
-
-    } else if (p.status === "RECOMMENDED") {
-      const targetUptName = overrideUpt || selectedUpt;
-      if (!targetUptName) {
-        toast.warning("Pilih UPT terlebih dahulu sebelum kirim Email.");
-        return;
-      }
-
-      const uptDetail = upts.find(u => u.name === targetUptName);
-      const alamatUpt = uptDetail?.address || "Alamat belum tersedia (Hubungi Admin)";
-
-      subject = "Rekomendasi Penempatan Magang - Dinas DIKPORA DIY";
-      body = 
-`Halo ${p.namaLengkap},
-
-Menindaklanjuti permohonan magang Anda, kami informasikan status pendaftaran Anda:
-
-Data Pelamar:
-Nama: ${p.namaLengkap}
-NIM/NIS: ${p.nomorInduk || "-"}
-Jurusan: ${p.jurusan}
-Asal: ${p.instansi}
-
-Status: DIREKOMENDASIKAN (PINDAH LOKASI)
-
-Kami merekomendasikan Anda untuk melanjutkan proses magang di Unit Pelaksana Teknis (UPT) kami berikut ini:
-
-Nama UPT : ${targetUptName}
-Alamat   : ${alamatUpt}
-
-Silakan berkoordinasi langsung dengan pihak UPT terkait menggunakan surat rekomendasi ini.
-
-Terima kasih,
-Admin Dinas DIKPORA DIY`;
-    }
-
-    const url = `mailto:${p.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(url, "_blank");
-  };
-
-  // --- LOGIC FILTERING & SORTING ---
-  const requestSort = (key: string) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const availableYears = useMemo(() => {
-    const years = new Set(pendaftar.map((p) => new Date(p.createdAt).getFullYear()));
-    return Array.from(years).sort((a, b) => b - a);
-  }, [pendaftar]);
-
-  const filteredData = useMemo(() => {
-    let data = pendaftar.filter((item) => {
-      const date = new Date(item.createdAt);
-      const matchesSearch = item.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) || item.instansi.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesYear = filterYear === "all" || date.getFullYear().toString() === filterYear;
-      const matchesMonth = filterMonth === "all" || date.getMonth().toString() === filterMonth;
-      const matchesJenis = filterJenis === "all" || 
-                           (filterJenis === "smk" && item.cvPath === "manual-entry-smk") ||
-                           (filterJenis === "mahasiswa" && item.cvPath !== "manual-entry-smk");
-      return matchesSearch && matchesYear && matchesMonth && matchesJenis;
-    });
-
-    if (sortConfig !== null) {
-      data.sort((a, b) => {
-        let aValue: any = a[sortConfig.key as keyof Pendaftaran];
-        let bValue: any = b[sortConfig.key as keyof Pendaftaran];
-        if (sortConfig.key === "createdAt") {
-          aValue = new Date(a.createdAt).getTime();
-          bValue = new Date(b.createdAt).getTime();
-        } else if (typeof aValue === "string") {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
-        }
-        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return data;
-  }, [pendaftar, searchTerm, filterYear, filterMonth, filterJenis, sortConfig]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterYear, filterMonth, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentData = filteredData.slice(startIndex, endIndex);
-
-  // --- ACTION HANDLERS ---
   const handleLogoutConfirm = async () => {
     setIsLogoutOpen(false);
     const promise = fetch("/api/auth/logout", { method: "POST" });
     toast.promise(promise, {
       loading: "Sedang keluar...",
       success: () => {
-        router.push("/admin/login");
+        window.location.href = "/admin/login";
         return "Berhasil logout";
       },
       error: "Gagal logout",
     });
   };
 
-  const handleProcess = async () => {
-    if (!selectedPelamar || !actionStatus) {
-      toast.warning("Pilih status keputusan terlebih dahulu!");
-      return;
-    }
-
-    if (actionStatus === "ACCEPTED" && !selectedPosition) {
-      toast.warning("Wajib pilih posisi/bidang penempatan!");
-      return;
-    }
-    
-    if (actionStatus === "RECOMMENDED" && !selectedUpt) {
-      toast.warning("Wajib pilih UPT tujuan untuk rekomendasi!");
-      return;
-    }
-
-    try {
-      setIsProcessing(true);
-      
-      const payload = {
-        status: actionStatus,
-        positionId: actionStatus === "ACCEPTED" ? parseInt(selectedPosition) : null,
-      };
-
-      const res = await fetch(`/api/pendaftaran/${selectedPelamar.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        fetchData(); 
-        
-        let msg = "Status berhasil diperbarui.";
-        if (actionStatus === "ACCEPTED") msg = "Sukses! Pelamar DITERIMA.";
-        if (actionStatus === "REJECTED") msg = "Sukses! Pelamar DITOLAK.";
-        if (actionStatus === "RECOMMENDED") msg = `Sukses! Pelamar DIREKOMENDASIKAN ke ${selectedUpt}.`;
-        
-        toast.success(msg);
-      } else {
-        toast.error("Gagal update status.");
-      }
-    } catch (error) {
-      toast.error("Server error, coba lagi nanti.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // --- LOGIC HAPUS DATA ---
-  const confirmDelete = async () => {
-    if (!deletingPelamar) return;
-    setIsProcessing(true);
-    try {
-      const res = await fetch(`/api/pendaftaran/${deletingPelamar.id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Data pelamar berhasil dihapus");
-        fetchData();
-      } else {
-        toast.error("Gagal menghapus data");
-      }
-    } catch (error) {
-      toast.error("Terjadi kesalahan sistem");
-    } finally {
-      setIsProcessing(false);
-      setIsDeleteOpen(false);
-      setDeletingPelamar(null);
-    }
-  };
-
-  // --- EXPORT EXCEL ---
-  const handleExportExcel = async () => {
-    if (filteredData.length === 0) {
-      toast.warning("Tidak ada data untuk diexport.");
-      return;
-    }
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Data Pelamar");
-
-    let titleText = "LAPORAN PENDAFTAR MAGANG - DINAS DIKPORA DIY";
-    if (filterMonth !== "all" && filterYear !== "all") {
-        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
-        titleText += ` (PERIODE: ${monthName?.toUpperCase()} ${filterYear})`;
-    } else if (filterYear !== "all") {
-        titleText += ` (TAHUN: ${filterYear})`;
-    } else if (filterMonth !== "all") {
-        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
-        titleText += ` (BULAN: ${monthName?.toUpperCase()})`;
-    } else {
-        titleText += " (SEMUA DATA)";
-    }
-
-    worksheet.mergeCells('A1:J1');
-    const titleRow = worksheet.getCell('A1');
-    titleRow.value = titleText;
-    titleRow.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-    titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    titleRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF1e3a8a' }
-    };
-    worksheet.getRow(1).height = 40;
-
-    const headerRow = worksheet.getRow(3);
-    headerRow.values = [
-      "No", "Nama Lengkap", "Instansi", "Jurusan", "Nomor HP", 
-      "Tgl Daftar", "Mulai Magang", "Selesai Magang", "Status", "Penempatan"
-    ];
-    headerRow.font = { bold: true, color: { argb: "FF000000" }, size: 11 };
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFbfdbfe" } };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-    headerRow.height = 25;
-    
-    worksheet.getColumn(1).width = 5;
-    worksheet.getColumn(2).width = 30;
-    worksheet.getColumn(3).width = 25;
-    worksheet.getColumn(4).width = 25;
-    worksheet.getColumn(5).width = 18;
-    worksheet.getColumn(6).width = 15;
-    worksheet.getColumn(7).width = 15;
-    worksheet.getColumn(8).width = 15;
-    worksheet.getColumn(9).width = 15;
-    worksheet.getColumn(10).width = 25;
-
-    filteredData.forEach((item, index) => {
-      const posisi = positions.find((p) => p.id === item.positionId)?.title || "-";
-      let statusLabel = "PENDING";
-      if (item.status === "ACCEPTED") statusLabel = "DITERIMA";
-      if (item.status === "REJECTED") statusLabel = "DITOLAK";
-      if (item.status === "RECOMMENDED") statusLabel = "DIREKOMENDASIKAN";
-
-      const row = worksheet.addRow([
-        index + 1, item.namaLengkap, item.instansi, item.jurusan, item.nomorHp || "-",
-        new Date(item.createdAt).toLocaleDateString("id-ID"),
-        new Date(item.tanggalMulai).toLocaleDateString("id-ID"),
-        new Date(item.tanggalSelesai).toLocaleDateString("id-ID"),
-        statusLabel, posisi,
-      ]);
-      row.eachCell((cell) => {
-        cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-      });
-      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-
-    let fileName = "Rekap_Magang";
-    if (filterMonth !== "all" && filterYear !== "all") {
-        const monthName = MONTHS.find(m => m.value === filterMonth)?.label;
-        fileName += `_${monthName}_${filterYear}`;
-    } else if (filterYear !== "all") {
-        fileName += `_Tahun_${filterYear}`;
-    } else {
-        fileName += `_All_Data`;
-    }
-    fileName += ".xlsx";
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    saveAs(blob, fileName);
-    toast.success("Data berhasil diexport!");
-  };
-
-  const SidebarItem = ({ icon: Icon, label, active = false, onClick, className = "" }: any) => (
-    <TooltipProvider>
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onClick} className={`w-full flex items-center transition-colors duration-200 ${isSidebarCollapsed ? "justify-center px-2" : "justify-start px-4"} ${active ? "bg-slate-800 text-white shadow-md shadow-slate-900/20" : "text-slate-300 hover:text-white hover:bg-slate-800"} ${className}`}>
-            <Icon className={`h-5 w-5 ${isSidebarCollapsed ? "" : "mr-3"}`} />
-            {!isSidebarCollapsed && <span>{label}</span>}
-          </Button>
-        </TooltipTrigger>
-        {isSidebarCollapsed && (
-          <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700 ml-2">
-            {label}
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
-  );
-
   return (
     <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300 overflow-hidden">
-      
-      {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-xl flex flex-col h-full transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 ${isSidebarCollapsed ? "w-20" : "w-64"}`}>
-        <div className={`h-16 flex items-center border-b border-slate-800 flex-none ${isSidebarCollapsed ? "justify-center px-0" : "px-6 gap-3"}`}>
-          <div className="flex items-center justify-center">
-            <Image src="/logo-disdikpora.png" alt="Logo Disdikpora" width={isSidebarCollapsed ? 28 : 32} height={isSidebarCollapsed ? 28 : 32} className="object-contain transition-all duration-300" />
-          </div>
-          {!isSidebarCollapsed && <h1 className="font-bold text-xl tracking-wider truncate animate-in fade-in duration-300">Dinas DIKPORA</h1>}
-          <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-        <nav className="p-3 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
-          <SidebarItem icon={LayoutDashboard} label="Master Data" onClick={() => router.push("/admin/dashboard")} />
-          <SidebarItem icon={FileText} label="Pendaftar" active={true} />
-          <SidebarItem icon={CalendarClock} label="Daftar PKL" onClick={() => router.push("/admin/pkl")} />
-          <SidebarItem icon={BookOpen} label="Penelitian" onClick={() => router.push("/admin/penelitian")} />
-          <SidebarItem icon={Users} label="User Admin" onClick={() => router.push("/admin/users")} />
-          <SidebarItem icon={Settings} label="Pengaturan" onClick={() => router.push("/admin/pengaturan")} />
-          <div className={`pt-4 mt-4 border-t border-slate-800 ${isSidebarCollapsed ? "mx-2" : ""}`}>
-            <SidebarItem icon={LogOut} label="Keluar" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => setIsLogoutOpen(true)} />
-          </div>
-        </nav>
-      </aside>
+      {/* 1. SIDEBAR */}
+      <AdminSidebar
+        active="applicants"
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onLogout={() => setIsLogoutOpen(true)}
+      />
 
       {/* CONTENT */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm transition-colors duration-300 flex-none z-40">
-           <div className="flex items-center gap-4">
-            <button className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}>
-              <Menu className="h-6 w-6 text-slate-600 dark:text-slate-200" />
-            </button>
-            <button className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors" onClick={toggleSidebar} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
-              {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-            </button>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Review Pelamar</h2>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block">
-              <div className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.username}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">{admin.jabatan}</div>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800">
-              <User className="h-6 w-6" />
-            </div>
-            <ModeToggle />
-          </div>
-        </header>
+        {/* 2. HEADER */}
+        <AdminHeader
+          title="Review Pelamar"
+          setSidebarOpen={setSidebarOpen}
+          isSidebarCollapsed={isSidebarCollapsed}
+          toggleSidebar={toggleSidebar}
+          username={admin.username}
+          jabatan={admin.jabatan}
+        />
 
+        {/* MAIN */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 animate-in fade-in duration-500">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Data Pelamar Masuk</h1>
-              <p className="text-slate-500 dark:text-slate-400">Cek berkas dan tentukan siapa yang layak magang.</p>
+          {/* 3. FILTERS */}
+          <ApplicantFilters
+            onExport={exportToExcel}
+            onRefresh={fetchData}
+            {...filterProps}
+          />
+
+          {/* 4. CARD CONTAINER & TABLE */}
+          <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden transition-colors flex flex-col h-full max-h-[calc(100vh-18rem)]">
+            <div className="flex-1 overflow-auto">
+              <ApplicantTable
+                data={pendaftar}
+                positions={positions}
+                upts={upts}
+                isLoading={loading}
+                startIndex={startIndex}
+                requestSort={filterProps.requestSort}
+                deletePelamar={filterProps.deletePelamar}
+                processStatus={filterProps.processStatus}
+                sendWhatsApp={filterProps.sendWhatsApp}
+                sendEmail={filterProps.sendEmail}
+                getPositionName={filterProps.getPositionName}
+              />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-700/20 transition-all hover:scale-105">
-                <Download className="h-4 w-4 mr-2" /> Export Excel
-              </Button>
-              <Button onClick={() => { setLoading(true); fetchData(); }} className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-700/20 transition-all hover:scale-105">
-                <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
-              </Button>
-            </div>
-          </div>
 
-          <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden transition-colors flex flex-col h-full max-h-[calc(100vh-14rem)]">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4 space-y-4">
-                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-                <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-                  <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input placeholder="Cari nama / instansi..." className="pl-9 bg-white dark:bg-slate-950" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                  <Select value={filterJenis} onValueChange={setFilterJenis}>
-                    <SelectTrigger className="w-[160px] bg-white dark:bg-slate-950">
-                        <SelectValue placeholder="Semua Kualifikasi" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Kualifikasi</SelectItem>
-                      <SelectItem value="mahasiswa">Mahasiswa (S1/D3)</SelectItem>
-                      <SelectItem value="smk">Siswa SMK (Kolektif)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterMonth} onValueChange={setFilterMonth}>
-                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
-                        <SelectValue placeholder="Bulan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Bulan</SelectItem>
-                      {MONTHS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterYear} onValueChange={setFilterYear}>
-                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950">
-                        <SelectValue placeholder="Tahun" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Tahun</SelectItem>
-                      {availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-0 overflow-auto flex-1">
-              <Table>
-                <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
-                  <TableRow className="border-b border-slate-200 dark:border-slate-700">
-                    <TableHead className="w-[50px] text-center h-10">No</TableHead>
-                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("namaLengkap")}>
-                        <div className="flex items-center gap-2">Nama Pelamar <ArrowUpDown className="h-3 w-3" /></div>
-                    </TableHead>
-                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("instansi")}>
-                        <div className="flex items-center gap-2">Instansi <ArrowUpDown className="h-3 w-3" /></div>
-                    </TableHead>
-                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("createdAt")}>
-                        <div className="flex items-center gap-2">Tgl Daftar <ArrowUpDown className="h-3 w-3" /></div>
-                    </TableHead>
-                    <TableHead className="h-10 cursor-pointer group" onClick={() => requestSort("status")}>
-                        <div className="flex items-center gap-2">Status <ArrowUpDown className="h-3 w-3" /></div>
-                    </TableHead>
-                    <TableHead className="text-right pr-6 h-10">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={6} className="h-24 text-center text-slate-500"><Loader2 className="animate-spin h-4 w-4 inline mr-2" /> Memuat data...</TableCell></TableRow>
-                  ) : currentData.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="h-32 text-center text-slate-500"><div className="flex flex-col items-center gap-2"><FileText className="h-8 w-8 text-slate-300" /><p>Data tidak ditemukan.</p></div></TableCell></TableRow>
-                  ) : (
-                    currentData.map((item, idx) => (
-                      <TableRow key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                        <TableCell className="text-center text-slate-500 py-3">{startIndex + idx + 1}</TableCell>
-                        <TableCell className="font-medium py-3">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-900 dark:text-slate-100 text-sm">{item.namaLengkap}</span>
-                              {item.cvPath === "manual-entry-smk" && (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0 h-5 font-medium">SMK (Kolektif)</Badge>
-                              )}
-                            </div>
-                            <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{item.jurusan}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-300 text-sm py-3">{item.instansi}</TableCell>
-                        <TableCell className="text-slate-500 text-sm py-3">{new Date(item.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</TableCell>
-                        <TableCell className="py-3">
-                          {item.status === "PENDING" && <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>}
-                          {item.status === "ACCEPTED" && <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none hover:bg-green-100">Diterima</Badge>}
-                          {item.status === "REJECTED" && <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Ditolak</Badge>}
-                          {item.status === "RECOMMENDED" && <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Direkomendasikan</Badge>}
-                        </TableCell>
-                        <TableCell className="text-right pr-4 py-3">
-                          <div className="flex justify-end gap-1">
-                            <Dialog
-                              open={isDialogOpen && selectedPelamar?.id === item.id}
-                                onOpenChange={(open) => {
-                                  setIsDialogOpen(open);
-                                  if (open) {
-                                    setSelectedPelamar(item);
-                                    setActionStatus(""); 
-                                    setSelectedPosition(item.positionId ? item.positionId.toString() : "");
-                                    setSelectedUpt(""); 
-  
-                                    if (item.status === "ACCEPTED" && item.positionId) {
-                                       setActionStatus("ACCEPTED");
-                                       setSelectedPosition(item.positionId.toString());
-                                    } else if (item.status === "RECOMMENDED") {
-                                       setActionStatus("RECOMMENDED");
-                                    } else if (item.status === "REJECTED") {
-                                       setActionStatus("REJECTED");
-                                    }
-                                  }
-                                }}
-                            >
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-2xl bg-white dark:bg-slate-950 p-0 overflow-hidden">
-                                <DialogHeader className="p-6 pb-2">
-                                  <DialogTitle>Detail Pendaftaran</DialogTitle>
-                                  <DialogDescription>Tinjau kelengkapan berkas kandidat.</DialogDescription>
-                                </DialogHeader>
-                                
-                                <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <div className="space-y-4">
-                                    <div className="space-y-1">
-                                      <Label className="text-xs text-slate-500 uppercase font-semibold">Nama Lengkap</Label>
-                                      <div className="font-medium border-b border-slate-100 dark:border-slate-800 pb-1">{item.namaLengkap}</div>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs text-slate-500 uppercase font-semibold">Asal Instansi</Label>
-                                      <div className="text-sm">{item.instansi}</div>
-                                      <div className="text-slate-500 text-xs">{item.jurusan}</div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs text-slate-500 uppercase font-semibold">Rencana Magang</Label>
-                                        <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                                          <Clock className="h-3 w-3 text-blue-500" />
-                                          {new Date(item.tanggalMulai).toLocaleDateString("id-ID")} — {new Date(item.tanggalSelesai).toLocaleDateString("id-ID")}
-                                        </div>
-                                    </div>
-                                    {item.pembimbing && (
-                                      <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <Label className="text-xs text-slate-500 uppercase font-semibold">Guru Pembimbing</Label>
-                                        <div className="text-sm font-medium">{item.pembimbing}</div>
-                                        <div className="text-slate-500 text-xs">WA: {item.kontakPembimbing || "-"}</div>
-                                      </div>
-                                    )}
-                                    {item.positionId && (
-                                      <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <Label className="text-xs text-slate-500 uppercase font-semibold">Pilihan Bidang Magang</Label>
-                                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">{getPositionName(item.positionId)}</div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-100 dark:border-slate-800 space-y-3">
-                                    <Label className="text-xs text-slate-500 uppercase font-semibold block mb-2">Lampiran</Label>
-                                    {item.cvPath !== "manual-entry-smk" && (
-                                      <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
-                                        <a href={`/uploads/${item.cvPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-blue-600" /> Lihat CV / Proposal</a>
-                                      </Button>
-                                    )}
-                                    <Button variant="outline" size="sm" className="w-full justify-start text-slate-600 dark:text-slate-300" asChild>
-                                      <a href={`/uploads/${item.suratPath}`} target="_blank"><FileText className="mr-2 h-4 w-4 text-orange-600" /> Surat Pengantar</a>
-                                    </Button>
-                                  </div>
-                                </div>
-                                <Separator className="dark:bg-slate-800" />
-                                
-                                {/* --- FORM KEPUTUSAN --- */}
-                                <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50">
-                                  <div className="mb-4 flex items-center gap-2">
-                                    <CheckCircle className="h-4 w-4 text-blue-600" />
-                                    <span className="text-sm font-semibold">Keputusan Admin</span>
-                                  </div>
-
-                                  <div className="grid gap-4">
-                                    {/* DROPDOWN STATUS UTAMA */}
-                                    <div className="space-y-1.5">
-                                      <Label className="text-xs text-slate-500">Status Keputusan</Label>
-                                      <Select 
-                                        value={actionStatus} 
-                                        onValueChange={(val) => {
-                                            setActionStatus(val);
-                                            if (val !== "ACCEPTED") setSelectedPosition("");
-                                        }}
-                                      >
-                                        <SelectTrigger className="bg-white dark:bg-slate-950"><SelectValue placeholder="-- Tentukan Status --" /></SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="ACCEPTED">Diterima (Masuk Bidang)</SelectItem>
-                                          <SelectItem value="RECOMMENDED">Direkomendasikan (Pindah UPT)</SelectItem>
-                                          <SelectItem value="REJECTED">Ditolak</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-
-                                    {/* DROPDOWN ACCEPTED */}
-                                    {actionStatus === "ACCEPTED" && (
-                                      <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                                        <Label className="text-xs text-slate-500">Penempatan Bidang <span className="text-red-500">*</span></Label>
-                                        <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-                                          <SelectTrigger className="bg-white dark:bg-slate-950 border-blue-200 dark:border-blue-900"><SelectValue placeholder="Pilih Posisi Magang" /></SelectTrigger>
-                                          <SelectContent>
-                                            {positions.map((pos) => (
-                                              <SelectItem key={pos.id} value={pos.id.toString()}>{pos.title} <span className="text-slate-400 text-xs ml-2">(Sisa: {pos.quota - pos.filled})</span></SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    )}
-
-                                    {/* DROPDOWN RECOMMENDED */}
-                                    {(actionStatus === "RECOMMENDED") && (
-                                      <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                                        <Label className="text-xs text-slate-500">
-                                          Tujuan UPT <span className="text-red-500">*</span>
-                                          {item.status === "RECOMMENDED" && <span className="ml-2 text-[10px] text-orange-500 font-normal">(Pilih ulang jika ingin kirim notifikasi)</span>}
-                                        </Label>
-                                        <Select value={selectedUpt} onValueChange={setSelectedUpt}>
-                                          <SelectTrigger className="bg-white dark:bg-slate-950 border-orange-200 dark:border-orange-900"><SelectValue placeholder="Pilih UPT Tujuan" /></SelectTrigger>
-                                          <SelectContent>
-                                            {upts.length > 0 ? upts.map((upt) => (
-                                              <SelectItem key={upt.id} value={upt.name}>{upt.name}</SelectItem>
-                                            )) : (
-                                                <SelectItem value="dummy" disabled>Belum ada data UPT</SelectItem>
-                                            )}
-                                          </SelectContent>
-                                        </Select>
-                                        
-                                        {item.status === "RECOMMENDED" && !selectedUpt && (
-                                          <p className="text-[10px] text-slate-500 mt-1">
-                                            <MapPin className="h-3 w-3 inline mr-1"/>
-                                            Pilih ulang UPT agar alamat muncul di WhatsApp/Email.
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {actionStatus === "REJECTED" && (
-                                       <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900 rounded text-xs text-red-600 dark:text-red-400 animate-in fade-in">
-                                          <span className="font-semibold">Konfirmasi:</span> Pelamar akan ditolak.
-                                       </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* --- FOOTER --- */}
-                                <DialogFooter className="p-4 bg-slate-100/50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 gap-2 sm:gap-0">
-                                  {item.status === "PENDING" ? (
-                                    <>
-                                      <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isProcessing}>Batal</Button>
-                                      <Button className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]" onClick={handleProcess} disabled={isProcessing || !actionStatus}>
-                                        {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : "Simpan Keputusan"}
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4">
-                                      <div className="text-sm italic text-slate-500 flex flex-col">
-                                        <span>Status saat ini:{" "}
-                                          <span className={`font-semibold ${item.status === "ACCEPTED" ? "text-green-600" : item.status === "RECOMMENDED" ? "text-blue-600" : "text-red-600"}`}>
-                                            {item.status === "ACCEPTED" ? "Diterima" : item.status === "RECOMMENDED" ? "Direkomendasikan" : "Ditolak"}
-                                          </span>
-                                        </span>
-                                        {isProcessing === false && actionStatus === item.status && (
-                                          <span className="text-[10px] text-green-600 flex items-center mt-1"><CheckCircle className="h-3 w-3 mr-1"/> Data Tersimpan</span>
-                                        )}
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>Tutup</Button>
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm" 
-                                          onClick={() => openWhatsApp(item, selectedUpt)} 
-                                          className="h-8 text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                        >
-                                          <MessageCircle className="w-3.5 h-3.5 mr-2" /> WhatsApp
-                                        </Button>
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm" 
-                                          onClick={() => openEmail(item, selectedUpt)} 
-                                          className="h-8 text-orange-600 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                                        >
-                                          <Mail className="w-3.5 h-3.5 mr-2" /> Email
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-
-                            {/* --- TOMBOL HAPUS (BARU & DI LUAR) --- */}
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                              onClick={() => {
-                                setDeletingPelamar(item);
-                                setIsDeleteOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-            {/* PAGINATION SAMA */}
-            <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4">
+            {/* 5. PAGINATION */}
+            <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4 flex-none">
               <div className="flex items-center gap-4 text-sm text-slate-500">
-                <span>Menampilkan <strong>{filteredData.length > 0 ? startIndex + 1 : 0}</strong> - <strong>{Math.min(endIndex, filteredData.length)}</strong> dari <strong>{filteredData.length}</strong> data</span>
+                <span>
+                  Menampilkan <strong>{pendaftar.length > 0 ? startIndex + 1 : 0}</strong> -{" "}
+                  <strong>{Math.min(endIndex, pendaftar.length)}</strong> dari{" "}
+                  <strong>{pendaftar.length}</strong> data
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" /></Button>
-                <div className="flex items-center gap-1"><span className="text-sm px-2">Halaman {currentPage}</span></div>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0}><ChevronRight className="h-4 w-4" /></Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm px-2">Halaman {currentPage}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </Card>
         </main>
       </div>
 
-      {/* --- MODAL KONFIRMASI HAPUS (BARU) --- */}
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="sm:max-w-[425px] p-6 border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
-            <div className="flex flex-col items-center text-center gap-2 pt-2">
-              <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2 animate-in zoom-in duration-300">
-                  <Trash2 className="h-7 w-7 text-red-600 dark:text-red-500" />
-              </div>
-              <DialogTitle className="text-xl font-semibold dark:text-slate-100">
-                  Hapus Data Pelamar?
-              </DialogTitle>
-              <DialogDescription className="text-center dark:text-slate-400">
-                  Anda akan menghapus data pendaftaran <span className="font-semibold text-slate-900 dark:text-slate-200">"{deletingPelamar?.namaLengkap}"</span>. 
-                  <br/>Tindakan ini tidak dapat dibatalkan.
-              </DialogDescription>
-            </div>
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-1/2 h-10 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" 
-                onClick={() => setIsDeleteOpen(false)}
-                disabled={isProcessing}
-              >
-                Batal
-              </Button>
-              <Button 
-                variant="destructive" 
-                className="w-full sm:w-1/2 h-10 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20" 
-                onClick={confirmDelete}
-                disabled={isProcessing}
-              >
-                {isProcessing ? <Loader2 className="animate-spin h-4 w-4"/> : "Ya, Hapus"}
-              </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL LOGOUT */}
+      {/* 6. LOGOUT DIALOG */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
         <DialogContent className="sm:max-w-[400px] p-6 animate-in fade-in zoom-in-95 duration-200 dark:bg-slate-950 dark:border-slate-800">
-           <DialogHeader className="flex flex-col items-center text-center gap-2">
-              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
-                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
-              <DialogDescription className="text-center dark:text-slate-400">
-                 Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
-              </DialogDescription>
-           </DialogHeader>
-           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-              <Button variant="outline" className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700" onClick={() => setIsLogoutOpen(false)}>Batal</Button>
-              <Button variant="destructive" className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={handleLogoutConfirm}>Ya, Keluar</Button>
-           </DialogFooter>
+          <DialogHeader className="flex flex-col items-center text-center gap-2">
+            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
+              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <DialogTitle className="text-xl dark:text-slate-100">Konfirmasi Keluar</DialogTitle>
+            <DialogDescription className="text-center dark:text-slate-400">
+              Apakah Anda yakin ingin keluar dari sesi admin ini? Anda harus login kembali untuk mengakses panel.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+            <Button
+              variant="outline"
+              className="w-full sm:w-1/2 dark:bg-transparent dark:text-slate-100 dark:border-slate-700"
+              onClick={() => setIsLogoutOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold"
+              onClick={handleLogoutConfirm}
+            >
+              Ya, Keluar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
